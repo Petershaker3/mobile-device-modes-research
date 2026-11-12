@@ -18,6 +18,7 @@
 - **ZIP/APK security:** موثق في القسم 20.33 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2033-تدقيق-أمان-zipapk-zip-slip-وzip-bomb-والروابط-الرمزية-والتحقق-من-التوقيع-12-نوفمبر-2026).
 - **Android Manifest/APK parsers:** موثق في القسم 20.34 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2034-محللات-android-manifest-وapk-الجاهزة-مقارنة-axml-parser-وapk-parser-وandroid-sdk-tools-12-نوفمبر-2026).
 - **Android ABI/ELF inspection:** موثق في القسم 20.35 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2035-فحص-abi-وelf-وnative-libraries-داخل-apk-12-نوفمبر-2026).
+- **Native library dependencies (DT_NEEDED/SONAME):** موثق في القسم 20.36 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2036-فحص-اعتماديات-native-libraries-وdt_needed-وsoname-12-نوفمبر-2026).
 
 ## مراجع تكامل MCP
 
