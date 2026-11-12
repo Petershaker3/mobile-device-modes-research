@@ -17,6 +17,7 @@
 - **APK/APKS/APKM/XAPK containers:** موثق في الأقسام 20.30–20.32 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2030-تدقيق-google-bundletool-اختيار-split-apk-المتوافق-وتثبيت-apks-12-نوفمبر-2026).
 - **ZIP/APK security:** موثق في القسم 20.33 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2033-تدقيق-أمان-zipapk-zip-slip-وzip-bomb-والروابط-الرمزية-والتحقق-من-التوقيع-12-نوفمبر-2026).
 - **Android Manifest/APK parsers:** موثق في القسم 20.34 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2034-محللات-android-manifest-وapk-الجاهزة-مقارنة-axml-parser-وapk-parser-وandroid-sdk-tools-12-نوفمبر-2026).
+- **Android ABI/ELF inspection:** موثق في القسم 20.35 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2035-فحص-abi-وelf-وnative-libraries-داخل-apk-12-نوفمبر-2026).
 
 ## مراجع تكامل MCP
 
