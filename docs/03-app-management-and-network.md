@@ -355,3 +355,38 @@
 
 
 ---
+
+## 16.7 قرار الأولوية: محرك تثبيت APK واسع الصيغ
+
+**تم اعتماد هذا المحور كأولوية V1:** القدرة على تثبيت APK وSplit APK وAPKS وAPKM وXAPK، بما في ذلك OBB عند وجوده، أهم حالياً من التوسع في تحليل ELF أو dependencies native المتقدمة.
+
+### ترتيب الدعم
+
+| الأولوية | الصيغة/الحالة | مسار التنفيذ |
+|---|---|---|
+| P0 | APK مفرد | adb install |
+| P0 | base + split APKs | فحص المجموعة ثم adb install-multiple |
+| P0 | APKS | Google bundletool لاختيار splits المتوافقة وتثبيتها |
+| P1 | APKM غير المشفر | parser/adapter بعد التحقق من metadata وmanifest |
+| P1 | XAPK | parser/adapter، APK set ثم OBB plan منفصل |
+| P1 | عدة APKs يختارها المستخدم | لا تجمعها إلا بعد إثبات أنها package/split set واحد |
+| P2 | AAB | مسار تحويل عبر bundletool؛ ليس APK جاهزاً للتثبيت |
+
+### قاعدة التوافق الضرورية فقط لمسار التثبيت
+
+نحتفظ بفحص AndroidManifest وpackage/version وminSdk وABI list وdensity/locales وsplit identity. نؤجل DT_NEEDED وSONAME وsymbol versions وdependency graph إلى التشخيص المتقدم؛ هذه ليست شروطاً لازمة لتثبيت معظم ملفات APK.
+
+### سياسة التثبيت
+
+- Serial صريح لكل عملية.
+- لا منح تلقائي لكل الأذونات، ولا downgrade أو test-only إلا بطلب صريح.
+- لا انتحال installer source باستخدام -i.
+- التحقق من package/version بعد التثبيت.
+- OBB يعالج كعملية مستقلة بعد نجاح تثبيت APK ومطابقة package، مع معاينة وموافقة.
+- لا نعتبر استخراج الأرشيف أو نجاح ADB push دليلاً على نجاح التثبيت.
+
+### حالات الاختبار الإلزامية
+
+APK صالح/تالف؛ split كامل/ناقص/مختلط؛ package/version mismatch؛ ABI غير متوافق؛ density/language variants؛ APKS مع TOC وstandalones؛ APKM/XAPK غير مشفرين ومجهولي البنية؛ XAPK مع OBB؛ توقيع مختلف؛ downgrade؛ عدة أجهزة؛ انقطاع الاتصال؛ إلغاء العملية؛ مساحة غير كافية.
+
+**الحالة الحالية:** القرار والمعمارية ومعايير القبول موثقة. لا يوجد تنفيذ في البرنامج ولا اختبار فعلي على هاتف حتى الآن. التفاصيل وتدقيق المشاريع المرجعية في [دراسة الأدوات](02-tool-landscape-and-market-research.md#2037-إعادة-ضبط-الأولوية-التثبيت-واسع-التغطية-هو-هدف-v1-12-نوفمبر-2026).
