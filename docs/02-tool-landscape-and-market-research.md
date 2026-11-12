@@ -1458,3 +1458,146 @@ Microsoft تحذر من تعداد الأجهزة بقراءة Registry مباش
 يمكن تنفيذ wrapper Rust حول Windows APIs أو استخدام crate موثوق بعد تدقيق واجهاته؛ لا نعتمد الآن على crate بعينه قبل مراجعة صيانته وتغطيته واختباراته. لا نستخدم Registry scraping كبديل أساسي للواجهات الرسمية.
 
 **الحالة:** تصميم مبني على Microsoft API documentation ومراجعة مصدرية للأدوات السابقة؛ لم يتم كتابة Windows API code أو تثبيت/إزالة أي تعريف أو إجراء اختبار على Windows في هذه الجولة.
+
+
+### 20.24 تدقيق أدوات Windows الجاهزة لإدارة التعريفات (12 نوفمبر 2026)
+
+هذا القسم يفرق بين أداة تصلح كمرجع تشخيص، وأداة إدارة Driver Store، وأداة تستبدل USB driver binding. لا يعني إدراج أداة أننا سنضمّنها أو نشغّلها تلقائياً.
+
+#### 20.24.1 PnPUtil — الخيار الأول للتشخيص والتشغيل المحدود
+
+توثيق Microsoft يصف PnPUtil كأداة موجودة ضمن Windows، ويوصي بها لإدارة حزم التعريفات بدلاً من DevCon. أوامر مهمة للنطاق:
+
+- `pnputil /enum-devices /connected /deviceids /properties /drivers`: جرد الأجهزة المتصلة مع Hardware/Compatible IDs والخصائص والتعريفات المطابقة، وفق إصدار Windows.
+- `pnputil /enum-devices /problem`: العثور على الأجهزة التي لديها Problem Code.
+- `pnputil /enum-drivers`: عرض حزم الطرف الثالث في Driver Store.
+- `pnputil /enum-drivers /files`: إظهار ملفات الحزم، على إصدارات Windows الداعمة.
+- `pnputil /add-driver <file.inf> /install`: إضافة حزمة وتثبيتها على الأجهزة المطابقة؛ عملية تغيير وليست فحصاً.
+- `pnputil /export-driver <oem#.inf> <directory>`: تصدير حزمة للتراجع/النسخ الاحتياطي.
+
+**تنبيه توافق:** خيارات PnPUtil أضيفت تدريجياً؛ فمثلاً `/enum-devices` متاح من Windows 10 1903، وخيارات `/deviceids` و`/properties` تتطلب إصدارات أحدث من Windows 11، و`/enum-devicetree` من Windows 11 23H2. يجب اكتشاف إصدار Windows/القدرات أو تجربة help، وعدم افتراض توفر كل switch.
+
+**تنبيه parsing:** لا نعتمد على النص الافتراضي المترجم/المحلي. توثيق Microsoft يوصي بمخرجات XML أو CSV عبر `/format` و`/output-file` حيث تكون متاحة، لأن تنسيق النص يتغير حسب لغة Windows. نستخدم XML/CSV المدعوم ونحتفظ بمسار fallback موثق للإصدارات الأقدم.
+
+المراجع: [PnPUtil command syntax](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/pnputil-command-syntax) · [Troubleshooting device and driver installations](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/troubleshooting-device-and-driver-installations) · [Create a driver inventory](https://learn.microsoft.com/en-us/windows-hardware/drivers/driversecurity/create-a-driver-inventory) · [DevCon Update replacement](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/devcon-update)
+
+#### 20.24.2 Driver Store Explorer (RAPR) — مرجع إدارة متقدم، وليس محرك إصلاح تلقائي
+
+المستودع: [lostindark/DriverStoreExplorer](https://github.com/lostindark/DriverStoreExplorer)
+
+مراجعة README على الفرع الافتراضي `master`:
+- يعلن دعم عرض حزم الطرف الثالث وبيانات الحجم/النسخة/التاريخ.
+- يعلن Add/Install/Delete/Export، ووجود backends متعددة: Native Windows API وDISM وPnPUtil.
+- يعلن ربط الحزم بالأجهزة، والتمييز بين الأجهزة المتصلة وغير المتصلة، وعمليات batch.
+- README يحذر صراحة من أن حذف تعريف غير مناسب قد يسبب تعطل وظائف الجهاز أو يمنع Windows من الإقلاع.
+- يوضح أن تحديد الحزم غير المستخدمة Best effort، وأن وجود صفر أجهزة مرتبطة لا يثبت أن حذف الحزمة آمن؛ قد تكون الحزمة لازمة لخدمة أو برنامج أو جهاز غير حاضر.
+
+**القرار:** RAPR مرجع ممتاز لتجربة المستخدم، جرد Driver Store، التصدير، وسير عمل مراجعة الحزم. لا ندمج واجهة RAPR أو ميزة تنظيف Driver Store في برنامجنا، ولا نجعل حذف التعريفات جزءاً من "إصلاح تعريف هاتف". نستخدم PnPUtil/SetupAPI لقراءة البيانات اللازمة، ونحصر التغيير في تعريف محدد ثبت ارتباطه بجهاز Android مستهدف.
+
+لم يتم تشغيل RAPR أو مراجعة جميع ملفات تنفيذه؛ ما سبق مراجعة README/وصف المشروع وليس إثباتاً لاختبار runtime.
+
+#### 20.24.3 libwdi / Zadig — غير مناسب كمسار Android ADB/MTP عام
+
+المستودع: [pbatard/libwdi](https://github.com/pbatard/libwdi)
+
+README يصف مكتبة لإنشاء INF/Catalog وتثبيت WinUSB أو libusb0 أو libusbK أو USB Serial أو تعريف مخصص، مع UAC elevation. دليل Zadig يوضح أن هدفها تثبيت تعريف متوافق مع libusb لجهاز USB، وأن استبدال التعريف الموجود قد يمنع النظام أو التطبيقات الأخرى من الوصول للجهاز؛ ويذكر أمثلة مثل HID mouse وUSB hubs وComposite Parent.
+
+**القرار:** لا نستخدم Zadig/libwdi لإصلاح Android ADB أو MTP. استبدال تعريف واجهة Android بتعريف WinUSB/libusb قد يكسر MTP أو ADB أو واجهات composite الأخرى، كما أن أداة عامة لا تعرف أي interface يجب الحفاظ عليه. نحتفظ بها كمرجع منفصل فقط إذا ظهر مستقبلاً احتياج USB raw محدد ومثبت، وبعد تحديد VID/PID/MI والـinterface المستهدف واختبار عدم تعطيل بقية الواجهات.
+
+مصدر: [libwdi README](https://github.com/pbatard/libwdi) · [Zadig user guide](https://github.com/pbatard/libwdi/wiki/Zadig)
+
+#### 20.24.4 مسارات تعريفات Android الرسمية
+
+- Google USB Driver مخصص لأجهزة Google؛ Google توضح أن تعريفات بقية الشركات تأتي من الشركة المصنعة نفسها.
+- Android Developers تحتفظ بجدول روابط OEM USB drivers، ومن ضمنه Samsung.
+- لا نعدل `android_winusb.inf` أو نضيف Hardware IDs يدوياً كمسار افتراضي؛ Google تحذر من أن تعديل INF قد ينتج تحذيرات أمان عند التثبيت/التحديث.
+- لا ننزل تعريفاً من مواقع تجميع مجهولة ولا نعتبر توقيع الملف وحده دليلاً على أنه التعريف الصحيح لهذا الجهاز.
+
+المراجع: [Google USB Driver](https://developer.android.com/studio/run/win-usb) · [OEM USB drivers](https://developer.android.com/studio/run/oem-usb)
+
+#### 20.24.5 قرار الإصدار الأول
+
+1. Scan: قراءة الأجهزة وحالاتها وHardware IDs وProblem Codes.
+2. Match: تحديد واجهة Android المحتملة، مع الاحتفاظ بأكثر من واجهة composite وعدم اختزال الجهاز إلى اسم تسويقي.
+3. Source: إظهار رابط الشركة الرسمية أو Google فقط.
+4. Preview: إظهار INF/Provider/Version/Hardware IDs والتغييرات المتوقعة.
+5. Backup: تصدير التعريف الحالي عند الإمكان قبل التغيير.
+6. Apply: تثبيت INF محدد فقط بعد موافقة صريحة ورفع صلاحية مؤقت.
+7. Verify: إعادة تعداد الجهاز ومقارنة binding والحالة وADB/MTP بشكل منفصل.
+8. Rollback: إظهار مسار استعادة موثق؛ لا حذف تلقائي لحزم Driver Store.
+
+---
+
+### 20.25 اختيار مكتبات Rust لعزل Windows Driver Core (12 نوفمبر 2026)
+
+#### 20.25.1 الخيارات التي تستحق المقارنة
+
+**A. `windows` crate (Microsoft windows-rs)**
+- إسقاط Rust واسع ومكتوب الأنواع لواجهات Win32 وCOM وWinRT.
+- مناسب عندما نحتاج API surface غني مع تحويلات Rust وResult/typed handles.
+- يجب تحديد Cargo features بدقة بدلاً من تفعيل كل الواجهات.
+- قد يضيف dependency weight وتغيرات إصدار؛ نضعه داخل Windows-specific crate ولا نكشف أنواعه في الـcore العام.
+
+**B. `windows-sys` crate**
+- bindings منخفضة المستوى وأقرب إلى FFI الخام، وتناسب wrappers رفيعة حول SetupAPI/CfgMgr32.
+- واجهات مثل `SetupDiGetClassDevsW`, `SetupDiEnumDeviceInfo`, `SetupDiEnumDriverInfoW`, `CM_Get_DevNode_Status` متاحة ضمن namespace `Win32::Devices::DeviceAndDriverInstallation` في docs.rs الحالية.
+- الدوال قد تكون unsafe وتتطلب الالتزام الدقيق بأحجام structs، المؤشرات، UTF-16، وGetLastError/CONFIGRET conventions.
+- مناسب إذا كان الفريق مستعداً لبناء safe wrapper صغير ومدقق حول كل API.
+
+**C. `windows-bindgen`**
+- خيار لتوليد مجموعة bindings خاصة ومحدودة عندما نحتاج APIs معينة داخل مكتبة قابلة لإعادة الاستخدام ولا نريد الاعتماد على umbrella projection كاملاً.
+- لا نبدأ به قبل أن يثبت أن `windows` أو `windows-sys` لا يقدمان الحدود المطلوبة.
+
+المراجع: [Microsoft windows-rs crate selection](https://github.com/microsoft/windows-rs/blob/master/docs/crates/windows.md) · [Rust for Windows](https://learn.microsoft.com/en-us/windows/dev-environment/rust/rust-for-windows) · [windows-sys SetupAPI bindings](https://docs.rs/windows-sys/latest/windows_sys/Win32/Devices/DeviceAndDriverInstallation/index.html)
+
+#### 20.25.2 التوصية المبدئية
+
+ابدأ بـ`windows-sys` داخل crate مستقل باسم مثل `windows-device-core` إذا كانت الحاجة محصورة في SetupAPI/CfgMgr32 وPnP properties. السبب: نحتاج حدوداً صغيرة ومباشرة مع Windows، وليس إسقاط كل Windows API في core.
+
+لكن القرار ليس نهائياً قبل proof-of-concept يقارن:
+- سهولة إدارة handles وUTF-16 والأخطاء.
+- حجم dependency graph ووقت البناء.
+- سهولة اختبار safe wrapper.
+- التوافق مع MSRV وTauri/Rust toolchain الحالي.
+- توافر APIs المطلوبة على Windows 10/11 المستهدف.
+
+إذا أصبح التعامل مع COM/WinRT أو واجهات أعلى مستوى ضرورياً، نعيد تقييم `windows` crate. لا نخلط أنواع `windows` و`windows-sys` عبر حدود الخدمات؛ نعيد فقط DTOs مستقلة مثل `DeviceInstance`, `HardwareIdSet`, `DriverBinding`, `ProblemCode`.
+
+#### 20.25.3 حدود الحزمة المقترحة
+
+```text
+driver-domain
+  ├── DeviceInstance / HardwareIds / DriverBinding DTOs
+  ├── ProblemCode mapping
+  └── DriverRepairPlan / VerificationResult
+
+windows-device-core
+  ├── SetupAPI enumeration
+  ├── Configuration Manager status/properties
+  ├── PnPUtil capability/version adapter
+  └── Windows-specific error translation
+
+driver-source-catalog
+  ├── OEM official source records
+  └── Google USB Driver source record
+
+driver-repair-service
+  ├── match → preview → approval → apply → verify
+  └── rollback evidence and operation journal
+
+tauri-adapter / mcp-adapter / cli-adapter
+  └── all call the same service layer
+```
+
+لا يخرج أي `HANDLE`, `HDEVINFO`, raw pointer، Windows struct، أو `windows-sys` type من `windows-device-core`. الـcore العام لا يعتمد على Windows APIs، ويمكن اختبار mapping وrepair planning فيه على كل الأنظمة.
+
+#### 20.25.4 الاختبارات المطلوبة قبل اعتماد المكتبة
+
+- Unit tests لقراءة MULTI_SZ Hardware IDs وUTF-16 وأخطاء buffer resizing.
+- Fake PnP provider لاختبار connected/disconnected/problem/no-driver/multiple-interface.
+- Contract tests لنسخ مخرجات PnPUtil XML/CSV عبر إصدارات Windows المدعومة ولغات مختلفة.
+- Windows CI على Windows 10/11 حيث تتاح runners المناسبة، مع فصل نجاح compile عن hardware validation.
+- اختبار جهاز Android فعلي لكل عائلة OEM مستهدفة قبل إعلان توافق الإصلاح.
+- اختبار rollback وإثبات عدم تعطيل MTP أو ADB أو واجهات composite المجاورة.
+
+**الحالة:** مراجعة توثيق Microsoft وRust bindings ومشاريع RAPR/libwdi؛ لم يتم تثبيت crate أو كتابة PoC أو تشغيل أداة تعريفات. التوصية `windows-sys` مبدئية فقط.
