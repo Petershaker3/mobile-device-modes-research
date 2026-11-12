@@ -1045,3 +1045,120 @@ Droidsmith يجمع:
 **التوصية المؤقتة:** Droidsmith هو المرشح المرجعي الأول حالياً لإدارة ADB والتطبيقات وتصدير Split APKs على Windows. لا أوصي بنسخ المستودع كاملاً. نراجع security boundary وpath grants وpackage export تفصيلياً، ثم نحدد وحدات يمكن اقتباسها أو تغليفها خلف Adapter. آخر commit ظاهر يعود إلى يوليو 2026، لذا نحتاج إعادة تقييم نشاط الصيانة قبل اعتماد طويل الأجل.
 
 **حالة الجولة:** [x] package inventory والفلاتر. [x] lazy APK metadata. [x] تصدير base/split APK وmanifest/hashes. [x] Wireless ADB/mDNS. [x] Windows native CI matrix. [x] تصنيف ADB-Root-Toolbox كتطبيق Android-side. [ ] تدقيق كامل لـauthorization/path grants. [ ] تشغيل Windows build/tests محلياً. [ ] اختبار USB/Wireless فعلي. [ ] تصميم MCP adapter. [ ] اعتماد اقتباس كود.
+
+
+### 20.19 مراجعة MCP في Droidsmith 0.9.19 وتصحيح مرجع الفرع (12 نوفمبر 2026)
+
+**تصحيح مهم للقسم 20.18:** المستودع الافتراضي الحالي هو `master` وليس `main`. المراجعة السابقة لملف `.github/workflows/ci.yml` كانت على الفرع `main`، وهو ليس الفرع الافتراضي الحالي. الفرع الافتراضي `master` عند SHA `a56496cc06a88ebf689b3c2f0fd79de12c605285` (14 سبتمبر 2026)، ولا يحتوي شجرته على `.github/workflows/`. كما يسجل CHANGELOG إزالة hosted build workflow. لذلك لا يصح اعتبار Windows native CI matrix المذكور في 20.18 دليلاً على CI الحالي للمنتج؛ هو دليل من فرع غير افتراضي. يجب اعتبار Windows runtime CI الحالي **غير مثبت** إلى أن يظهر workflow نشط أو تشغيل موثق على Windows.
+
+المراجعة الحالية تمت على الفرع الافتراضي `master`، ونسخة المنتج `0.9.19` بحسب `package.json` و`src-tauri/Cargo.toml`. آخر commit ظاهر على الفرع: `a56496cc06a88ebf689b3c2f0fd79de12c605285` بتاريخ 14 سبتمبر 2026.
+
+#### 20.19.1 MCP موجود فعلاً في الفرع الافتراضي
+
+الملفات:
+- `src-tauri/src/mcp.rs` — blob SHA `acd2c36f76a021a81143d72cffdf2d8bbb80d09b`
+- `src-tauri/src/bin/droidsmith_mcp.rs` — blob SHA `52fb4d87989e139495500fa6ab3dffe26547fcdd`
+- `src-tauri/tests/mcp_smoke.rs` — blob SHA `9cc571692d000fd68f35aed38c83466a99485c7d`
+- `src-tauri/Cargo.toml` — blob SHA `bc1bc4a1a16b4a2d5db277bd89dcb546e3c2d8af`
+- `CHANGELOG.md` — blob SHA `86e15a92a8fb91f522bb36ae6d49cbe7e7e9d36a`
+
+يعلن CHANGELOG 0.9.19 بتاريخ 5 سبتمبر 2026 عن `droidsmith-mcp` كواجهة MCP محلية عبر STDIO. صفحة README الحالية تصف نفس السلوك، وتقول إنه لا يفتح HTTP listener، وإن أدوات التغيير تحتاج `confirmed: true`.
+
+**التصميم الفعلي في المصدر:**
+- MCP server مكتوب Rust كـbinary مستقل `droidsmith-mcp`.
+- ينفذ JSON-RPC/MCP عبر UTF-8 JSON line على STDIN/STDOUT.
+- لا يفتح listener؛ transport محلي STDIO فقط.
+- يترك STDOUT حصرياً لرسائل البروتوكول، وأخطاء تشغيل binary تذهب إلى STDERR.
+- يمرر التنفيذ إلى `droidsmith-cli` الشقيق بدلاً من استدعاء ADB من MCP مباشرة.
+- يحدد CLI المجاور تلقائياً، مع override اختياري عبر متغير البيئة `DROIDSMITH_CLI`.
+- يستخدم arguments منفصلة مع `Command::args`، لا shell command string.
+- يعلن MCP protocol version `2025-06-18`.
+
+هذا يثبت وجود MCP في الفرع الافتراضي، ويصحح المعلومة السابقة التي قالت إنه غير موجود.
+
+#### 20.19.2 الأدوات التسع الموجودة — نطاق MCP أضيق من التطبيق
+
+`tools/list` يسجل الأدوات التالية:
+1. `devices_list` — اكتشاف الأجهزة.
+2. `packages_list` — جرد الحزم لجهاز ومستخدم Android محددين، مع filters.
+3. `profile_plan` — إنشاء خطة Profile دون تنفيذ.
+4. `baseline_inspect` — مقارنة recovery baseline بالحالة الحية.
+5. `fleet_report_read` — قراءة تقرير محلي منقح.
+6. `pack_plan` — خطة debloat pack دون تنفيذ.
+7. `profile_apply` — تطبيق Profile.
+8. `baseline_apply` — تطبيق خطة استعادة/إعادة تطبيق baseline.
+9. `pack_apply` — تطبيق debloat pack.
+
+أدوات القراءة تحمل `readOnlyHint=true`، وأدوات التغيير تحمل `readOnlyHint=false` و`destructiveHint=true`.
+
+**ما لا يقدمه MCP الحالي:** لا توجد أدوات مستقلة مباشرة لـinstall/uninstall/enable/disable/permission changes، ولا تصدير APK، ولا DNS، ولا Windows driver repair، ولا Wireless Pair/Disconnect، ولا logcat أو file operations. هذه الوظائف موجودة في التطبيق بدرجات مختلفة، لكنها ليست ضمن كتالوج MCP التسع الذي راجعناه.
+
+إذن MCP في Droidsmith ليس تحكماً كاملاً بكل واجهات البرنامج؛ هو واجهة أتمتة headless لعدد محدد من workflow profiles/baselines/packs والتقارير.
+
+#### 20.19.3 تدقيق confirmed=true — حارس موجود لكنه ليس موافقة بشرية مربوطة بالخطة
+
+في `mcp.rs`:
+- `profile_apply` و`baseline_apply` و`pack_apply` ترفض التنفيذ إذا لم يكن `confirmed` قيمة Boolean true.
+- توجد اختبارات وحدات لكل الأدوات الثلاث تتأكد من الرفض قبل تشغيل CLI عند غياب التأكيد.
+- يوجد Smoke test يشغل MCP binary، ويتأكد من أن stdout يحوي JSON-RPC lines فقط، وأن طلب `profile_apply` دون confirmation يرجع `confirmation_required`.
+- CLI يعيد تطبيق validation/planner/journal الخاصة به، وbaseline apply يعيد حساب diff مع الحالة الحية ولا ينفذ خطة قديمة مباشرة.
+
+**الحد الأمني الدقيق:** `confirmed` مجرد Boolean يرسله مستدعي MCP. لا يظهر في MCP adapter إصدار Approval Token من الخادم بعد عرض plan محدد، ولا ربط confirmation بـhash الخطة أو Serial + Android user + package/action set + transport generation، ولا expiry/one-shot approval. وبالتالي يمكن لعميل MCP أن يرسل `confirmed:true` في أول استدعاء دون أن يكون الخادم قد تحقق بنفسه أن الإنسان راجع نتيجة plan السابقة. وصف الأداة يقول "after reviewing its plan"، لكن هذا الشرط procedural/contractual وليس إثبات موافقة بشرية داخل الخادم.
+
+هذا لا يعني أن التنفيذ بلا حواجز: CLI يعيد validation وفحوص التوافق، ويحتفظ بالـjournal، وتوجد acknowledgements منفصلة لبعض الحالات مثل unsafe tier/compatibility. لكنه لا يجعل Boolean وحده إثبات موافقة بشرية دقيقة.
+
+**المطلب عندنا:** لا نعتمد `confirmed:true` وحدها. نحتاج workflow:
+1. MCP read-only preview يرجع plan + digest.
+2. خدمة الصلاحيات تنشئ Approval Token قصيرة العمر، أحادية الاستخدام، مرتبطة بجهاز/عملية/مدخلات/خطة محددة.
+3. واجهة المستخدم (GUI أو MCP client approval surface) تعرض الملخص الدقيق وتطلب موافقة صريحة.
+4. apply يقبل token لا Boolean، ويتحقق من digest وحالة الجهاز والـtransport generation ثم يستهلكه.
+5. أي اختلاف في الخطة أو الجهاز يبطل الموافقة ويعيد Preview.
+
+#### 20.19.4 حدود التشغيل والـLifecycle
+
+في `run_cli`:
+- `Command::new(...).args(...)` مع stdin null وstdout/stderr piped.
+- استدعاء `.output()` متزامن ينتظر اكتمال العملية.
+- لا يظهر timeout أو cancellation token في MCP adapter نفسه.
+- لا توجد في هذا المسار إدارة MCP request cancellation لتنفيذ child CLI؛ إشعار `notifications/cancelled` يتم تجاهله دون إيقاف العملية التي بدأت.
+- لا يوجد حد واضح لزمن انتظار child CLI في الدالة التي تمت مراجعتها.
+
+هذا فرق مهم عن طبقة Operations في التطبيق، التي تملك cancellation/timeouts لعملياتها. MCP adapter قد يبقى منتظراً إذا علق CLI؛ يجب إضافة bounded process runner وربط MCP cancellation بإيقاف child process قبل اعتباره مناسباً للمهام الطويلة.
+
+#### 20.19.5 الاختبارات وحدود الدليل
+
+المثبت:
+- Unit tests لتهيئة MCP وأشكال JSON-RPC/الأدوات.
+- Unit tests لرفض أدوات التغيير دون confirmed.
+- Unit tests لرفض selectors الغامضة أو غير الصحيحة.
+- Integration smoke test لتشغيل binary والتحقق من STDOUT protocol-only ورفض apply دون confirmation.
+
+غير المثبت من الملفات التي راجعناها:
+- Windows-native CI workflow على الفرع الافتراضي؛ لا يوجد `.github/workflows` في شجرته.
+- اختبار Codex الفعلي لتثبيت/تشغيل plugin؛ المشروع يقدم MCP executable لكن لا يظهر Codex plugin package خاص به.
+- اختبار إلغاء child process من MCP.
+- اختبارات موافقة بشرية مرتبطة بخطة ذات digest.
+- اختبار hardware مع USB/Wireless device في هذا التدقيق.
+
+#### 20.19.6 القرار بالنسبة لبرنامجنا
+
+| البند | Droidsmith 0.9.19 | قرارنا |
+|---|---|---|
+| MCP local STDIO | موجود ومخصص | مرجع مناسب للنقل المحلي |
+| MCP over HTTP | غير موجود، ولا حاجة له في البداية | نبدأ STDIO مثل هذا التصميم |
+| فصل MCP عن ADB | MCP يستدعي CLI، والـCLI يستعمل طبقة الخدمات | نستخدم MCP adapter فوق Service Layer؛ لا نكرر ADB |
+| Read-only tools | devices/packages/plans/reports | نمط مناسب |
+| Mutation tools | profile/baseline/pack apply | نقتبس نمط التخطيط، لا Boolean confirmation وحدها |
+| Server-side human approval | لا يوجد Approval Token مربوط بالخطة في الكود المراجع | نبنيه كشرط إلزامي |
+| Child process timeout/cancel | غير ظاهر في MCP runner | نضيفه قبل الإنتاج |
+| MCP tools coverage | 9 أدوات فقط | نوسعها لاحقاً حسب نطاقنا: Apps, DNS, Drivers, APK export, Wireless |
+| Codex | MCP executable يمكن تسجيله في Codex كـSTDIO server | يحتاج إعداد Codex واختبار فعلي؛ لا plugin جاهز مثبت |
+| Windows CI | لا workflow على الفرع الافتراضي | نطلب Windows 10/11 CI + runtime smoke |
+
+#### 20.19.7 النتيجة المحدثة
+
+Droidsmith يظل أقوى مرجع وظيفي وجدناه حتى الآن في Windows/ADB وإدارة التطبيقات وتصدير Split APK وWireless ADB. وأصبح أيضاً مرجعاً عملياً لتصميم MCP محلي عبر STDIO، خصوصاً فصل MCP adapter عن CLI/service boundary.
+
+لكن لا ننسخ MCP adapter كما هو: نحتاج إضافة Approval Token حقيقية مرتبطة بالـplan، timeout/cancellation للـchild process، وتوسيع tool surface لتشمل الوظائف المطلوبة لدينا. كما يجب بناء Windows CI خاص بنا لأن وجود Windows binaries أو اختبارات فرع قديم لا يثبت CI الحالي على الفرع الافتراضي.
+
+**حالة الجولة:** [x] تحديد الفرع الافتراضي وتصحيح تقييم CI السابق. [x] مراجعة MCP source وbinary. [x] حصر الأدوات التسع. [x] مراجعة confirmation gate واختباراته. [x] مراجعة CLI delegation وprocess handling. [ ] اختبار Codex فعلياً. [ ] Windows CI/runtime validation. [ ] تصميم Approval Token. [ ] إضافة timeout/cancellation. [ ] اعتماد أي كود مقتبس.
