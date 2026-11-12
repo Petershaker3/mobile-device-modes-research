@@ -75,7 +75,7 @@
 
 | الترتيب | الجولة | الناتج المطلوب | حالة البداية |
 |---:|---|---|---|
-| 1 | Source Revalidation | مراجعة الفروق عند SHAs المثبتة في [12](12-REUSE-AND-IMPLEMENTATION-PLAN.md)، وفصل commit المراجع عن HEAD الملتقط | In Progress — اكتملت مراجعة AdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)، وbundletool وapkfile وPacMan-APK وxapkInstaller في [14](14-source-revalidation-app-installers.md)؛ بقية المحاور متبقية |
+| 1 | Source Revalidation | مراجعة الفروق عند SHAs المثبتة في [12](12-REUSE-AND-IMPLEMENTATION-PLAN.md)، وفصل commit المراجع عن HEAD الملتقط | In Progress — اكتملت مراجعة AdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)، وbundletool وapkfile وPacMan-APK وxapkInstaller في [14](14-source-revalidation-app-installers.md)، وadb-mcp وus-all/android-mcp-server في [15](15-source-revalidation-mcp-codex.md)؛ بقية المحاور متبقية |
 | 2 | Host Core PoC | مقارنة .NET 10 وTauri/Rust في ADB USB/Wireless وmulti-device وcancellation وWindows PnP | Not Started |
 | 3 | Shared Contracts | DeviceHandle وCapability وOperation وResult وAudit schemas | Design Spec موجود؛ يحتاج PoC |
 | 4 | Test Corpus | مخرجات Android منقحة وfixtures APK/OTA/super/logcat/bugreport وعمليات فشل | Not Started |
@@ -83,7 +83,7 @@
 | 6 | قرار Stack | اختيار Host/UI/ADB/MTP/MCP/dependency delivery بعد نتائج PoC | Open Decision |
 | 7 | Implementation Approval | موافقة تنفيذ مستقلة قبل أي تغيير في البرنامج أو الجهاز | Required Gate |
 
-التفاصيل والمعايير وترتيب المحاور في [12 — خطة إعادة الاستخدام والمعمارية والتنفيذ](12-REUSE-AND-IMPLEMENTATION-PLAN.md)، ونتائج أول جولتين Source Revalidation في [13](13-source-revalidation-adb-file-core.md) و[14](14-source-revalidation-app-installers.md).
+التفاصيل والمعايير وترتيب المحاور في [12 — خطة إعادة الاستخدام والمعمارية والتنفيذ](12-REUSE-AND-IMPLEMENTATION-PLAN.md)، ونتائج أول جولتين Source Revalidation في [13](13-source-revalidation-adb-file-core.md) و[14](14-source-revalidation-app-installers.md) و[15](15-source-revalidation-mcp-codex.md).
 
 ## 6. قواعد تحديث هذه المصفوفة
 
