@@ -497,8 +497,7 @@ Connected Android Device / Windows APIs
 
 ### 20.4 الأمان والصلاحيات — شرط أساسي
 
-- **Read-only افتراضياً:** اكتشاف الأجهزة وقراءة المعلومات والقوائم والتقارير لا تغير حالة الهاتف.- **موافقة منفصلة للكتابة:** التثبيت والحذف والتعطيل والتفعيل وتغيير DNS وإصلاح التعريفات لا تنفذ لمجرد أن النموذج طلبها.
-- **Preview ثم Apply:** العمليات الحساسة تعرض الجهاز المستهدف (Serial/اسم مفهوم)، والقيمة الحالية والجديدة، والأثر المتوقع، ثم تتطلب موافقة المستخدم.
+- **Read-only افتراضياً:** اكتشاف الأجهزة وقراءة المعلومات والقوائم والتقارير لا تغير حالة الهاتف.- **موافقة منفصلة للكتابة:** التثبيت والحذف والتعطيل والتفعيل وتغيير DNS وإصلاح التعريفات لا تنفذ لمجرد أن النموذج طلبها.- **Preview ثم Apply:** العمليات الحساسة تعرض الجهاز المستهدف (Serial/اسم مفهوم)، والقيمة الحالية والجديدة، والأثر المتوقع، ثم تتطلب موافقة المستخدم.
 - **لا تنفيذ Shell عام افتراضياً:** لا توفر أداة مثل `execute_arbitrary_shell` كواجهة مفتوحة للنموذج. استخدم أدوات محددة ذات مدخلات متحققة وقوائم سماح.
 - **تحديد الجهاز صراحة:** كل عملية تستهدف جهازاً محدداً بمعرف جلسة/Serial؛ لا تعتمد على اختيار أول جهاز متصل عند وجود أكثر من جهاز.
 - **تأكيد إضافي للعمليات المدمرة:** إلغاء تثبيت تطبيق أو إزالة تعريف أو تغيير إعداد شبكة يحتاج تأكيداً واضحاً، مع منع العمليات الجماعية الخطرة افتراضياً.
@@ -997,7 +996,6 @@ Droidsmith يجمع:
 - `src-tauri/src/adb/wireless.rs` — SHA `5fec47cc2c4ea235a83ec899ac5cc925c28e0789`
 - `src-tauri/src/commands/wireless.rs` — SHA `0fdabb3f7fd291c5d7e79ed593f7787b06e3487e`
 يدعم mDNS service discovery والتمييز بين Pairing وConnect، و`adb pair` و`adb connect`، والتحقق من endpoint والـport وpairing code، وتصنيف TLS wireless مقابل legacy TCP، وتشخيص بعض مشاكل VPN/mDNS. لا يمنح TLS provenance لمجرد إدخال IP يدوياً.
-
 مرجع قوي لتصميم الاتصال اللاسلكي، مع ضرورة حماية pairing code من السجلات وإضافة Disconnect وإدارة واضحة للاتصالات.
 
 #### 20.18.5 حدود الأمان والمعمارية
@@ -1498,7 +1496,6 @@ Microsoft تحذر من تعداد الأجهزة بقراءة Registry مباش
 المستودع: [pbatard/libwdi](https://github.com/pbatard/libwdi)
 
 README يصف مكتبة لإنشاء INF/Catalog وتثبيت WinUSB أو libusb0 أو libusbK أو USB Serial أو تعريف مخصص، مع UAC elevation. دليل Zadig يوضح أن هدفها تثبيت تعريف متوافق مع libusb لجهاز USB، وأن استبدال التعريف الموجود قد يمنع النظام أو التطبيقات الأخرى من الوصول للجهاز؛ ويذكر أمثلة مثل HID mouse وUSB hubs وComposite Parent.
-
 **القرار:** لا نستخدم Zadig/libwdi لإصلاح Android ADB أو MTP. استبدال تعريف واجهة Android بتعريف WinUSB/libusb قد يكسر MTP أو ADB أو واجهات composite الأخرى، كما أن أداة عامة لا تعرف أي interface يجب الحفاظ عليه. نحتفظ بها كمرجع منفصل فقط إذا ظهر مستقبلاً احتياج USB raw محدد ومثبت، وبعد تحديد VID/PID/MI والـinterface المستهدف واختبار عدم تعطيل بقية الواجهات.
 
 مصدر: [libwdi README](https://github.com/pbatard/libwdi) · [Zadig user guide](https://github.com/pbatard/libwdi/wiki/Zadig)
@@ -1997,7 +1994,6 @@ DeviceAnalyzer يجمع أكثر من ABI، وليس قيمة ABI واحدة ف�
 **حدود الاستخدام:** هذه أداة إنشاء/تغليف XAPK من مجلد، وليست أداة فتح XAPK وارد وتحليل ما يجب تثبيته. تصلح كمرجع validation وtest-fixture generation فقط. لم يتم تشغيلها أو توليد ملف تجريبي.
 
 **القرار:** لا نضيفها كاعتماد runtime في برنامجنا حالياً. يمكن لاحقاً استخدامها كمرجع لتصميم اختبارات XAPK synthetic تشمل base/splits وOBB وmismatched package/version/signature، بعد مراجعة fixtures مستقلة.
-
 #### 20.32.3 AppManagerNG — تصنيف أولي لأنواع الحاويات
 
 المستودع: [SysAdminDoc/AppManagerNG](https://github.com/SysAdminDoc/AppManagerNG) — commit `959f11b0d238ec37139d479e1461977509007cf0`.
@@ -2060,3 +2056,121 @@ DeviceAnalyzer يجمع أكثر من ABI، وليس قيمة ABI واحدة ف�
 **القرار الحالي:** نستخدم bundletool مباشرة لـAPKS، وSAI مرجعاً رئيسياً لفهم APKM/XAPK split semantics، وDrakkar مرشحاً لطبقة Rust XAPK parser بعد فحص أمني أوسع. لا يوجد حتى الآن parser Windows مثبت أو اختبار على هاتف، ولا نعتمد أي مشروع كمكوّن production قبل PoC واختبارات fixtures متعددة المصادر.
 
 **حالة الجولة:** [x] مراجعة SAI APKM/XAPK source paths. [x] مراجعة Rust XAPK parser. [x] مراجعة XAPK creation/validation tool. [x] مراجعة header classifier وmerge-only parser. [x] توثيق الفروق بين format adapters. [ ] مراجعة كاملة لحدود ZIP في المرشحين. [ ] بناء parser PoC على Windows. [ ] اختبارات fixtures حقيقية من مصادر مختلفة. [ ] اختبار DeviceSpec/install-multiple على أجهزة فعلية. [ ] اعتماد أي كود production.
+
+### 20.33 تدقيق أمان ZIP/APK: Zip Slip وZip Bomb والروابط الرمزية والتحقق من التوقيع (12 نوفمبر 2026)
+
+**نوع المراجعة:** مراجعة مصدرية لكود مكتبات ZIP وDrakkar، ومراجعة وثائق Android وOWASP. لم يتم تشغيل fuzzing أو توليد أرشيفات هجومية أو بناء PoC. هذه متطلبات تصميم واختبار، وليست إثباتاً بأن البرنامج الحالي محمي.
+
+#### 20.33.1 zip-rs/zip2 — مكوّن Rust مرشح لقراءة الأرشيف
+
+المستودع: [zip-rs/zip2](https://github.com/zip-rs/zip2) — commit `6cdc6f35d99c8c0598a04a183c512b3b91044137`.
+
+الملفات التي تمت مراجعتها:
+- `src/read/zipfile.rs` — blob SHA `785d47235e323c9dd3bc4b461a1d2603cf48589f`.
+- `src/read/extract.rs` — blob SHA `4186058ce0cea1b3f5bfdb0bd68ba581d5331763`.
+- `examples/extract.rs` — blob SHA `3223aa63bbfbb9bb7f7fabcf2f446303c4950a26`.
+- `CHANGELOG.md` — blob SHA `7ab4f8e687dab6150efc3cc07761e26b15d5ac12`.
+
+ما يوفره المصدر:
+- `ZipFile::enclosed_name()` يرفض أسماء المسارات التي تحتوي NULL أو مساراً مطلقاً أو تخرج من مجلد الاستخراج. توثيق المكتبة يحذر صراحةً من استخدام `name()` مباشرة عند استخراج الملفات.
+- يوفر `is_symlink()` و`is_dir()` لتمييز أنواع entries.
+- `ExtractOptions::with_size_limit()` يحدد حداً لحجم البيانات المفكوك المعلن، و`enforce_header_consistency(true)` يطلب التحقق من اتساق local headers مع central directory.
+- خيارات التعامل مع symlinks متعددة؛ منها `NoExtract`، ويجب اختيار الرفض/عدم الاستخراج في برنامجنا بدلاً من اتباع الروابط.
+- المصدر يضع سقفاً داخلياً قدره 64 MiB للـpreallocation، ويوثق إصلاحاً لحالة symlink ذات حجم معلن ضخم كانت قد تسبب OOM.
+
+**تحفظات مهمة:**
+- `ExtractOptions::default()` يبدأ بـ`size_limit: None` و`enforce_header_consistency: false`. لا يجوز الاعتماد على defaults؛ يجب ضبط الخيارات صراحةً.
+- `with_size_limit` يفحص الحجم الإجمالي المعلن للأرشيف عند مسار extraction، وليس بديلاً عن عدّ bytes الفعلية أثناء القراءة أو حدود مستقلة لكل entry.
+- `enclosed_name` يحمي مسار الملف، لكنه لا يقرر إن كان APK صالحاً أو إن كان محتوى الأرشيف آمناً من استنزاف الموارد.
+- سقف preallocation الداخلي ليس سقفاً لإجمالي البيانات التي يمكن فك ضغطها.
+
+**القرار:** `zip-rs/zip2` هو المرشح الأول لمكوّن ZIP reader في Rust PoC، مع حدودنا الخاصة للـentries والأحجام الفعلية والوقت، ورفض symlinks، والتحقق من headers. لا نستخدم وظيفة extract العامة مباشرة كخط تثبيت؛ نقرأ entries المطلوبة ونكتبها إلى staging بأسماء مولدة داخلياً.
+
+#### 20.33.2 Drakkar — لماذا لا نقتبس قارئه المتسامح في مسار التثبيت
+
+المستودع: [sebdraven/drakkar](https://github.com/sebdraven/drakkar) — commit `1ef884c79a03cfc21e5c4e1170b19c7507be3d08`.
+
+الملفات:
+- `src/parser/xapk.rs` — blob SHA `a53af44fe33deedc355f546cf22d06c6b98da2aa`.
+- `src/parser/apkzip.rs` — blob SHA `4437da7962dfa041fbe0a45cc54d6c5a453de998`.
+- `src/parser/mod.rs` — blob SHA `45515d6ed6a16d0122c2f77a7f68932487d51215`.
+
+نتائج مراجعة المصدر:
+- المسار الاسمي في `xapk.rs` يخصص `Vec::with_capacity(entry.size() as usize)` قبل قراءة APK الداخلي. الحجم يأتي من metadata الأرشيف، وهو مدخل غير موثوق؛ لا ننسخ هذا النمط. يجب القراءة في chunks مع حد فعلي، أو استخدام bounded writer.
+- إذا رفضت مكتبة ZIP الأرشيف أو entry، يحاول Drakkar الرجوع إلى `TolerantZip`.
+- قارئ `apkzip.rs` يعلن صراحةً أنه يتجاهل CRC وعلامة التشفير، ولا يعتمد طريقة الضغط المعلنة؛ يجرب deflate ثم stored، ويقرأ بعض الحقول اعتماداً على تقديرات/بدائل عند فساد البيانات.
+- يوجد حد 512 MiB لحجم APK الكامل الذي يقرأه قارئه المتسامح من القرص، لكنه لا يعالج وحده مشكلة التخصيص المسبق في المسار الاسمي، ولا يثبت وجود حد صارم لكل entry أو إجمالي bytes بعد فك الضغط.
+- المصدر يصف هذا القارئ بأنه tolerant لمعالجة APKs معدلة/مشوهة لأغراض التحليل؛ وهذا هدف مختلف عن قبول ملفات للتثبيت.
+
+**القرار:** لا نستخدم `TolerantZip` ولا fallback يتجاوز فشل parser القياسي في مسار APKM/XAPK installer. إذا رفض parser القياسي archive أو entry بسبب header/CRC/encryption/compression inconsistency، تكون النتيجة Blocked أو Requires Review مع سبب محدد. يظل Drakkar مرجعاً لخوارزمية اكتشاف base/split وhashes فقط.
+
+#### 20.33.3 ضوابط ZIP الإلزامية في برنامجنا
+
+1. **كشف المحتوى أولاً:** الامتداد مجرد إشارة. نتحقق من ZIP structure وmetadata لكل صيغة، ولا نثق في `manifest.json` أو `info.json` وحدهما.
+2. **Entry inventory قبل الاستخراج:** نقرأ central directory وننشئ قائمة metadata فقط، ثم نتحقق من العدد والأسماء والتكرارات والأنواع والأحجام قبل قراءة payload.
+3. **حدود موارد متعددة:** سقف لعدد entries، وحجم الأرشيف المضغوط، وإجمالي الحجم المفكوك المعلن، وحجم entry الواحد، وحجم metadata/JSON، وإجمالي bytes الفعلية التي خرجت من decompressor، ومدة العملية والذاكرة المؤقتة. القيم الرقمية تضبط بعد جمع corpus من ملفات مشروعة، ولا تُخترع من غير قياس.
+4. **التحقق من الحجم الفعلي:** لا نثق في `uncompressed_size` أو compression ratio المعلن وحدهما؛ نعدّ كل chunk فعلياً ونوقف القراءة فور تجاوز أي حد. Compression ratio إنذار إضافي، وليس آلية الحماية الوحيدة.
+5. **Zip Slip:** نرفض absolute paths و`..` وNULL وWindows drive/UNC paths وأسماء المسارات غير الصالحة. لا نستخدم entry name كمسار كتابة مباشرة.
+6. **Symlinks وspecial files:** نرفض symlink وأي entry ليست regular file أو directory مسموحاً به. لا ننشئ hard links أو reparse points من بيانات الأرشيف.
+7. **Duplicate names:** نرفض duplicate raw names، وكذلك الأسماء التي تصبح متطابقة بعد normalization/case-folding على Windows. لا نسمح باستبدال entry بآخر لاحقاً.
+8. **Header consistency:** نتحقق من local file header مقابل central directory، ومن offsets/bounds/overlaps، ونرفض الأرشيفات المتناقضة بدلاً من التخمين.
+9. **CRC/integrity:** نتحقق من CRC لكل entry بعد فك الضغط، ونرفض CRC mismatch. لا نستخدم قارئاً يتجاهل CRC أو encryption flags في مسار التثبيت.
+10. **التخزين المرحلي:** لا نفك الأرشيف إلى مجلد يختاره المستخدم أو agent. نستخدم staging directory خاصاً بالتطبيق، محدود الصلاحيات، واسم ملف مولداً من index/hash، مع تنظيف مضمون عند الفشل والإلغاء.
+11. **الملفات المطلوبة فقط:** لا نفك كل محتويات XAPK/APKM بشكل أعمى. نقرأ metadata وAPK entries المطلوبة، ونعالج OBB كنوع منفصل.
+12. **الاستمرارية والإلغاء:** timeouts، cancellation، disk quota، memory budget، وتنظيف partial files. لا تبدأ عمليات ADB أثناء التحليل.
+13. **لا silent fallback:** فشل parser أو signature check لا يؤدي إلى قارئ أكثر تساهلاً ثم تثبيت الناتج. يمكن حفظ تقرير تشخيصي read-only، لكن لا نرفع مستوى الثقة في الملف.
+
+#### 20.33.4 توقيع APK وهوية المجموعة
+
+المرجع الأساسي هو أداة Android الرسمية `apksigner` من Android SDK Build Tools، وليس مجرد قراءة ملفات `META-INF` أو مقارنة hashes غير موثوقة.
+
+مسار التحقق المقترح لكل APK داخلي:
+- تشغيل `apksigner verify --verbose --print-certs -Werr <apk>` كعملية محددة المعاملات، دون shell command string.
+- تسجيل نتيجة التحقق، schemes التي تم التحقق منها، وعدد signers وبصمة شهادة SHA-256 لكل signer.
+- فشل التحقق أو warnings التي نقرر معاملتها كخطأ تمنع الانتقال إلى Preview قابل للتثبيت.
+- التحقق من اتساق هوية التوقيع عبر base وكل split. لا نكتفي بمقارنة SHA-256 نصياً دون فهم certificate rotation/signing lineage؛ نحتاج دعم lineage وفق أدوات Android الرسمية عند وجود تدوير مفاتيح.
+- metadata داخل XAPK/APKM ليست دليلاً على هوية الناشر؛ لا نعتمد اسم التطبيق أو package name المعلن قبل مطابقته مع Android manifest داخل APK.
+- لا نعتبر نجاح `apksigner` وحده إثباتاً أن التطبيق آمن أو موثوق المصدر؛ هو يثبت صحة التوقيع وسلامة المحتوى وفق scheme، وليس سمعة المطور.
+- يبقى Android Package Manager على الجهاز هو الحكم النهائي عند التثبيت؛ تحقق الكمبيوتر مرحلة preflight وليس ضماناً لقبول الجهاز.
+
+وثائق Android توضح أن v2/v3 تحقق من محتوى APK بالكامل وتمنع تعديل المحتوى المحمي دون كشفه، وأن `apksigner` يعرض schemes والشهادات وبصماتها. لا نعيد تنفيذ التحقق cryptographic بأنفسنا ما دامت أداة Android الرسمية تؤدي ذلك.
+
+#### 20.33.5 اختبارات أمان مطلوبة قبل اعتماد parser
+
+| الحالة | السلوك المتوقع |
+|---|---|
+| ZIP Slip: `../outside.apk` أو absolute path | رفض entry، وعدم إنشاء أي ملف خارج staging |
+| Windows path: drive/UNC/backslash traversal | رفض |
+| symlink أو special entry | رفض دون اتباع الرابط |
+| duplicate entry names أو collision بعد case-folding | رفض |
+| ZIP bomb / declared size صغير لكن output الفعلي ضخم | إيقاف عند حد bytes الفعلي |
+| entry count أو JSON metadata ضخم | رفض قبل استهلاك موارد غير محدودة |
+| CRC mismatch | رفض |
+| local header وcentral directory مختلفان | رفض |
+| overlapping offsets أو entry data خارج حدود الملف | رفض |
+| encrypted entry أو compression method غير مدعوم | رفض مع سبب واضح |
+| ملف APK داخلي تالف أو binary manifest غير قابل للقراءة | لا يمر إلى install set |
+| base مفقود أو أكثر من base | رفض المجموعة |
+| package/version/signing identity غير متسقة بين splits | Blocked/Requires Review |
+| إلغاء أثناء فك الضغط | إيقاف العملية وتنظيف staging |
+| امتلاء القرص أو timeout | فشل آمن دون تنفيذ ADB |
+
+يضاف fuzzing لـZIP central directory وlocal headers وAndroid binary manifest، واختبارات regression ثابتة لكل حالة، واختبار على Windows CI. لا تُعتبر اختبارات parser وحدها بديلاً عن اختبار التثبيت على أجهزة Android فعلية.
+
+#### 20.33.6 القرار الهندسي
+
+- **مرشح ZIP:** `zip-rs/zip2` مع إعدادات صريحة وحدود موارد إضافية.
+- **مرفوض من install path:** Drakkar tolerant ZIP fallback؛ بسبب تجاهل CRC/encryption flags وقبول بيانات مشوهة، إضافة إلى تخصيصات مبنية على أحجام معلنة.
+- **توقيع APK:** Android `apksigner` كأداة تحقق خارجية مثبتة الإصدار، مع تشغيل آمن وقراءة structured output.
+- **Extraction:** لا يوجد general-purpose extraction إلى مسارات archive. نقرأ entries المطلوبة إلى staging بأسماء داخلية مولدة.
+- **OBB:** يبقى منفصلاً عن APK install set، مع preview وموافقة صريحة قبل النقل.
+- **الحالة:** توصية معمارية source-backed، وليست اعتماداً نهائياً لمكتبة أو إثباتاً أمنياً. لا PoC، لا fuzzing، لا تشغيل APK، ولا اختبار هاتف في هذه الجولة.
+
+المراجع:
+- [zip-rs/zip2 source](https://github.com/zip-rs/zip2/tree/6cdc6f35d99c8c0598a04a183c512b3b91044137)
+- [Drakkar XAPK parser](https://github.com/sebdraven/drakkar/blob/1ef884c79a03cfc21e5c4e1170b19c7507be3d08/src/parser/xapk.rs)
+- [Drakkar tolerant ZIP reader](https://github.com/sebdraven/drakkar/blob/1ef884c79a03cfc21e5c4e1170b19c7507be3d08/src/parser/apkzip.rs)
+- [Android APK Signature Scheme v2](https://source.android.com/docs/security/features/apksigning/v2)
+- [Android APK Signature Scheme v3](https://source.android.com/docs/security/features/apksigning/v3)
+- [Android apksigner](https://developer.android.com/tools/apksigner)
+- [OWASP ZIP Slip, symlink and archive bomb testing](https://wstg.owasp.org/stable/4-Web_Application_Security_Testing/10-Business_Logic_Testing/09-Test_Upload_of_Malicious_Files/)
