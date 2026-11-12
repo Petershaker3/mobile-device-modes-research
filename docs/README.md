@@ -10,9 +10,10 @@
 
 ## 2. وثائق المجالات الوظيفية
 
-4. [01 — الاتصال وقراءة المعلومات والتحويل بين الأوضاع](01-connectivity-protocols.md) — USB، ADB، Fastboot/Fastbootd، MTP/WPD، Samsung AT/Download، Xiaomi Mi Assistant، Huawei/Honor، انتقالات الأوضاع، وحالات النتائج.
-5. [03 — إدارة تطبيقات Android والشبكة عبر ADB](03-app-management-and-network.md) — إدارة التطبيقات، USB/Wireless، البحث والفلاتر، تواريخ التثبيت والتحديث، Installer Source، DNS، وأولوية محرك التثبيت.
-6. [04 — تشخيص وإصلاح تعريفات Android على Windows](04-windows-driver-diagnostics.md) — SetupAPI/PnP، Hardware IDs، مصادر التعريفات الرسمية، الإصلاح، التراجع، واختبارات القبول.
+4. [06 — معلومات نظام Android والجهاز](06-android-system-information.md) — كتالوج حقول الجهاز والبناء والـABI والذاكرة والتخزين والطاقة، مع تدقيق مشاريع GitHub ومصادر القراءة وحدود API 24+.
+5. [01 — الاتصال وقراءة المعلومات والتحويل بين الأوضاع](01-connectivity-protocols.md) — USB، ADB، Fastboot/Fastbootd، MTP/WPD، Samsung AT/Download، Xiaomi Mi Assistant، Huawei/Honor، انتقالات الأوضاع، وحالات النتائج.
+6. [03 — إدارة تطبيقات Android والشبكة عبر ADB](03-app-management-and-network.md) — إدارة التطبيقات، USB/Wireless، البحث والفلاتر، تواريخ التثبيت والتحديث، Installer Source، DNS، وأولوية محرك التثبيت.
+7. [04 — تشخيص وإصلاح تعريفات Android على Windows](04-windows-driver-diagnostics.md) — SetupAPI/PnP، Hardware IDs، مصادر التعريفات الرسمية، الإصلاح، التراجع، واختبارات القبول.
 
 ## 3. سجل الأدوات والأبحاث التفصيلية
 
@@ -41,7 +42,6 @@
 
 هذه ليست وثائق منشأة بعد؛ إنما فجوات بحثية حددتها المصفوفة:
 
-- 06-android-system-information.md — معلومات النظام والبناء والعتاد والأمان والخصائص.
 - 07-firmware-software-inventory.md — جرد السوفتوير والفريموير وملفات التحديث وmetadata.
 - 08-storage-partition-information.md — معلومات التخزين والأقسام وما يمكن قراءته بأمان.
 - 09-device-file-management.md — استعراض الملفات ونقلها وإدارتها.
