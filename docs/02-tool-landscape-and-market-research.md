@@ -3053,3 +3053,51 @@ Commit المصدر الذي تمت مراجعته: `87af1d04541297fdf2728135679
 **قرار المرحلة:** لا نختار مشروعاً واحداً لمجرد أنه يدعم أكبر عدد امتدادات. نقارن xapkInstaller وpacman-apk على corpus ثابت من عينات APK/APKS/APKM/XAPK، ونفصل parser/selector/installer/OBB. يظل bundletool المسار المرجعي لـAPKS القياسي؛ ولا نستخدم ترتيب ABI ثابتاً أو extraction عامّاً غير محدود.
 
 **حالة التحقق:** تمت مراجعة README وpubspec والملفات المصدرية المحددة على GitHub عند commit المذكور. لم يتم تنزيل المشروع أو بناءه أو تشغيله، ولم يتم تثبيت أي تطبيق على هاتف أو WSA. لا يوجد ادعاء باختبار runtime أو hardware.
+
+
+### 20.43 تثبيت Android عبر ADB — حدود الأوامر والخيارات التي يجب أن يبني عليها المحرك (12 نوفمبر 2026)
+
+**المراجع الرسمية:**
+- [Android Developers — Android Debug Bridge](https://developer.android.com/tools/adb)
+- [AOSP — ADB command-line reference](https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/user/adb.1.md)
+
+#### 20.43.1 أوامر التثبيت ليست interchangeable
+
+| الأمر | الغرض | استخدامه في برنامجنا |
+|---|---|---|
+| `adb -s SERIAL install file.apk` | تثبيت APK واحد | APK عادي أو universal APK |
+| `adb -s SERIAL install-multiple base.apk split_*.apk` | عدة APKs تخص تطبيقاً واحداً | split APK set بعد التحقق من اكتماله واتساقه |
+| `adb -s SERIAL install-multi-package a.apk b.apk` | تثبيت عدة packages كوحدة ذرية واحدة | حالة متقدمة عندما نحتاج تثبيت أكثر من تطبيق معاً؛ ليست بديلاً عن split install |
+
+وثائق Android تذكر صراحة أن `install-multiple` لتثبيت عدة APKs لحزمة واحدة، بينما AOSP يعرّف `install-multi-package` لتثبيت package أو أكثر بصورة ذرية. يجب ألا يخلط الـadapter بين الأمرين.
+
+#### 20.43.2 خيارات يجب ألا تُفعّل تلقائياً
+
+- `-r`: استبدال تطبيق موجود مع الاحتفاظ ببياناته؛ يُستخدم عند update/reinstall بعد التحقق من package identity وتوافق التوقيع، وليس كإذن لتغيير package مختلف.
+- `-d`: السماح بالرجوع إلى versionCode أقدم؛ توثيق AOSP الحالي يقيده بحزم debuggable. لا نفعّله افتراضياً ولا نعد المستخدم بأنه سيجبر downgrade لأي تطبيق.
+- `-t`: السماح بتثبيت test APK؛ opt-in فقط.
+- `-g`: منح كل runtime permissions المعلنة؛ ممنوع كخيار افتراضي في برنامجنا.
+- `-p`: partial application install ضمن install-multiple؛ لا يستخدم في التثبيت الطبيعي لأنه قد ينتج تثبيتاً جزئياً غير مكتمل.
+- `--abi`: override يدوي للـABI؛ لا نستخدمه كبديل عن فحص توافق الجهاز واختيار splits الصحيحة.
+
+#### 20.43.3 Streaming ونسخ APK إلى الجهاز
+
+AOSP يوثق `--streaming` و`--no-streaming`، ويشرح أن الثاني يرفع APK إلى الجهاز ثم يشغل Package Manager كخطوتين منفصلتين. دعم هذه الخيارات وسلوكها قد يرتبط بإصدار ADB والجهاز؛ لذلك:
+- لا نجعل streaming شرطاً لنجاح التثبيت.
+- نحتفظ بمسار fallback مضبوط إلى no-streaming عند وجود مشكلة توافق موثقة.
+- نسجل نسخة Platform Tools والأمر والـexit code والـstdout/stderr المنقح.
+- لا نعيد المحاولة بطريقة تغيّر سياسة التثبيت أو تمنح صلاحيات إضافية تلقائياً.
+
+#### 20.43.4 قواعد الـadapter الموحد
+
+1. كل أمر يمرر `-s SERIAL` صراحة؛ لا نعتمد على الجهاز الوحيد أو `ANDROID_SERIAL` الضمني.
+2. نحدد الأمر من نوع artifact: single APK مقابل split set مقابل multi-package.
+3. قبل `install-multiple` نتحقق من package name وversion code وsigning certificate consistency ووجود base والـsplits المطلوبة.
+4. `-r` فقط عند اختيار Update/Reinstall وبعد فحص الهوية؛ لا uninstall/reinstall fallback.
+5. `-d`, `-t`, `-g`, `-p`, و`--abi` لا تضاف تلقائياً.
+6. نتحقق بعد العملية من وجود package وقراءة versionCode/versionName؛ نجاح ADB exit code وحده ليس كافياً لإثبات أن التطبيق ظاهر بالحالة المطلوبة.
+7. نميز في النتيجة بين `INSTALL_SUCCEEDED` و`PACKAGE_VERIFIED` و`APP_LAUNCH_VERIFIED`؛ الأخيرة اختبار منفصل اختياري، وليست مرادفاً لنجاح التثبيت.
+
+**القرار:** نستخدم ADB الرسمي كـinstallation transport الأساسي، مع typed adapter يختار install أو install-multiple أو install-multi-package وفق خطة التثبيت. لا نكتب بروتوكول تثبيت موازياً، ولا ننسخ flags من مشاريع طرف ثالث دون سياسة واضحة.
+
+**حالة التحقق:** مراجعة وثائق Android Developers ومرجع AOSP الحالي. لم يتم تشغيل الأوامر على جهاز فعلي في هذه الجولة.
