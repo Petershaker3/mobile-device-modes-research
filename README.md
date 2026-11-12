@@ -26,6 +26,7 @@
 | [08 — Storage & Partition Information](docs/08-storage-partition-information.md) | معلومات filesystem usage وphysical/logical/dynamic partitions وsuper metadata وأدوات AOSP للقراءة فقط |
 | [09 — Device File Management](docs/09-device-file-management.md) | ADB وMTP/WPD وvirtual drive، dual-pane، نقل الملفات، Unicode، الإلغاء والتحقق، ومراجعة المشاريع الجاهزة |
 | [10 — Android Diagnostics & Logs](docs/10-android-diagnostics-and-logs.md) | Logcat والتسجيل وBugreport وdumpsys وDropbox وPerfetto وتحليل السجلات ومراجعة المشاريع الجاهزة |
+| [11 — Backup & Restore Boundaries](docs/11-backup-restore-boundaries.md) | أنواع النسخ، حدود adb backup وAuto Backup، incremental snapshots، APK export، واستعادة الملفات دون ادعاء نسخة كاملة |
 | [Research Methodology](docs/RESEARCH-METHODOLOGY.md) | الأدلة، الاختبارات، إعادة الاستخدام، أمان MCP وصيانة الوثائق |
 
 ## بيئة التشغيل المعتمدة
@@ -73,7 +74,7 @@
 | التخزين والأقسام | وثيقة بحث مستقلة 08 ومراجعة AOSP/liblp وأدوات Go/Cython | اختبار parser على corpus وقراءة الأجهزة لاحقاً |
 | Logcat وBugreport والتشخيص | وثيقة بحث مستقلة 10 ومراجعة مصدر لعدة مشاريع | اختبارات ZIP وRuntime وHardware لاحقاً |
 | إدارة الملفات والنقل | وثيقة بحث مستقلة 09 ومراجعة مصدر لعدة مشاريع | اختبار Runtime/Hardware وMTP/WPD |
-| النسخ الاحتياطي والاستعادة | تغطية جزئية ومراجع موزعة | استكمال وثيقة 11 |
+| النسخ الاحتياطي والاستعادة | وثيقة بحث مستقلة 11 وحدود Android ومراجعة مشاريع incremental/legacy | اختبار Backup/Restore فعلياً بعد اعتماد النطاق |
 | تثبيت التطبيقات | تصميم محرك موحد وتدقيق صيغ ومشاريع | Test Corpus وPoC على Windows وهاتف محدد |
 | مصادر التطبيقات | F-Droid/APKPure/APKMirror موثقة مبدئياً | إثبات تدفق التنزيل لكل مصدر |
 | إدارة التطبيقات وDNS | متطلبات وخطط اختبار | تدقيق نهائي واختبار فعلي |
