@@ -6,7 +6,7 @@
 **المنصة المستهدفة:** Windows 10/11، وAndroid 7.0 / API 24 فأحدث.  
 **حالة المستودع:** بحث وتصميم؛ لا يوجد منتج منفذ أو اختبار Hardware معتمد.
 
-**تقدم Source Revalidation:** اكتملت مراجعة المصدر عند SHAs محددة لكل من AdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md). بقية المرشحين ما زالت تحتاج إعادة تحقق قبل الاقتباس.
+**تقدم Source Revalidation:** اكتملت مراجعة المصدر عند SHAs محددة لـAdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)، ولـbundletool وapkfile وPacMan-APK وxapkInstaller في [14](14-source-revalidation-app-installers.md). بقية المرشحين ما زالت تحتاج إعادة تحقق قبل الاقتباس.
 
 ## 1. القرار التنفيذي
 
@@ -32,8 +32,8 @@
 | ADB protocol/client | [AdvancedSharpAdbClient](https://github.com/SharpAdb/AdvancedSharpAdbClient) | DeviceData/Serial/TransportId، SyncService، PackageManager، install-multiple، progress/cancellation | raw shell argument construction، basename collisions، cleanup/session abandon وpost-verify gaps | Source revalidated عند SHA محدد؛ مرشح Host Core مع فجوات مسجلة في [13](13-source-revalidation-adb-file-core.md) |
 | إدارة الملفات | [ADB-Explorer](https://github.com/Alex4SSB/ADB-Explorer) | File listing، transfer queue، SyncPipe bounded streaming/backpressure، progress throttling | WPF/fork محلي من AdvancedSharpAdbClient؛ Hardware tests تحتاج جهازين ومسار test مخصص | Source revalidated عند SHA محدد؛ مرشح استخراج patterns فقط وفق [13](13-source-revalidation-adb-file-core.md) |
 | واجهة/معلومات ADB وLogcat | [AdbGui](https://github.com/RookieJay/AdbGui) | Device discovery، read info، Logcat ring buffer/filter/controller، parser fixtures | Kotlin/Compose؛ generic shell موجود؛ clear/fix-logcat لها آثار على الجهاز | Source revalidated عند SHA محدد؛ parser/fixtures/design فقط وفق [13](13-source-revalidation-adb-file-core.md) |
-| تثبيت APKS | [Google bundletool](https://github.com/google/bundletool) | DeviceSpec، TOC/APKS selection، install-apks | لا يستبدل APKM/XAPK parser ولا سياسة اختيار الجهاز | المرجع الأساسي لصيغة APKS القياسية |
-| تحليل APKM/XAPK | [xapkInstaller](https://github.com/adhu2018/xapkInstaller)، [pacman-apk](https://github.com/nuloperrito/pacman-apk)، [apkfile](https://github.com/david-lev/apkfile) | مقارنة parsers وmanifest/OBB handling | لا نعتمد parser واحداً قبل corpus واختبارات ZIP/signature/path؛ لا نفترض schema موحداً | مرشحون متنافسون؛ لا اعتماد دمج |
+| تثبيت APKS القياسي | [Google bundletool](https://github.com/google/bundletool) | DeviceSpec، TOC/APKS selection، install-apks | SAI APKS صيغة مختلفة؛ target serial إلزامي؛ Java process adapter يحتاج timeout/cancel | Source revalidated في [14](14-source-revalidation-app-installers.md)؛ المرجع القياسي لـtoc.pb |
+| APK metadata وAPKM/XAPK/APKS | [apkfile](https://github.com/david-lev/apkfile) أولاً؛ PacMan-APK وxapkInstaller للمقارنة | metadata، signing information، split selection، OBB وformat edge cases | archive hardening، cryptographic signature verification، remote install lifecycle، Python runtime decision | Source revalidated في [14](14-source-revalidation-app-installers.md)؛ مرشح parser أولي وليس installer معتمداً |
 | OTA payload | [payload-dumper-go](https://github.com/ssut/payload-dumper-go) | Header/manifest/partition metadata وhash، واستخراج محلي اختياري | لا flash/sideload أو كتابة جهاز؛ نبدأ metadata-only | مرشح مكتبة Go |
 | Dynamic partitions | [AOSP partition_tools/liblp](https://android.googlesource.com/platform/system/extras/+/master/partition_tools/)، [lucky-arch](https://github.com/soe1hom-arch/lucky-arch) | مرجع صحة metadata وlist-only/sparse parsing | لا lpmake/lpflash/lpadd في المنتج؛ مرشحو Windows يحتاجون corpus/tests | AOSP مرجع، وlucky-arch مرشح |
 | Logcat viewer | [logcat-viewer](https://github.com/daitouniao/logcat-viewer)، AdbGui | parsing/viewer/indexing/performance | لا اعتماد تلقائي على UI أو auto-device selection | مرجعان لاستخراج أجزاء محددة |
@@ -76,6 +76,14 @@
 | [APK-Installer](https://github.com/Paving-Base/APK-Installer/commit/c8f4e634b72c5555cffe9cc5759074a866b68ae1) | main | c8f4e634b72c5555cffe9cc5759074a866b68ae1 | نفس commit مراجعة 02 §20.53؛ مرجع UI/ADB جزئي |
 
 **ملاحظة:** إذا لم يثبت أن HEAD snapshot هو نفس revision الذي قرأه تدقيق سابق، لا نكتب "Source reviewed at HEAD". نسجل "HEAD captured; review pending" حتى يعاد فحص التغييرات. المراجع الرسمية مثل Android Platform Tools وAOSP partition_tools تُثبت بإصدارات/tag/commit عند تحويلها إلى dependency فعلية.
+
+## 3.1 تقدم Source Revalidation
+
+| المحور | مراجعة مكتملة | ما تبقى |
+|---|---|---|
+| ADB/File/Logcat | [13](13-source-revalidation-adb-file-core.md) عند SHAs محددة | PoC .NET/Tauri، build/tests، USB/Wireless/Hardware |
+| APK/APKM/XAPK/APKS | [14](14-source-revalidation-app-installers.md) عند SHAs محددة | archive corpus، apksigner verification، PoC Python sidecar مقابل adapters، install session failure tests |
+| OTA/Partitions/Backup/MCP/Drivers | HEAD snapshots موثقة في هذا الملف ومراجعات المجال | Source revalidation تفصيلية لكل مرشح قبل الاقتباس/الدمج |
 
 ## 4. المعمارية المستهدفة
 
