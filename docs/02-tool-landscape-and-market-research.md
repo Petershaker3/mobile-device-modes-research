@@ -3916,3 +3916,50 @@ Commit تمت مراجعته: `dc4154f4c04399602895f31f9390bb66b25ea8a0`.
 **حالة التحقق:** Source/Docs Review عند commit محدد، مع مراجعة وجود اختبارات Robolectric في المستودع. لم يتم build أو تشغيل التطبيق أو تثبيت حزمة على جهاز فعلي في هذه الجولة.
 
 **قرار الجولة:** نعتمد App Manager كمرجع معماري/parser-model وinstall lifecycle، لا كحل Windows جاهز. أهم ما نضيفه إلى تصميمنا هو نموذج split غني، وOBB كمرحلة مستقلة ذات rollback/verification، وsession state reconciliation.
+
+
+### 20.52 — تدقيق UnApkm القديم: فك تشفير APKM المشفر مقابل APKM ZIP الحديث
+
+المستودع: [souramoo/unapkm](https://github.com/souramoo/unapkm)  
+Commit تمت مراجعته: `41d4e8f5773f7b7ddeec43bbc405615130043f23`.  
+الملفات: `README.md`، `src/main/java/com/souramoo/unapkm/UnApkm.java`، `build.gradle`.
+
+**المعلومة الأساسية:**
+- README يذكر تحديث يناير 2021 وأن APKMirror أصبح يقدم ملفات APKM غير مشفرة، وهي ملفات ZIP عادية يمكن التعامل معها كـAPKS بعد فحص المحتوى.
+- هذا يعني أن APKM المعتاد اليوم يجب أن يمر عبر ZIP/schema parser، وليس عبر فك تشفير إلزامي.
+- بقيت ملفات APKM القديمة المشفرة حالة توافق تاريخية منفصلة؛ لا ينبغي خلطها مع APKM ZIP الحديث أو افتراض أن كل ملف APKM يحتاج password/decryption.
+
+**ما يفعله decryptor القديم:**
+- يستخدم libsodium password hashing وsecretstream لفك payload المشفر على هيئة chunks.
+- يحتوي على memory limit معلن مقداره 512 MiB.
+- بعد فك التشفير يحاول قراءة ZIP الداخلي وإعادة كتابته كملف APKS.
+- يتحقق من توقيع ZIP في أول bytes لتجاوز فك التشفير عندما يكون APKM بالفعل ZIP عادي.
+
+**مشكلات ظهرت في التنفيذ المراجع:**
+1. `getBytes` يستدعي `InputStream.read` مرة واحدة فقط ولا يضمن قراءة العدد المطلوب من bytes؛ هذا غير آمن لقراءة header من stream قد يعيد partial reads.
+2. قراءة encrypted chunks تستخدم `read(cipherChunk)` مرة واحدة، مع أن InputStream لا يضمن ملء buffer؛ يلزم framing/readFully أو stream decoder يتعامل مع partial reads.
+3. حجم decrypted buffer ثابت على `chunkSize`، بينما آخر chunk قد يكون أقصر؛ يجب احترام الطول الفعلي الناتج من secretstream وعدم كتابة padding bytes.
+4. أخطاء فك التشفير داخل thread المنتج تُطبع إلى stderr ثم يتحول pipe إلى EOF؛ لا يظهر مسار موحد ينقل سبب الفشل إلى المستدعي كـtyped error.
+5. `decryptFile` يمسك IOException ويطبعها دون إرجاع نتيجة فشل قابلة للفحص؛ يمكن أن يترك output جزئياً دون أن يحصل المستدعي على status موثوق.
+6. لا تظهر حدود موحدة لحجم ملف الإدخال/الخروج، عدد ZIP entries، actual decompressed bytes أو وقت التنفيذ بعد فك التشفير.
+7. `isAlreadyZip` يفتح RandomAccessFile دون إغلاق ظاهر في المسار المراجع.
+8. لا توجد مجموعة اختبارات ظاهرة في الملفات المراجعة تثبت partial reads، chunk boundaries، corrupted auth tags، truncated files، أو ZIP bomb بعد فك التشفير.
+
+**الحكم الهندسي:**
+- **APKM ZIP الحديث:** لا يحتاج decryptor؛ اكتشف ZIP signature ثم حلل schema/metadata والمحتوى بشكل طبيعي.
+- **APKM encrypted legacy:** لا نعتمد هذا CLI كما هو، ولا نجعله جزءاً إلزامياً من V1.
+- إذا ظهرت عينة مشفرة قديمة يحتاجها المستخدم، تُعالج كـlegacy adapter مع format identification صريح، ومراجعة حديثة لخوارزمية التشفير والـstream framing، واختبارات integrity/partial-read/limits قبل السماح بالتثبيت.
+- لا نخلط دعم APKM الحديث مع دعم APKV أو أي container مشفر مخصص؛ لكل واحد format contract مستقل.
+
+**اختبارات قبول مستخلصة:**
+- APKM عادي ZIP: يكتشف ZIP signature ويذهب إلى APKM/APKS schema parser دون تشغيل decryption.
+- APKM قديم مشفر: يتعرف عليه بوضوح كـlegacy encrypted format، ولا يحاول ZIP parsing عشوائياً.
+- partial reads عند كل حد header/chunk، وchunk أخير أقصر، وEOF مبكر.
+- altered ciphertext/authentication tag، header corrupt، memory parameters خارج الحدود، وchunk size overflow: رفض كامل مع عدم إنتاج ملف قابل للتثبيت.
+- disk full أو cancellation أثناء decryption: حذف staging partial output وإرجاع failure واضح.
+- ZIP bomb داخل decrypted payload: تطبيق limits على entries والحجم الفعلي بعد فك التشفير أيضاً.
+- لا يتم تسليم الناتج إلى install engine إلا بعد اكتمال decryption والتحقق من ZIP structure وAPK package/split/signature metadata.
+
+**حالة التحقق:** Source/Docs Review عند commit محدد. لم يتم تشغيل decryptor أو اختبار ملف APKM مشفر فعلياً.
+
+**قرار الجولة:** APKM العادي ZIP هو المسار الأساسي. فك APKM المشفر القديم مؤجل ولا يدخل V1 حتى تظهر حاجة فعلية وعينات اختبار، وهذا يمنع إدخال مسار تشفير تاريخي غير ضروري إلى محرك التثبيت.
