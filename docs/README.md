@@ -23,6 +23,8 @@
 
 - **Windows multi-format installer candidate (pacman-apk):** تدقيق الكود ومقارنته بمرشحي التثبيت في القسم 20.42 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2042-تدقيق-pacman-apk--واجهة-windows-تدعم-apkxapk-apksapkm-12-نوفمبر-2026).
 
+- **ADB install command strategy:** توثيق الفرق بين install وinstall-multiple وinstall-multi-package وسياسة flags الآمنة في القسم 20.43 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2043-تثبيت-android-عبر-adb--حدود-الأوامر-والخيارات-التي-يجب-أن-يبني-عليها-المحرك-12-نوفمبر-2026).
+
 ## مراجع تكامل MCP
 
 - [Codex MCP setup](https://developers.openai.com/codex/mcp) — إعداد خوادم STDIO وStreamable HTTP.
