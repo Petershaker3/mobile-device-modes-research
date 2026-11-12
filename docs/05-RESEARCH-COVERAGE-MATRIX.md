@@ -28,7 +28,7 @@
 | قراءة هوية الجهاز ومعلوماته الأساسية | [01 §2 و§5](01-connectivity-protocols.md)؛ getprop وFastboot getvar في [02](02-tool-landscape-and-market-research.md) | بحث جيد جزئياً | تصميم Device Information Schema: الحقل، المصدر، طريقة الجمع، صلاحية الوصول، API range، الثقة، وحالات Unsupported/PermissionDenied/NotReported | موجودة الآن في [06](06-android-system-information.md)؛ البحث الأولي موثق |
 | معلومات النظام والبناء والحماية والعتاد | [00](00-PRODUCT-BASELINE.md)؛ [01](01-connectivity-protocols.md)؛ مراجع getprop/ABI متفرقة في [02](02-tool-landscape-and-market-research.md) | جزئي | بحث مستقل في Android properties وBuild fields وSDK/API وsecurity patch وABI وdensity وfeatures وkernel/runtime، مع توثيق اختلاف OEM وإخفاء البيانات الحساسة | نعم: 06 |
 | معلومات السوفتوير والفريموير وملفات التحديث | [06](06-android-system-information.md) لمعلومات build المثبتة؛ [07](07-firmware-software-inventory.md) لـOTA metadata وpayload manifest وAVB؛ [01](01-connectivity-protocols.md) و[02](02-tool-landscape-and-market-research.md) لمراجع إضافية | بحث جيد جزئياً — غير مختبر | توسيع صيغ OTA legacy وfactory archives خارج payload.bin، وبناء corpus حزم متعددة؛ لا تفليش ولا كتابة أقسام | الوثيقة المستقلة موجودة |
-| الأقسام ومعلومات التخزين | إشارات محدودة في أدوات السوق وبعض مسارات الصيانة في [02](02-tool-landscape-and-market-research.md)؛ OBB والتخزين المشترك في [02 §20.45](02-tool-landscape-and-market-research.md) | جزئي / إشارة فقط | دراسة قراءة معلومات التخزين والمساحات وأنظمة الملفات والأقسام الظاهرة عبر واجهات مسموحة؛ تمييز read-only inventory عن dump/backup/write، وعدم استنتاج خريطة أقسام كاملة من جهاز واحد | نعم: 08 |
+| الأقسام ومعلومات التخزين | [06](06-android-system-information.md) لمساحات filesystem وRAM؛ [08](08-storage-partition-information.md) لـphysical/logical/dynamic partitions وAOSP lpdump/lpunpack | بحث جيد جزئياً — غير مختبر | اختبار parser على super.img/raw/sparse وقراءة Fastboot variables على أجهزة متعددة؛ لا raw partition dump أو write | الوثيقة المستقلة موجودة |
 | إدارة التطبيقات والجرد والفلاتر | [03 §16–17](03-app-management-and-network.md)؛ تدقيق Droidsmith وAppManager وUAD-ng في [02 §20.17–20.21 و20.26 و20.29](02-tool-landscape-and-market-research.md) | بحث جيد — غير مختبر | حسم نموذج بيانات موحد للتطبيقات، المستخدمين، تواريخ التثبيت/التحديث، installer source، الحالة، ABI، الصلاحيات، ومسارات التصدير؛ اختبار الفروقات بين Android/OEM | لا؛ الوثيقة الحالية مناسبة |
 | تثبيت APK وSplit APK وAPKS وAPKM وXAPK وOBB وAAB | [03 §18](03-app-management-and-network.md)؛ [02 §20.30–20.54](02-tool-landscape-and-market-research.md) | بحث موسع جيد — غير مختبر | إعداد corpus حقيقي للملفات المتنوعة، وتثبيت/تحقق على أجهزة مستهدفة؛ لا تُعتبر مراجعة parser أو CI دليلاً على نجاح التثبيت الفعلي | لا؛ استكمال الاختبارات في 02/03 |
 | البحث والتنزيل من APKPure وF-Droid وAPKMirror | [02 §20.55](02-tool-landscape-and-market-research.md) | بحث أولي جيد | تدقيق كل Provider Adapter من حيث البحث والإصدارات والvariants وروابط التنزيل والـredirects والـhash وقيود المصدر، مع اختبار تنزيلات عينات؛ لا تجاوز CAPTCHA/Cloudflare | لا؛ استكمال 02 |
@@ -60,7 +60,6 @@
 
 الأولوية هنا هي سد فجوات البحث لا بدء التنفيذ:
 
-2. **08 — Storage & Partition Information:** معلومات التخزين والأقسام وما يمكن قراءته بأمان، وحدود الصلاحيات والموديلات.
 5. **11 — Backup & Restore Boundaries:** أنواع النسخ الاحتياطي المختلفة، ما يمكن تصديره فعلاً، قيود Android، والاستعادة والتحقق.
 
 لا ننشئ وثائق مستقلة جديدة للاتصال أو التطبيقات أو DNS أو تعريفات Windows أو MCP؛ هذه المجالات لديها وثائق حالية ينبغي استكمالها بدلاً من تشتيت المعلومات.
@@ -73,7 +72,7 @@
 | 2 | تم إنجاز 10 — Android Diagnostics & Logs | بحث ومراجعة مصدر لمرشحي Logcat وBugreport وDropbox وPerfetto؛ لا تشغيل أو اختبار Hardware |
 | 3 | تم إنجاز 09 — Device File Management | تدقيق مشاريع ADB-Explorer وAdbFileManager وWinDroidFS وJSleim ومراجع WPD؛ لا اختبار Hardware |
 | 4 | تم إنجاز 07 — Firmware & Software Inventory | مراجعة AOSP OTA metadata وupdate_metadata.proto وpayload-dumper-go وAVB؛ لا extraction أو flash |
-| 5 | Storage & Partition Information | قدرات القراءة والتخزين والأقسام وحدود كل واجهة |
+| 5 | تم إنجاز 08 — Storage & Partition Information | مراجعة AOSP liblp/lpdump وlpunpack-go وlucky-arch وlpunpack_cyth؛ لا اختبار Hardware أو extraction |
 | 6 | Backup & Restore Boundaries | تصنيف النسخ الاحتياطي والاستعادة حسب نوع البيانات وإصدار Android |
 | 7 | تحديث مصفوفة التغطية | ربط كل نتيجة بمشروع ومصدر وملف/قسم ودليل وحالة تحقق، ثم تحديث 00 وREADME |
 
@@ -96,4 +95,4 @@
 - [Capture and read bug reports — Android Studio](https://developer.android.com/studio/debug/bug-report): إنشاء تقرير bugreport وقراءة ملف ZIP.
 - [Logcat command-line tool — Android Developers](https://developer.android.com/tools/logcat): buffers وfilters وصيغ السجلات وحدود بعض الخيارات والصلاحيات.
 
-**حالة المصفوفة:** الوثائق 06 و07 و09 و10 أُنشئت بعد مراجعة المصدر. الوثيقتان 08 و11 لم تُنشأ بعد. لا يوجد ادعاء باختبار Hardware أو اعتماد مشروع للدمج.
+**حالة المصفوفة:** الوثائق 06 و07 و08 و09 و10 أُنشئت بعد مراجعة المصدر. الوثيقة 11 لم تُنشأ بعد. لا يوجد ادعاء باختبار Hardware أو اعتماد مشروع للدمج.
