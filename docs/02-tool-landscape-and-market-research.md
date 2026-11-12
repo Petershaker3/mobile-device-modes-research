@@ -4040,3 +4040,75 @@ Commit تمت مراجعته: `c8f4e634b72c5555cffe9cc5759074a866b68ae1`.
 **حالة التحقق:** Source/Docs Review عند commit محدد. لم يتم build أو تشغيل التطبيق أو تثبيت APK على هاتف. مراجعة الملفات لا تثبت أن WSA/USB/Wireless يعمل runtime في بيئتنا.
 
 **قرار الجولة:** نحتفظ بالمشروع كمرجع جزئي لواجهة Windows وADB client وAPK metadata، لا كمحرك multi-format. لا نقتبس test-only defaults أو WSA-specific assumptions أو غياب post-install verification.
+
+
+### 20.54 — تدقيق AdvancedSharpAdbClient: مكتبة .NET مباشرة لبروتوكول ADB وتثبيت Split APKs
+
+المستودع: [SharpAdb/AdvancedSharpAdbClient](https://github.com/SharpAdb/AdvancedSharpAdbClient)  
+Commit تمت مراجعته: `cd46a145ac4a9f05ec3b21a7d2b10882411d93d7`.  
+الملفات: `README.md)، `PackageManager.cs)، `PackageManager.Async.cs)، `DeviceData.cs)، واختبارات `PackageManagerTests.Async.cs`.
+
+**لماذا يستحق التدقيق:**
+- مكتبة .NET تتعامل مع ADB server protocol بدلاً من الاعتماد على تشغيل adb.exe وتحليل stdout لكل عملية.
+- توفر DeviceData مع Serial وTransportId، واكتشاف الأجهزة، وPackageManager API لتثبيت APK وإزالة التطبيقات والحصول على package version.
+- تحتوي مسارات install-multiple لجلسات Android Package Manager، مع progress callbacks وCancellationToken في الواجهات غير المتزامنة.
+- المشروع يدعم .NET 10 وفق README، والمشروع السابق Paving-Base يستخدم الإصدار 3.0.9 منها.
+
+**ما ظهر في الكود:**
+
+1. **Device targeting**
+   - `PackageManager` يأخذ `DeviceData` محدداً، ويتحقق من صلاحيته قبل العمليات.
+   - `DeviceData` يحفظ Serial وTransportId ويستخدمهما في الهوية والمقارنة؛ هذا يتوافق مع مطلبنا بأن يكون لكل عملية target صريح.
+   - يجب أن تبقى واجهة التطبيق مسؤولة عن إجبار المستخدم/الـMCP على تحديد serial عند تعدد الأجهزة؛ لا نستخدم مثال README الذي يختار `FirstOrDefault()` كسياسة منتج.
+
+2. **Single APK install**
+   - `InstallPackageAsync` يرفع الملف إلى `/data/local/tmp/<basename>` عبر SyncService ثم ينفذ `pm install`، وبعدها يحذف الملف المؤقت.
+   - يوفر cancellation token أثناء النقل وتنفيذ الأمر والتنظيف.
+   - يعتمد اسم الملف البعيد على basename فقط؛ عمليتان متزامنتان لملفين لهما الاسم نفسه قد تتعارضان. نحتاج unique remote path لكل operation، وليس الاسم الأصلي وحده.
+   - إذا ألغي cancellation أثناء النقل أو التثبيت، فإن مرحلة الحذف اللاحقة لا تعمل تلقائياً بسبب خروج الاستثناء قبل الوصول إليها؛ كما أن cleanup في المسارات العادية يستخدم نفس cancellation token. يجب أن يملك cleanup token مستقلاً محدود المهلة، مع reconciliation بعد disconnect.
+
+3. **Split APK install**
+   - `InstallMultiplePackageAsync` يرفع base وsplits، ثم ينشئ install session ويكتب كل ملف عبر `pm install-write` ويعمل `pm install-commit`.
+   - توجد واجهات لتمرير base + split files أو مجموعة splits مرتبطة بحزمة موجودة.
+   - يدعم progress phases: Preparing, CreateSession, WriteSession, Installing, PostInstall, Finished.
+   - عمليات رفع split files وكتابة session يمكن أن تنفذ بالتوازي؛ هذا يستدعي تحديد سياسة concurrency وحدود الملفات/الذاكرة، وعدم ترك عدة عمليات تتنافس على نفس remote paths.
+   - لا يظهر في المسار المراجع try/finally موحد ينفذ `pm install-abandon SESSION_ID` إذا فشل كتابة split أو ألغي التنفيذ قبل commit؛ يجب أن يضيف التطبيق orchestration آمنة لهذه الحالة.
+   - نجاح `pm install-commit` لا يساوي تحقق package/version بعد التثبيت؛ المكتبة توفر `GetVersionInfoAsync` كلبنة مساعدة، لكن caller يجب أن يستدعيها ويقارن النتيجة بالهدف.
+
+4. **Command construction**
+   - بعض أوامر `pm install` و`pm install-create` تبنى من arguments نصية، و`pm install-write` يضم session/name/path داخل command string.
+   - لا نمرر بيانات archive أو package metadata مباشرة إلى shell command. نحتاج allowlist للخيارات المعروفة، وvalidation لـpackage name/session/path، وquoting/escaping مناسبين، وعدم إتاحة shell عام عبر MCP.
+   - لا نسمح بإضافة flags مثل `-t` أو `-d` إلا عبر خيارات صريحة ومفسرة.
+
+5. **التوقيع والصيغ**
+   - المكتبة طبقة ADB/PackageManager وليست parser لـAPK/APKS/APKM/XAPK؛ لا تستخرج TOC ولا تختار ABI/DPI/locale ولا تتحقق من تطابق signatures بين splits.
+   - لذلك يجب أن تستقبل فقط مجموعة APKs تم التحقق منها مسبقاً بواسطة Format Adapter وPackage Inspection.
+   - لا يوجد OBB parser/transfer lifecycle جاهز في هذا المسار.
+
+6. **الاختبارات**
+   - توجد اختبارات async لـInstallPackage وInstallMultiplePackage وInstallMultipleRemotePackage وUninstall وGetVersionInfo، مع التحقق من progress callbacks وتمرير CancellationToken.
+   - هذه الاختبارات تعطي أساساً أفضل من مشروع installer لا يحتوي corpus واضحاً، لكنها لا تثبت سلوكاً على أجهزة فعلية ولا تغطي جميع حالات cancellation/abandon/remote basename collision.
+   - لم نشغل الاختبارات أو نبنِ المكتبة في هذه الجولة.
+
+**الحكم الهندسي:**
+- **مرشح جاد لطبقة ADB .NET:** typed device model، explicit DeviceData، SyncService، PackageManager، split session APIs، progress/cancellation.
+- **ليس محرك صيغ:** لا يستبدل bundletool أو APKM/XAPK parsers ولا يقوم بcompatibility analysis.
+- **الدمج المحتمل:** Adapter داخلي خلف Application Service Layer، مع تثبيت إصدار محدد، وعمليات serial-scoped، وunique staging، وsession abandon/cleanup، وpost-install verification.
+- لا نستخدم PackageManager API مباشرة من GUI أو MCP؛ نغلفه بخدمة واحدة تفرض policy وتعيد typed results.
+- قبل اعتمادها يجب عمل spike اختباري على Windows مع USB وWireless ADB وجهازين، وإثبات سلوك cancellation وsession recovery وserial isolation.
+
+**اختبارات قبول مستخلصة:**
+- جهازان متصلان، وكل عملية install/uninstall/query تستهدف Serial المطلوب فقط.
+- جهاز يختفي أثناء push، وجهاز يختفي بعد install-create وقبل commit؛ لا يترك session معلقة دون تسجيل/reconcile.
+- ملفان بنفس basename في عمليتين متزامنتين؛ remote staging names لا تتصادم.
+- cancellation في upload/base/split/write/commit؛ cleanup مستقل محدود المهلة، وinstall-abandon عند الحاجة، ثم فحص حالة الحزمة قبل retry.
+- فشل split واحد أثناء upload أو install-write؛ لا يتم commit partial session، ويتم abandon.
+- بعد commit: query package version/path/signature identity، وتصنيف النتيجة منفصلة عن نجاح الأمر.
+- command arguments تحتوي spaces/quotes/shell metacharacters في المسارات والبيانات؛ لا يحدث command injection أو parsing ambiguity.
+- اختبار flags الافتراضية يثبت عدم تفعيل downgrade/test-only/grant permissions دون موافقة.
+- progress لا يتراجع بسبب callbacks المتوازية، ولا يعلن Finished قبل cleanup والتحقق النهائي.
+- فشل OBB لا يختلط بنتيجة APK install، ويظل OBB stage قابلاً لإعادة المحاولة.
+
+**حالة التحقق:** Source/Docs Review عند commit محدد، مع وجود اختبارات async في الشجرة. لم يتم تشغيل الاختبارات أو build أو اختبار USB/Wireless على هاتف فعلي.
+
+**قرار الجولة:** نضع AdvancedSharpAdbClient ضمن أقوى المرشحين لطبقة ADB في .NET/Windows، مع إبقاء parser/format adapters منفصلة. قبل اعتماده يجب سد فجوات unique staging وsession abandon وcleanup/reconciliation وpost-install verification.
