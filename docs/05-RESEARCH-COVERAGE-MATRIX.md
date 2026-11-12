@@ -32,7 +32,7 @@
 | إدارة التطبيقات والجرد والفلاتر | [03 §16–17](03-app-management-and-network.md)؛ تدقيق Droidsmith وAppManager وUAD-ng في [02 §20.17–20.21 و20.26 و20.29](02-tool-landscape-and-market-research.md) | بحث جيد — غير مختبر | حسم نموذج بيانات موحد للتطبيقات، المستخدمين، تواريخ التثبيت/التحديث، installer source، الحالة، ABI، الصلاحيات، ومسارات التصدير؛ اختبار الفروقات بين Android/OEM | لا؛ الوثيقة الحالية مناسبة |
 | تثبيت APK وSplit APK وAPKS وAPKM وXAPK وOBB وAAB | [03 §18](03-app-management-and-network.md)؛ [02 §20.30–20.54](02-tool-landscape-and-market-research.md) | بحث موسع جيد — غير مختبر | إعداد corpus حقيقي للملفات المتنوعة، وتثبيت/تحقق على أجهزة مستهدفة؛ لا تُعتبر مراجعة parser أو CI دليلاً على نجاح التثبيت الفعلي | لا؛ استكمال الاختبارات في 02/03 |
 | البحث والتنزيل من APKPure وF-Droid وAPKMirror | [02 §20.55](02-tool-landscape-and-market-research.md) | بحث أولي جيد | تدقيق كل Provider Adapter من حيث البحث والإصدارات والvariants وروابط التنزيل والـredirects والـhash وقيود المصدر، مع اختبار تنزيلات عينات؛ لا تجاوز CAPTCHA/Cloudflare | لا؛ استكمال 02 |
-| استعراض الملفات ونقلها وإدارتها | [02 §20.15 و20.20 و20.27–20.28](02-tool-landscape-and-market-research.md)؛ أوامر ADB في [03](03-app-management-and-network.md) بصورة محدودة | جزئي | مقارنة أدوات File Explorer/dual-pane وADB push/pull وMTP/WPD؛ استعراض المجلدات، التصفح، النقل الكبير، resume/cancel، الأذونات، المسارات، وتعارضات الأسماء | نعم: 09 |
+| استعراض الملفات ونقلها وإدارتها | [09](09-device-file-management.md)؛ تدقيق ADB-Explorer وAdbFileManager وWinDroidFS وJSleim/adb-file-explorer؛ مراجع Microsoft WPD | بحث جيد — غير مختبر | اختبار Runtime/Hardware، استكمال MTP provider عملياً، والتحقق من نقل ملفات كبيرة ومتعددة الأجهزة | الوثيقة المستقلة موجودة |
 | Logcat وسجلات النظام والأحداث | [10](10-android-diagnostics-and-logs.md)؛ تدقيق AdbGui Logcat Core وLogcat Viewer وLogCater وLogFilter وSherlog | بحث جيد — غير مختبر | تدقيق wiring والبناء والاختبارات وعمليات Runtime؛ مراجعة privacy/retention وحدود stream/cancel على أجهزة فعلية | الوثيقة المستقلة موجودة |
 | Bugreport وdumpsys وdumpstate والتقارير | [10](10-android-diagnostics-and-logs.md)؛ مراجع AOSP وAndroid Studio وPerfetto، ومراجعة AdbGui bugreport command | بحث جيد — غير مختبر | اختبارات ZIP corpus من إصدارات/OEM مختلفة، اختبار cancellation/progress، وفحص خصوصية/سلامة الأرشيف | الوثيقة المستقلة موجودة |
 | العمليات والخدمات والذاكرة والبطارية والتشخيص | [10](10-android-diagnostics-and-logs.md)؛ مراجع ADB وLogCater/AdbGui | جزئي | توسيع كتالوج أوامر القراءة واختبار اختلاف مخرجات ps/dumpsys حسب API/OEM؛ لا إيقاف عمليات أو خدمات تلقائياً | ضمن 10 |
@@ -62,7 +62,6 @@
 
 1. **07 — Firmware & Software Inventory:** جرد البرمجيات والفريموير وملفات التحديث وmetadata والتوافق، مع فصل القراءة عن التفليش.
 2. **08 — Storage & Partition Information:** معلومات التخزين والأقسام وما يمكن قراءته بأمان، وحدود الصلاحيات والموديلات.
-3. **09 — Device File Management:** استعراض الملفات ونقلها عبر ADB/MTP/WPD، مع أدوات جاهزة وتدقيق أمان النقل.
 5. **11 — Backup & Restore Boundaries:** أنواع النسخ الاحتياطي المختلفة، ما يمكن تصديره فعلاً، قيود Android، والاستعادة والتحقق.
 
 لا ننشئ وثائق مستقلة جديدة للاتصال أو التطبيقات أو DNS أو تعريفات Windows أو MCP؛ هذه المجالات لديها وثائق حالية ينبغي استكمالها بدلاً من تشتيت المعلومات.
@@ -73,7 +72,7 @@
 |---:|---|---|
 | 1 | تم إنجاز 06 — Android System Information | بحث أولي ومراجعة مصدر Host-side وAndroid-side؛ لا اختبار Hardware ولا اعتماد دمج |
 | 2 | تم إنجاز 10 — Android Diagnostics & Logs | بحث ومراجعة مصدر لمرشحي Logcat وBugreport وDropbox وPerfetto؛ لا تشغيل أو اختبار Hardware |
-| 3 | Device File Management | مقارنة مشاريع إدارة الملفات ونقل الملفات USB/Wireless/MTP/WPD |
+| 3 | تم إنجاز 09 — Device File Management | تدقيق مشاريع ADB-Explorer وAdbFileManager وWinDroidFS وJSleim ومراجع WPD؛ لا اختبار Hardware |
 | 4 | Firmware & Software Inventory | جرد البرمجيات وملفات التحديث وmetadata ومصادر البيانات، دون تفليش |
 | 5 | Storage & Partition Information | قدرات القراءة والتخزين والأقسام وحدود كل واجهة |
 | 6 | Backup & Restore Boundaries | تصنيف النسخ الاحتياطي والاستعادة حسب نوع البيانات وإصدار Android |
@@ -98,4 +97,4 @@
 - [Capture and read bug reports — Android Studio](https://developer.android.com/studio/debug/bug-report): إنشاء تقرير bugreport وقراءة ملف ZIP.
 - [Logcat command-line tool — Android Developers](https://developer.android.com/tools/logcat): buffers وfilters وصيغ السجلات وحدود بعض الخيارات والصلاحيات.
 
-**حالة المصفوفة:** الوثيقتان 06 و10 أُنشئتا بعد مراجعة المصدر. الوثائق 07 و08 و09 و11 لم تُنشأ بعد. لا يوجد ادعاء باختبار Hardware أو اعتماد مشروع للدمج.
+**حالة المصفوفة:** الوثائق 06 و09 و10 أُنشئت بعد مراجعة المصدر. الوثائق 07 و08 و11 لم تُنشأ بعد. لا يوجد ادعاء باختبار Hardware أو اعتماد مشروع للدمج.
