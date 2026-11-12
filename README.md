@@ -816,3 +816,155 @@
 - [ ] اختبار ملفات x86/x86_64 وarmeabi-v7a على أجهزة ذات ABI مختلفة، وتسجيل نتيجة Package Manager الفعلية.
 - [ ] اختبار Wireless Pairing على Android 11+، والاتصال TCP/IP للأجهزة الأقدم عند دعمها.
 - [ ] اختبار Disable/Restore/Uninstall مع التفريق بين تطبيقات المستخدم والنظام.
+
+
+---
+
+## 17. توسيع إدارة التطبيقات: DNS Ad Blocking وفلاتر تاريخ التثبيت
+
+### 17.1 إعداد DNS مخصص لحجب الإعلانات عبر ADB
+
+يجب أن تتعامل الأداة مع DNS كميزة مستقلة في Device Network Management، مع عرض نوع الإعداد ونطاق تأثيره وإمكانية استرجاع الإعداد السابق.
+
+#### المسار A — Android Private DNS (DNS-over-TLS)
+
+- Android 9 / API 28 وما بعده يدعم Private DNS باستخدام DNS-over-TLS (DoT).
+- هذا المسار يعتمد على **اسم مضيف DNS provider** (hostname)، مثل اسم مزوّد يدعم DoT، وليس مجرد عنوان IP لخادم DNS عادي.
+- يمكن للأداة قراءة الحالة الحالية ومحاولة ضبطها عبر ADB باستخدام مفاتيح Settings.Global:
+  - `private_dns_mode`: القيم المتوقعة `off` أو `opportunistic` أو `hostname`.
+  - `private_dns_specifier`: اسم المضيف الخاص بالمزوّد عند اختيار `hostname`.
+- أوامر ADB المقترحة كمسار فحص/تجربة على جهاز مصرح به:
+  - قراءة: `adb shell settings get global private_dns_mode`
+  - قراءة المضيف: `adb shell settings get global private_dns_specifier`
+  - ضبط وضع hostname: `adb shell settings put global private_dns_specifier <provider-hostname>` ثم `adb shell settings put global private_dns_mode hostname`
+  - العودة إلى Automatic: `adb shell settings put global private_dns_mode opportunistic` ثم إزالة/مسح قيمة المضيف عند الحاجة.
+- لا تفترض نجاح الكتابة لمجرد أن الأمر أعاد exit code صفراً؛ اقرأ القيم مجدداً، ثم اختبر حل أسماء DNS فعلياً، وتحقق من حالة Private DNS في النظام.
+- قد تمنع بعض إصدارات Android أو تخصيصات الشركات أو سياسات الإدارة بعض التغييرات. واجهة DevicePolicyManager الرسمية تتيح ضبط Private DNS للـDevice Owner؛ وهذا ليس دليلاً على أن كل جهاز عادي يسمح لأي تطبيق بتغيير الإعداد.
+- يجب اختبار هذا المسار منفصلاً على Android 9 و10+، وعلى أجهزة Samsung وغيرها، لأن تطبيقات VPN وبعض أوضاع الشبكة قد تتداخل مع مسار DNS.
+
+**تنبيه توافق:** Private DNS هنا يعني DoT hostname. لا تضع عنوان IP مثل `1.2.3.4` في خانة hostname وتتوقع أن يعمل كـDNS عادي. كما أن DoT لا يساوي DNS-over-HTTPS (DoH)، ولا يضمن وحده حجب الإعلانات؛ يجب أن يكون المزود نفسه يقدم قوائم حجب.
+
+#### المسار B — DNS عادي لكل شبكة Wi-Fi
+
+- إعداد DNS التقليدي عبر DHCP أو إعدادات IP ثابتة يكون عادة مرتبطاً بكل شبكة Wi-Fi، وليس إعداداً عاماً واحداً لجميع الشبكات.
+- لا يوجد أمر ADB قياسي موحد ومضمون لتغيير DNS لكل شبكات Wi-Fi المحفوظة عبر جميع إصدارات Android والشركات.
+- لا تعتمد على تعديل قواعد بيانات Wi-Fi الخاصة بالنظام أو أوامر netd الداخلية باعتبارها واجهة مستقرة؛ قد تتطلب صلاحيات أعلى وقد تتغير بين الإصدارات.
+- إذا كان المطلوب DNS بعنوان IP محلي أو خادم داخل الشبكة، يجب تحديد هل المطلوب شبكة Wi-Fi واحدة أم جميع الشبكات، ثم اختبار واجهة الجهاز الفعلية.
+
+#### المسار C — تطبيق DNS Ad Block / Local VPN
+
+- بعض حلول الحجب تعمل عبر VPN محلي على الهاتف وتحوّل استعلامات DNS أو حركة الشبكة عبر محرك تصفية.
+- يمكن لأداة Windows تثبيت APK عبر ADB وفتح شاشة التطبيق، لكن تفعيل VPN عادة يتطلب موافقة/تأكيداً من المستخدم على الهاتف، ولا ينبغي افتراض إمكانية تشغيله بصمت عبر ADB على جهاز عادي غير مروّت.
+- لا تخلط بين تطبيق DNS يستخدم VPN محلياً وبين Private DNS المدمج في Android؛ فهما مساران مختلفان وقد يتعارضان أو يغيّر أحدهما سلوك الآخر.
+- لا بد من توضيح ما إذا كان الحجب DNS-only أم يتضمن فلترة أوسع، وهل يعمل مع Wi-Fi وبيانات الهاتف، وهل يتطلب خدمة/اشتراكاً أو اتصالاً خارجياً.
+
+#### واجهة DNS المقترحة في برنامج Windows
+
+| الحقل/الوظيفة | المطلوب |
+|---|---|
+| Current DNS mode | Off / Automatic / Custom Private DNS / VPN-based DNS / Unknown |
+| Provider hostname | اسم DoT hostname، وليس IP |
+| Presets | قائمة مزودين موثوقين مع توثيق هل لديهم Ad Blocking أم لا |
+| Custom provider | إدخال hostname مخصص والتحقق من الصيغة |
+| Apply / Restore | حفظ الحالة السابقة، تطبيق التغيير، وإمكانية الرجوع |
+| Verify | إعادة قراءة الإعداد + اختبار DNS resolution + إظهار فشل TLS/الاتصال إن أمكن |
+| Device scope | إظهار Serial وUSB/Wireless قبل التنفيذ |
+| Compatibility | إظهار Android API level وقيود OEM/Device Owner/VPN |
+| Safety | تحذير من احتمال فقدان حل DNS أو الاتصال إذا كان المضيف غير صحيح |
+
+**المراجع:**
+- [Google Public DNS — Android Private DNS setup](https://developers.google.com/speed/public-dns/docs/using)
+- [Android Help — Manage Private DNS](https://support.google.com/android/answer/9654714)
+- [Android DevicePolicyManager — Private DNS APIs and Device Owner restriction](https://developer.android.com/reference/android/app/admin/DevicePolicyManager)
+- [AOSP ConnectivitySettingsUtils — accepted Private DNS modes](https://android.googlesource.com/platform/frameworks/libs/net/+/8ef52686483cdff0040d22753bb516e99a96a88d/common/framework/com/android/net/module/util/ConnectivitySettingsUtils.java)
+
+### 17.2 تاريخ التثبيت وآخر تحديث ومصدر التطبيق
+
+يجب أن تكون بيانات الزمن جزءاً أساسياً من Application Manager، لا مجرد عمود اختياري مخفي.
+
+#### البيانات المراد جمعها لكل Package
+
+| الحقل | المعنى | مصدر محتمل |
+|---|---|---|
+| First install time | تاريخ أول تثبيت مسجل للحزمة الحالية | `dumpsys package <package>` |
+| Last update time | تاريخ آخر تحديث للحزمة | `dumpsys package <package>` |
+| Installer package | التطبيق/المتجر الذي سجل Package Manager أنه ثبّت الحزمة | `pm list packages -i` أو تفاصيل dumpsys |
+| Package name | المعرف الفريد للحزمة | `pm list packages` |
+| Version name/code | نسخة التطبيق | `dumpsys package` أو بيانات APK |
+| System/User | هل الحزمة System أو تطبيق مستخدم | Package flags وPackage Manager |
+| Enabled state | Enabled / Disabled / Disabled-user وغيرها | حالة User package في dumpsys |
+| Install location/path | مسار base/split APK | `pm path <package>` |
+| UID | معرف التطبيق في النظام | `pm list packages -U` أو dumpsys |
+| User/Profile | المستخدم أو ملف العمل الذي ثبتت له الحزمة | مخرجات Package Manager حسب دعم النظام |
+
+**مصدر الوقت:** مخرجات Package Manager/Dumpsys قد تعرض `firstInstallTime` و`lastUpdateTime`. يختلف شكل وتنسيق المخرجات بين إصدارات Android؛ في بعض الإصدارات الحديثة قد تظهر حقول الوقت ضمن قسم المستخدم، ولذلك يجب بناء Parser يتحمل اختلاف التنسيق ولا يعتمد على Regex واحد ثابت لكل الأجهزة.
+
+**قيد تاريخي:** هذه التواريخ تصف حالة الحزمة الحالية. بعد إزالة التطبيق بالكامل قد تختفي بياناته من قائمة الحزم؛ لا نعد المستخدم بإمكانية استرجاع تاريخ كل التطبيقات التي أزيلت سابقاً دون مصدر سجل مستقل.
+
+#### الفلاتر والفرز المطلوبة
+
+- Installed date: قبل/بعد/بين تاريخين، وآخر 24 ساعة/7 أيام/30 يوماً/90 يوماً/سنة.
+- Last updated: الفلاتر الزمنية نفسها مستقلة عن تاريخ أول تثبيت.
+- Installer source: Google Play، Galaxy Store، Package Installer، ADB/Shell، متجر OEM، Unknown.
+- App type: System / User / Updated System App.
+- State: Enabled / Disabled / Suspended / Hidden إن ظهرت من المصدر.
+- ABI: Native arm64-v8a / armeabi-v7a / x86_64 / x86 / No native libraries / Unknown.
+- Android requirement: minSdk/targetSdk إذا أمكن استخراجها من APK المثبت أو ملف APK محفوظ.
+- Package name / App label: بحث نصي يدعم المطابقة الجزئية.
+- Version: فرز حسب versionName أو versionCode، مع عدم مقارنة versionName نصياً كأنه رقم دائماً.
+- Size: حجم base/split APKs إن أمكن قياس الملفات، مع توضيح أن هذا ليس حجم بيانات التطبيق.
+- Permissions: فلاتر للأذونات الحساسة عند توافر بيانات موثوقة؛ لا نستنتج الإذن الممنوح من مجرد وجوده في Manifest.
+- Multi-select: اختيار نتائج الفلتر لتنفيذ Export APK أو فتح التفاصيل أو إجراءات أخرى؛ لا تجعل Disable/Uninstall الجماعي إجراءً تلقائياً.
+
+#### دقة مصدر التثبيت
+
+مصدر التثبيت ليس دائماً دليلاً قطعياً على مصدر التنزيل الأصلي:
+- قد يظهر `com.android.vending` أو متجر الشركة.
+- قد يظهر Package Installer عند تثبيت APK يدوياً.
+- قد يظهر `com.android.shell` أو قيمة مرتبطة بـADB عند التثبيت من الكمبيوتر.
+- قد يكون الحقل فارغاً أو Unknown بسبب إصدار Android أو OEM أو طريقة تثبيت قديمة.
+- يجب عرض القيمة الخام بجانب اسم المصدر المصنف، وعدم اختراع اسم متجر إذا لم توجد معلومة.
+
+**المراجع:**
+- [Android package inventory and timestamps — forensic reference](https://www.androidforensics.org/en/artifacts/installed-packages)
+- [dumpsys package fields and version-dependent timestamps](https://bytescope.dev/en/web-adb/commands/dumpsys-package)
+
+### 17.3 تحديث مقارنة الأدوات بالنسبة إلى DNS والتواريخ
+
+| الأداة/المسار | DNS Private / Ad Block | First/Last Install Dates | Installer Source | ملاحظة |
+|---|---|---|---|---|
+| ADB AppControl | لا يوجد إثبات كافٍ حتى الآن لميزة إدارة Private DNS | يحتاج فحص واجهة وإصدار | يحتاج فحص | لا ننسب الميزة للأداة قبل اختبارها |
+| UAD-ng | ليس مدير DNS وفق النطاق المفحوص | بيانات التثبيت الزمنية غير مثبتة كفلاتر GUI | غير مثبت | تركيزه Debloat |
+| AYA | غير مثبت | يحتاج تدقيق الكود | يحتاج تدقيق الكود | يمكن أن يستفيد من بيانات ADB المتاحة |
+| ADBridge | غير مثبت | غير مثبت | غير مثبت | يحتاج تدقيق الكود |
+| ADB + dumpsys/pm | أوامر Settings.Global قد تسمح بفحص/محاولة ضبط Private DNS حسب الجهاز والسياسات | متاح عبر Package Manager/Dumpsys | متاح عند إعلانه من Package Manager | خط أساس تقني وليس واجهة مستخدم جاهزة |
+| Android Device Owner / DPC | API رسمي لإدارة Private DNS ضمن شروط Device Owner | APIs إدارية حسب سياسة الجهاز | حسب Package Manager | مسار إدارة مؤسسية وليس مطلوباً لبرنامج ADB عادي |
+
+**قرار:** لا نرفض أداة لمجرد أنها لا تحتوي DNS؛ يمكن أن تكون ميزة DNS طبقة مستقلة في البرنامج باستخدام ADB أو DPC/تطبيق مرافق، مع احترام قيود النظام.
+
+### 17.4 حالات الاختبار الجديدة
+
+| الاختبار | خطوات التحقق | نتيجة النجاح |
+|---|---|---|
+| قراءة Private DNS | قراءة mode وspecifier قبل أي تغيير | عرض الحالة الفعلية بدقة |
+| تعيين DoT hostname | تجربة مزود صحيح على جهاز اختبار مصرح به | قراءة الإعداد مجدداً ونجاح DNS/TLS |
+| مزود غير صالح | hostname غير صحيح أو لا يقدم DoT | إظهار فشل التحقق وعدم تسجيل نجاح |
+| Restore | حفظ الحالة الأصلية ثم استعادتها | عودة الإعداد الأصلي والتحقق منه |
+| VPN conflict | مقارنة Private DNS مع DNS/VPN app نشط | توضيح أي مسار هو الفعال وعدم ادعاء حجب شامل |
+| First install date | استخراج timestamp لتطبيق قديم وآخر حديث | تحويل صحيح للوقت والمنطقة الزمنية مع إظهار المصدر |
+| Last update date | مقارنة تطبيق تم تحديثه بتطبيق لم يتغير | فصل تاريخ التحديث عن تاريخ التثبيت |
+| Installer source | تطبيق مثبت من Play وآخر عبر ADB | عرض المصدر كما أعلنه Package Manager |
+| Unknown source | تطبيق لا يعلن installer | عرض Unknown وعدم تخمين المصدر |
+| Date filters | نطاق تاريخي وحدود شاملة/غير شاملة واضحة | نتائج صحيحة قابلة للفرز والتصدير |
+| Cross-version parser | أجهزة Android بإصدارات مختلفة | استخراج الحقول أو تسجيل Unsupported/NotReported دون انهيار |
+
+### 17.5 حالة التوسعة
+
+- [x] إضافة مسارات Private DNS وDNS العادي وVPN-based DNS كأنواع مختلفة.
+- [x] توثيق قيود DoT hostname مقابل DNS IP عادي.
+- [x] إضافة First install time وLast update time وInstaller source.
+- [x] إضافة فلاتر تاريخ التثبيت والتحديث ومصدر التثبيت وABI وحالة التطبيق.
+- [x] إضافة حالات اختبار التحقق والاسترجاع وتعارض VPN.
+- [ ] تدقيق دعم ADB AppControl وAYA وADBridge لهذه الحقول والفلاتر في الإصدارات الحالية.
+- [ ] اختبار Private DNS عبر ADB على Android 12 والجهاز Samsung SM-N976N، مع حفظ الإعداد الأصلي وعدم تغيير الجهاز دون إذن منفصل.
+- [ ] اختبار التواريخ ومصدر التثبيت على أجهزة Android متعددة الإصدارات.
