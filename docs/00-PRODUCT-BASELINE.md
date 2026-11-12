@@ -210,6 +210,7 @@ Windows Desktop UI                 AI Client (Codex)
 | `docs/13-source-revalidation-adb-file-core.md` | إعادة مراجعة مصدر ADB وFile Transfer وLogcat عند commits محددة وتسجيل فجواتها |
 | `docs/14-source-revalidation-app-installers.md` | إعادة مراجعة bundletool وapkfile وPacMan-APK وxapkInstaller وسياسات APK/APKM/XAPK/APKS |
 | `docs/15-source-revalidation-mcp-codex.md` | إعادة مراجعة خوادم MCP وقرار Read-only V1 وexplicit device targeting وآلية الموافقة |
+| `docs/16-source-revalidation-firmware-storage-backup.md` | إعادة مراجعة OTA payload وsuper metadata وأدوات incremental backup وحدودها |
 | `docs/RESEARCH-METHODOLOGY.md` | منهجية الأدلة والاختبارات والأمان وإعادة الاستخدام وMCP |
 | `docs/README.md` | فهرس تنقل مرتب حسب رحلة القراءة والوظائف |
 
@@ -242,7 +243,7 @@ Windows Desktop UI                 AI Client (Codex)
 ## 10. الخطوات التالية بالترتيب
 
 1. تم تدقيق الاتساق الأساسي بين الوثائق 00–12 وتحديث الفهرس وروابط المحاور؛ تبقى مراجعة تفصيلية متجددة عند تغير أي قرار أو مصدر.
-2. تم التقاط Source HEAD SHAs للمرشحين الرئيسيين في [12](12-REUSE-AND-IMPLEMENTATION-PLAN.md)، وأعيدت مراجعة AdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)؛ بقية المرشحين تحتاج مراجعة الفروق قبل الاقتباس. وتمت إعادة مراجعة المرشحين الأساسيين للتثبيت في [14](14-source-revalidation-app-installers.md)، ومرشحي MCP/Codex في [15](15-source-revalidation-mcp-codex.md).
+2. تم التقاط Source HEAD SHAs للمرشحين الرئيسيين في [12](12-REUSE-AND-IMPLEMENTATION-PLAN.md)، وأعيدت مراجعة AdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)؛ بقية المرشحين تحتاج مراجعة الفروق قبل الاقتباس. وتمت إعادة مراجعة المرشحين الأساسيين للتثبيت في [14](14-source-revalidation-app-installers.md)، ومرشحي MCP/Codex في [15](15-source-revalidation-mcp-codex.md)، ومرشحي OTA/storage/backup في [16](16-source-revalidation-firmware-storage-backup.md).
 3. تنفيذ Source Revalidation للمرشحين الأعلى أولوية، ثم إعداد corpus محلي غير حساس من outputs وملفات OTA/super/logcat/bugreport وAPK fixtures، دون جمع بيانات خاصة.
 4. تنفيذ PoC مقارنة لـ.NET 10 وTauri/Rust في ADB USB/Wireless وmulti-device وcancellation وWindows PnP/WPD، ثم حسم Host/UI/ADB/MTP/MCP/dependency delivery.
 5. تثبيت عقود DeviceHandle وCapability وOperation وResult وAudit، وخطة اختبار Windows 10/11 وAndroid API 24+ مع فصل Unit/Parser/Runtime/Hardware.
