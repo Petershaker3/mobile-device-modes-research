@@ -3751,3 +3751,78 @@ Commit تمت مراجعته: `6560b3057e653bbe68c6ebcaf145b8109754f5b6`.
 **حالة التحقق:** Source/Docs Review عند commit محدد. لم يتم build أو تشغيل TUI أو تثبيت حزمة على هاتف فعلي. لم يتم تنفيذ اختبار zip-slip أو ZIP-bomb أو OBB runtime؛ المخاطر أعلاه مستنتجة من المسارات المقروءة وليست نتائج استغلال عملي.
 
 **قرار الجولة:** نحتفظ بالمشروع كمرجع UI/ADB صغير، ولا نعتمد parser أو installer الخاص به. وهو مثال إضافي على ضرورة اختبار الصيغة نفسها لا الاكتفاء بوجود extension في قائمة الدعم.
+
+
+### 20.50 — تدقيق Shizuku Package Installer: اختيار split APKs وPackageInstaller streaming
+
+المستودع: [vvb2060/PackageInstaller](https://github.com/vvb2060/PackageInstaller)  
+Commit تمت مراجعته: `a43b37a22493969be2c8161f3e0551bd462b0d30`.  
+الملفات: `README.md`، `apk/ApkLite.java`، `apk/ApksFilter.java`، `apk/ZipParser.java`، `core/InstallRepository.java`، ومكونات ZIP/signature المرتبطة التي ظهرت في شجرة المستودع.
+
+**سبب أهمية المرشح:**
+- Android-side installer يتعامل مع Google bundletool APKS، وZIP يحوي APK dumps، وAPK منفرد.
+- يختار split APKs بناءً على ABI وdensity وlanguage المتاحة على الجهاز.
+- يكتب الملفات إلى Android `PackageInstaller.Session` عبر streams بدلاً من فك جميع APKs إلى ملفات مؤقتة.
+- يعرض بيانات package/version/split/signature، ويدعم إضافة/إزالة splits من جلسات موجودة.
+
+**ما ظهر في الكود:**
+
+1. **APK metadata**
+   - `ApkLite` يستخرج package name وsplit name وconfigForSplit وrequiredSplitTypes وsplitTypes وversionCode/versionCodeMajor وminSdk/targetSdk.
+   - هذا مرجع مفيد للحقول التي يجب أن يحملها نموذج Package Inspection لدينا؛ لا يكفي تخزين package name وversion فقط.
+   - قراءة manifest تتم عبر Android XmlResourceParser/XmlBlock، أي أن هذا التنفيذ مرتبط ببيئة Android ولا يمكن نقله مباشرة إلى Windows Host.
+
+2. **اختيار ABI/Density/Language**
+   - `ApksFilter` يستخدم `Build.SUPPORTED_ABIS` لترتيب ABI المرشحة، ويستخدم DisplayMetrics density وLocales الخاصة بالجهاز.
+   - density candidates ترتب بالأقرب الأعلى أولاً ثم الأقل.
+   - language candidates تبدأ بلغات الجهاز، ثم base، ثم اللغات المتاحة في system assets.
+   - هذا أوضح من اختيار ثابت مثل arm64 أولاً، ويصلح كمرجع لمفهوم device-aware split selection.
+   - لكنه ليس Google bundletool DeviceSpec matcher: لا يقرأ `toc.pb` أو نموذج variant/module/dependency منه؛ يكتشف وجود `toc.pb` فقط ثم يستنتج labels من أسماء ملفات APK.
+   - `abiFilter` يضيف قائمة ABIs عامة بعد `Build.SUPPORTED_ABIS`. إذا لم يوجد تطابق من قائمة الجهاز، قد يظل هناك مرشح عام غير مثبت التوافق؛ لذلك لا ننسخ fallback هذا دون رفض واضح عند عدم وجود ABI مدعوم.
+   - تحليل أسماء الملفات heuristic، ويحتاج اختبارات لملفات bundletool متعددة modules وfeature splits وأسماء config غير المعتادة.
+
+3. **ZipParser**
+   - يقرأ ZIP central directory ويبحث عن APK entries، ثم يحدد base APK، ويقرأ manifest الخاص به.
+   - يتعرف على bundletool APKS بوجود `toc.pb`، لكنه لا يحلل protobuf TOC؛ اختيار الملفات يمر عبر أسماء APK entries.
+   - `findBaseApk` يبحث عن `base.apk` أو `splits/base-master.apk`، ثم يستخدم fallback heuristic لاختيار entry غير config. لا نعتبر fallback دليلاً على وجود base وحيد صحيح.
+   - عند كتابة الملفات إلى PackageInstaller Session، يزيل المسار ويستخدم basename كاسم داخل الجلسة؛ يجب فرض uniqueness على هذه الأسماء لتجنب تصادم ملفات modules مختلفة.
+   - قراءة AndroidManifest المضغوط في `parseApkFromStream` تجمع bytes في ByteArrayOutputStream دون حد ظاهر في المسار المراجع؛ يلزم manifest size cap ومراقبة actual decompressed bytes.
+
+4. **Streaming إلى PackageInstaller**
+   - `sessionWrite` يكتب APK المفرد أو الملفات المختارة إلى `PackageInstaller.Session.openWrite`، ويستخدم `fsync` لكل stream.
+   - هذا مرجع قوي لتقليل disk staging والذاكرة في Android-side helper، ولتصميم progress based on bytes.
+   - لا يمكن نقله كما هو إلى Windows؛ في مشروعنا يبقى النقل الأساسي عبر ADB، ويمكن الاستفادة من مبادئ streaming/atomic session عند بناء helper Android اختياري مستقبلاً.
+
+5. **التوقيع وسلامة التحديث**
+   - توجد مكونات مخصصة لقراءة APK Signing Block ومقارنة بيانات توقيع الحزمة الجديدة بالقديمة في بعض المسارات.
+   - فشل قراءة signing block يُسجل warning ويستمر parser في بعض الحالات؛ لذلك لا نعتبر وجود parser وحده شرط رفض أمني كاملاً ولا ندعي أنه بديل عن apksigner/certificate verification.
+   - يجب أن يكون فحص التوقيع لدينا خطوة مستقلة واضحة، وأن تكون نتيجة تعذر الفحص سبباً لعدم إصدار Compatibility Pass.
+
+6. **Install Session وسلوك الموافقة**
+   - يدير `InstallRepository` إنشاء/فتح/commit sessions، ويعالج `STATUS_PENDING_USER_ACTION` كمرحلة منفصلة.
+   - هذا مفيد لفهم حالات Android installer التي تتطلب إجراءً من المستخدم وعدم اعتبار إرسال commit نجاحاً فورياً.
+   - الكود يضبط داخلياً flags مثل allow-test وreplace وrequest-downgrade، كما يتضمن مسارات مرتبطة بتجاوز بعض فحوص التثبيت. هذه اختيارات خاصة بتطبيق Android هذا وليست سياسة مناسبة لمحركنا؛ لا ننقلها إلى ADB install flags أو MCP tools.
+   - يستخدم Shizuku/واجهات Android داخلية في المسار غير الآمن، ولذلك لا يمثل Windows integration.
+
+**الحكم الهندسي:**
+- **مرجع جيد لثلاث نقاط محددة:** نموذج بيانات split metadata، اختيار الموارد بحسب قدرات الجهاز، وstreaming إلى PackageInstaller Session.
+- **ليس مكون Windows قابلًا للدمج مباشرة:** يعتمد Android APIs وShizuku/PackageInstaller، ولا يوفر ADB host service أو Windows UI.
+- **ليس بديلاً كاملاً عن bundletool:** اكتشاف `toc.pb` لا يعني قراءة TOC؛ الاختيار مبني على أسماء entries لا على variant/module graph الرسمي.
+- نقتبس المبادئ والحقول فقط، ولا ننسخ منطق bypass flags أو fallback ABI أو اختيار base heuristic.
+- يبقى Google bundletool المسار المرجعي لتحديد splits في Google APKS/AAB؛ يمكن استخدام هذا المشروع كمرجع مقارنة إضافي لاختبارات split selection.
+
+**اختبارات قبول مستخلصة:**
+- APKS بوجود TOC يضم variants متعددة وfeature modules؛ قارن اختيار هذا parser مع bundletool `extract-apks` على DeviceSpec نفسه.
+- جهاز arm64 فقط، جهاز يدعم arm64 وarmeabi-v7a، وجهاز emulator x86_64؛ لا تختَر ABI غير مدعوم عند غياب تطابق.
+- density exact/nearest-higher/nearest-lower، وقوائم لغات متعددة مع base fallback.
+- base APK مفقود أو مكرر أو أكثر من مرشح base؛ يجب الرفض بدلاً من اختيار أول entry.
+- split entries متشابهة basename في modules مختلفة؛ لا تسمح بتصادم session names.
+- manifest مضغوط يتجاوز حد الموارد؛ رفض آمن دون OOM.
+- requiredSplitTypes/configForSplit/feature modules: لا يتم إعلان التوافق قبل فهم العلاقات المطلوبة.
+- signature parser error أو عدم وجود signing block: لا يتحول إلى نجاح تحقق التوقيع.
+- Session commit يعيد STATUS_PENDING_USER_ACTION؛ تظل العملية Pending حتى يكتمل إجراء المستخدم ثم يتم التحقق.
+- مقارنة النتائج مع bundletool الرسمي على مجموعة ملفات ثابتة، وتوثيق أي اختلاف قبل اعتماد أي selector.
+
+**حالة التحقق:** Source/Docs Review عند commit محدد. لم يتم بناء APK أو تشغيله على هاتف، ولم نختبر split selection على جهاز فعلي. لا يوجد اعتماد على هذه المراجعة كـRuntime/Hardware Validation.
+
+**قرار الجولة:** نحتفظ بـApksFilter/ZipParser كمرجع تصميم لاختيار split APKs والـPackageInstaller streaming فقط. لا نستبدل bundletool بها، ولا ننقل Android-side Shizuku implementation إلى Windows Host.
