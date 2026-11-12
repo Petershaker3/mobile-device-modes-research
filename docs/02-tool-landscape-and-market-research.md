@@ -2432,3 +2432,158 @@ Android NDK يوضح أن ABI تشمل instruction set وendianness وcalling co
 - [Goblin ELF fuzz target](https://github.com/m4b/goblin/blob/cc6beec889d74680d8f77626f508cb9d949dfc23/fuzz/fuzz_targets/parse_elf.rs)
 - [object repository](https://github.com/gimli-rs/object)
 - [Android ELF machine identifiers](https://chromium.googlesource.com/android_ndk/+/refs/heads/unmodified/sysroot/usr/include/linux/elf-em.h)
+
+
+### 20.36 فحص اعتماديات Native Libraries وDT_NEEDED وSONAME (12 نوفمبر 2026)
+
+**نوع المراجعة:** مراجعة وثائق Android الرسمية ومصدر Bionic linker، ومراجعة source/API لأدوات ELF الجاهزة. لا يوجد تشغيل للأدوات أو تحليل APK فعلي في هذه الجولة.
+
+#### 20.36.1 المشكلة التي نريد كشفها
+
+فحص ABI وحده لا يكفي. قد يحتوي APK على ملفات ELF صحيحة للمعمارية المطلوبة، لكن هذه الملفات تعتمد على مكتبات مشتركة أخرى لا يمكن تحميلها في بيئة التطبيق، أو تسجل أسماء/مسارات اعتماديات غير صحيحة.
+
+نحتاج استخراج العناصر التالية لكل ملف .so:
+- `DT_NEEDED`: أسماء المكتبات المطلوبة مباشرة.
+- `DT_SONAME`: الاسم الذي يعرّف المكتبة نفسها عند الربط الديناميكي.
+- `DT_RPATH` و`DT_RUNPATH` عند وجودها، كبيانات تشخيصية لا كمسارات نثق بها.
+- Dynamic symbols المستوردة/المصدرة، وsymbol version requirements عند الحاجة للتحقيق في اختلاف API أو الرموز.
+- ELF machine/class/endianness وABI directory من القسم 20.35.
+
+لا نخلط بين dependency المباشرة وبين شجرة الاعتماديات الكاملة؛ المكتبة المطلوبة قد تحتاج بدورها مكتبات أخرى.
+
+#### 20.36.2 الفرق بين وجود DT_NEEDED وإمكانية التحميل الفعلية
+
+وجود اسم في `DT_NEEDED` لا يحدد وحده أين سيجد Android المكتبة، ولا يثبت أنها متاحة في سياق التطبيق.
+
+Android Bionic يستخدم linker namespaces ذات search paths وpermitted paths وروابط بين namespaces، وقد تكون namespace معزولة. لذلك لا يصح أن نقارن كل `DT_NEEDED` بقائمة ملفات موجودة في APK فقط، أو بقائمة مكتبات Windows/Linux على جهاز الفحص. يجب مراعاة:
+- مكتبات التطبيق الموجودة ضمن APK/split set وبـABI المطابقة.
+- مكتبات Android العامة المتاحة للإصدار المستهدف والجهاز/صورة النظام.
+- قيود namespace ومسارات البحث والـ public libraries.
+- اختلافات OEM/API level، وأي مكتبات خاصة أو غير عامة لا يمكن افتراض إتاحتها للتطبيق.
+
+توضح وثائق Bionic أن المكتبات المطلوبة قد تفشل في التحميل إذا كانت خارج search/permitted paths ولم تكن متاحة عبر namespace مرتبطة. كما أن مسارات البحث وترتيبها جزء من إعداد namespace وليس استنتاجاً من اسم dependency وحده.
+
+**نتيجة مهمة:** لا نصدر حكم `Missing dependency = install failure`. قد ينجح تثبيت APK بينما يظهر الخطأ فقط عند تحميل native library أو استدعاء المسار البرمجي الذي يحتاجها. تقريرنا يصف المخاطر المحتملة ولا يحاكي linker runtime.
+
+#### 20.36.3 DT_NEEDED وSONAME ومسارات البناء
+
+وثائق Android linker changes توثق حالات خاطئة يضع فيها toolchain مساراً مطلقاً من جهاز البناء داخل `DT_NEEDED`. وتشير إلى أن سلوك التعامل مع الاسم/المسار تغير ابتداءً من API 23؛ قد تفشل المسارات المطلقة القادمة من Windows build host بدلاً من أن يعاملها linker كاسم مكتبة فقط.
+
+كما توثق الوثائق أهمية وجود SONAME صحيح للمكتبات المشتركة، وأن غيابه قد يؤدي لاستخدام اسم الملف كبديل، مع احتمال تعارضات namespace أو تحميل مكتبة غير المقصودة.
+
+قواعد الفحص المقترحة:
+1. إذا احتوى `DT_NEEDED` على مسار مطلق أو drive letter أو مسار build host، ارفع تحذيراً عالي الأهمية.
+2. قارن `DT_NEEDED` بالأسماء الفعلية وSONAMEs للمكتبات الموجودة داخل نفس APK/split set، وليس بأسماء الملفات فقط.
+3. اكشف duplicate SONAME داخل ABI نفسها، وسجل كل مسار ومصدر؛ لا تختَر نسخة تلقائياً.
+4. إذا غاب SONAME من shared object، أظهر Missing SONAME كتحذير يحتاج تفسيراً وفق API level وسياق التحميل.
+5. لا تعدّل ELF أو تعيد كتابة dynamic entries تلقائياً.
+6. لا تعتبر وجود SONAME مطابق دليلاً على تطابق ABI أو الرموز أو سلامة المكتبة.
+
+#### 20.36.4 الأدوات الجاهزة — Android NDK llvm-readelf
+
+**المرشح الأول كأداة cross-check على Windows:** `llvm-readelf.exe` المرفق مع Android NDK.
+
+وثائق Android Developers تعرض مسار Windows صريحاً للأداة داخل:
+`<SDK>/ndk/<version>/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-readelf.exe`
+
+هذا يؤكد وجود binary Windows ضمن NDK، ويجعل الأداة مناسبة كمرجع مستقل للتحقق من نتائج parser الداخلي. أوامر فحص مقترحة في PoC:
+- `llvm-readelf.exe -d <file.so>` لعرض dynamic section، بما فيها NEEDED/SONAME/RUNPATH إن وجدت.
+- `llvm-readelf.exe --dyn-syms <file.so>` لمراجعة dynamic symbols.
+- `llvm-readelf.exe --version-info <file.so>` لمراجعة symbol version information.
+- `llvm-readelf.exe -h <file.so>` لمقارنة ELF header وmachine/class.
+- `llvm-readelf.exe -l <file.so>` عند الحاجة لمراجعة program headers.
+
+هذه أوامر مقترحة للتحقق وليست نتيجة تشغيل في هذه الجولة. يجب تثبيت NDK version واستخدام Process runner بوسائط منفصلة وtimeout/cancel، وعدم بناء command shell string من اسم الملف.
+
+**القرار:** نستخدم NDK llvm-readelf كـgolden cross-check في PoC وضمن أدوات التشخيص المتقدمة، وليس بالضرورة كاعتماد runtime دائم إذا أثبت Goblin كفايته.
+
+#### 20.36.5 Goblin — استمرار المرشح الداخلي
+
+المستودع: [m4b/goblin](https://github.com/m4b/goblin) — commit المراجع: `cc6beec889d74680d8f77626f508cb9d949dfc23`.
+
+مراجعة `src/elf/dynamic.rs` تؤكد تعريف dynamic tags ومنها:
+- `DT_NEEDED`
+- `DT_SONAME`
+- `DT_RPATH`
+- `DT_RUNPATH`
+- `DT_STRTAB` و`DT_STRSZ`
+- `DT_VERNEED` و`DT_VERNEEDNUM`
+- `DT_VERSYM` و`DT_VERDEF` و`DT_VERDEFNUM`
+
+آخر commit تمت مراجعته يعالج التحقق من حدود `PT_DYNAMIC` قبل التخصيص في `dynamic::from_fd)، ويضيف اختباراً بملف fixture. هذا تحسين محدد مهم لكنه لا يغني عن اختباراتنا للـ string table offsets والـ dynamic entry counts والـ malformed ELF.
+
+**القرار:** نحتفظ بـGoblin كمرشح Rust أول. يجب أن يثبت PoC استخراج أسماء NEEDED وSONAME والـ symbol-version metadata بدقة، ومقارنتها بنتائج llvm-readelf. لا نعلن أن التكامل مكتمل قبل ذلك.
+
+#### 20.36.6 LIEF — بديل أوسع للفحص والتحليل
+
+المستودع: [lief-project/LIEF](https://github.com/lief-project/LIEF) — آخر commit تمت مراجعته: `a3c9ca3a36a3b1ad6d099c8e3318175c175918fb` بتاريخ 8 نوفمبر 2026.
+
+مراجعة Python ELF reader example توضح عرض dynamic entries، وبشكل صريح `SONAME` و`NEEDED` و`RUNPATH` و`RPATH`، إضافة إلى dynamic symbols وimported symbols وsymbol versions. ويوفر LIEF طبقة تحليل أوسع من مجرد قراءة ELF header.
+
+لكن إدخاله يضيف مكوّناً أكبر من حاجة V1، ويجب تقييم حزم Windows وطريقة تضمينه وحجم الاعتماديات وسلوك parser مع ملفات APK غير موثوقة قبل اعتماده. وجود مثال API لا يثبت سلامة parser لكل مدخلات مشوهة.
+
+**القرار:** LIEF بديل/أداة cross-check اختيارية إذا احتجنا تحليلاً أوسع أو API جاهزة، وليس اعتماداً موازياً افتراضياً إلى جانب Goblin. لا نحتاج الاثنين في مسار الإنتاج دون سبب مقاس.
+
+#### 20.36.7 بناء Dependency Graph داخل APK
+
+بعد قراءة جميع ملفات .so في ABI واحدة:
+1. إنشاء عقدة لكل ملف native library.
+2. تسجيل اسم archive path وABI directory وELF machine وSONAME.
+3. ربط كل `DT_NEEDED` بالعقدة الداخلية التي تطابق SONAME، إن وجدت.
+4. إذا لم توجد عقدة داخل الحزمة، تصنيف dependency كـExternal/Unresolved؛ لا نصفها بأنها Missing نهائياً قبل فحص Android runtime catalog.
+5. كشف cycles، duplicate SONAME، self-dependency، absolute path، وdependency name غير المعتاد.
+6. تنفيذ التحليل منفصلاً لكل ABI ولكل split set؛ لا نخلط مكتبة arm64 مع x86.
+7. عدم دمج نتائج ملفات APK مختلفة أو نسخ قديمة من التطبيق دون تحديد APK set/version.
+
+نموذج بيانات مبدئي:
+- `NativeDependency`: source_library_id, needed_name, resolution_kind, resolved_library_id, evidence, confidence.
+- `NativeLibraryMetadata`: archive_path, abi, soname, needed[], runpath[], imported_symbols[], version_requirements[], parse_status.
+- `NativeDependencyGraph`: package_id, version_code, abi, libraries[], edges[], unresolved_external[], duplicate_sonames[], warnings[].
+- `AndroidRuntimeLibraryProfile`: device/build fingerprint, Android API, ABI, public library evidence, source, captured_at.
+
+لا نستخدم أسماء ملفات النظام من جهاز Windows host كمرجع. أي Runtime profile يجب أن يأتي من Android system image أو جهاز Android محدد، مع تسجيل build/API ومصدر البيانات، ودون افتراض أن جهازاً واحداً يمثل كل أجهزة Android.
+
+#### 20.36.8 فحص توافق الرموز وAPI level
+
+حتى لو حُلّت أسماء `DT_NEEDED`، قد تفشل المكتبة بسبب symbol غير متاح أو symbol version غير متوافق. لذلك:
+- نقرأ imported dynamic symbols وsymbol version requirements عند الحاجة.
+- نربطها ببيانات Android API level وNDK/public API evidence موثوقة.
+- نميز بين API level الذي يستهدفه APK وبين API level الذي بنيت عليه المكتبة إذا توفر دليل موثوق؛ لا نستنتج أحدهما من الآخر.
+- نعرض نتيجة Symbol/API analysis كـPotential mismatch أو Unknown إذا لم تتوفر قاعدة مرجعية دقيقة.
+- لا ندّعي محاكاة linker أو نجاح التحميل دون تجربة runtime على بيئة Android مطابقة.
+
+#### 20.36.9 الاختبارات المطلوبة قبل الاعتماد
+
+- ملفات ELF سليمة بها dependency واحدة ومتعددة.
+- NEEDED يطابق SONAME داخل نفس APK، ويطابق اسم الملف فقط مع SONAME مختلف.
+- غياب SONAME، وduplicate SONAME داخل ABI واحدة.
+- NEEDED بمسار مطلق أو Windows drive path أو separators غير متوقعة.
+- مكتبة تعتمد على مكتبة داخل split آخر.
+- اعتماد خارجي موجود في Android public library profile، وآخر غير موجود في العينة.
+- symbol imports وversion requirements مع اختلافات API.
+- Dynamic string table offset خارج الملف أو strings غير منتهية بـNUL.
+- dynamic table بلا DT_NULL أو بعدد entries مبالغ فيه.
+- corrupted ELF وtruncated file وoversized metadata.
+- مقارنة Goblin مع llvm-readelf؛ وLIEF عند استخدامه كـcross-check.
+- fuzzing للـdynamic table/string table/version tables، وWindows CI، وقياس الأداء والذاكرة.
+- عدم تحميل أو تنفيذ أي .so في الاختبارات؛ التحليل static فقط.
+
+#### 20.36.10 القرار الحالي وحالة التحقق
+
+1. **Goblin:** المرشح الداخلي الأول، مع PoC مطلوب لاستخراج NEEDED/SONAME/symbol versions.
+2. **Android NDK llvm-readelf:** أداة Windows جاهزة للتحقق المستقل ومقارنة النتائج.
+3. **LIEF:** خيار أوسع احتياطي/تحليلي، لا يضاف افتراضياً قبل قياس الحاجة.
+4. **Bionic linker docs/source:** المرجع لتفسير namespace والبحث والإتاحة؛ لا نستنسخ linker ولا نحاكيه بالكامل.
+5. **Runtime compatibility:** لا يمكن الجزم به من ELF metadata وحدها؛ يتطلب Android runtime evidence أو اختباراً فعلياً على build مطابق.
+
+**حالة الجولة:** [x] مراجعة Bionic linker changes حول NEEDED/SONAME وAPI 23. [x] مراجعة linker namespace configuration/source. [x] مراجعة Goblin dynamic tags وcommit bounds fix. [x] مراجعة LIEF dynamic-entry reader example. [x] التحقق من وجود llvm-readelf.exe ضمن مسار NDK Windows في وثائق Android. [ ] تشغيل llvm-readelf على Windows. [ ] PoC Goblin dynamic dependency extraction. [ ] مقارنة Goblin وllvm-readelf وLIEF. [ ] بناء Android runtime library catalog موثق. [ ] symbol/API compatibility tests. [ ] fuzzing وWindows CI. [ ] اعتماد production.
+
+المراجع:
+- [Android linker changes for NDK developers](https://android.googlesource.com/platform/bionic/+/master/android-changes-for-ndk-developers.md)
+- [Bionic linker namespace configuration format](https://android.googlesource.com/platform/bionic/+/master/linker/ld.config.format.md)
+- [Bionic linker namespace implementation](https://android.googlesource.com/platform/bionic/+/master/linker/linker_namespaces.h)
+- [Android Developers — 16 KB page size verification (Windows llvm-readelf path)](https://developer.android.com/guide/practices/page-sizes)
+- [Goblin dynamic ELF tags at reviewed commit](https://github.com/m4b/goblin/blob/cc6beec889d74680d8f77626f508cb9d949dfc23/src/elf/dynamic.rs)
+- [Goblin reviewed bounds-validation commit](https://github.com/m4b/goblin/commit/cc6beec889d74680d8f77626f508cb9d949dfc23)
+- [LIEF ELF reader example](https://github.com/lief-project/LIEF/blob/main/api/python/examples/elf_reader.py)
+- [LIEF reviewed latest commit](https://github.com/lief-project/LIEF/commit/a3c9ca3a36a3b1ad6d099c8e3318175c175918fb)
