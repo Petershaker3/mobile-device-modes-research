@@ -53,3 +53,5 @@
 - **Shizuku Package Installer split-selection reference:** تدقيق ApkLite/ApksFilter/ZipParser، اختيار ABI/density/language، Google APKS TOC limitations، وPackageInstaller streaming موثق في القسم 20.50 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2050-تدقيق-shizuku-package-installer-اختيار-split-apks-وpackageinstaller-streaming).
 
 - **App Manager multi-format/parser and install lifecycle reference:** تدقيق APKM/APKS/XAPK، split metadata، OBB handling، PackageInstaller streaming، session watchdog/orphan cleanup، ونتائج الاختبارات موثق في القسم 20.51 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2051-تدقيق-app-manager-apkmapksxapk-وsplit-metadata-وobb-lifecycle).
+
+- **Legacy encrypted APKM decryptor:** تدقيق souramoo/unapkm، والتمييز بين APKM ZIP الحديث والملفات المشفرة التاريخية، ومخاطر streaming/error propagation، وقرار تأجيل decryption من V1 موثق في القسم 20.52 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2052-تدقيق-unapkm-القديم-فك-تشفير-apkm-المشفر-مقابل-apkm-zip-الحديث).
