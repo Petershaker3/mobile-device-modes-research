@@ -1715,3 +1715,95 @@ tauri-adapter / mcp-adapter / cli-adapter
 | تجربة إدارة التطبيقات التجارية | ADB AppControl | مرجع UX/feature set فقط؛ لا source code متاح في repo المراجع |
 
 **القرار العام:** لا نختار مشروعاً واحداً وننسخه كاملاً. الأفضل بناء Service Layer مشتركة مع adapters صغيرة، واقتباس مكونات محددة فقط بعد اختبارها وعزلها. الأولوية التالية: مراجعة AppManager (MuntashirAkon) لمعرفة ما إذا كانت هناك مكونات PackageManager/metadata قابلة للفصل، ثم تدقيق مشاريع تثبيت APK/APKS وbundletool end-to-end. لا يوجد أي اختبار runtime أو جهاز فعلي في هذه الجولة.
+
+
+### 20.29 تدقيق MuntashirAkon/AppManager: جرد الحزم والبيانات والتثبيت (12 نوفمبر 2026)
+
+المستودع: [MuntashirAkon/AppManager](https://github.com/MuntashirAkon/AppManager)
+
+**تحديد طبيعة المشروع:** App Manager تطبيق Android يعمل على الهاتف نفسه، ويستفيد من Android PackageManager وواجهات نظام داخلية، مع أوضاع صلاحيات إضافية عبر ADB/root. ليس برنامج Windows host يتصل بالهاتف مباشرة، ولا هو مكتبة مستقلة جاهزة يمكن وضعها في تطبيق Tauri. مراجعة المصدر تمت على commit `dc4154f4c04399602895f31f9390bb66b25ea8a0`؛ لم يتم بناء التطبيق أو تشغيله أو اختبار هاتف.
+
+#### 20.29.1 جرد التطبيقات وتعدد المستخدمين
+
+الملفات:
+- `app/src/main/java/io/github/muntashirakon/AppManager/utils/PackageUtils.java` — blob SHA `0d14691bdd141fc3cefdf2eaca487865378ef260`.
+- `app/src/main/java/io/github/muntashirakon/AppManager/compat/PackageManagerCompat.java` — blob SHA `67f2923a8795775320983eb0463598f4b476197d`.
+- `app/src/main/java/io/github/muntashirakon/AppManager/filters/FilterableAppInfo.java` — blob SHA `23b9ade63d8979684582de0ea0f7e7d5970c09fc`.
+
+ملاحظات من المصدر:
+- `PackageUtils.getAllPackages` يجمع PackageInfo عبر Android users/profiles التي تسمح صلاحيات التطبيق بقراءتها، ويمكن قصره على المستخدم الحالي.
+- `PackageManagerCompat.getInstalledPackages` لديه fallback عند اختلاف عدد الحزم المرجعة عن مرجع الجرد؛ يعيد طلب معلومات الحزم واحدة واحدة، ويتوقف عند interruption، ويضيف تأخيراً دورياً لتقليل ضغط Binder.
+- `FilterableAppInfo` يحتفظ ببيانات package/user/UID وlabel/icon/version/firstInstallTime/lastUpdateTime/targetSdk/minSdk، ويحسب بيانات إضافية عند الحاجة.
+- بعض التفاصيل مثل مكونات التطبيق، permissions، app-ops، usage وstorage ليست كلها ضمن جرد خفيف؛ تحميلها يحتاج طلبات إضافية وصلاحيات مختلفة.
+
+**الاستفادة:** نمط جرد سريع ثم إثراء التفاصيل lazy، واعتبار Android user جزءاً من هوية التطبيق، وفصل معلومات الحزمة عن معلومات الاستخدام/الأذونات. لا ننقل Android PackageManager APIs إلى Windows؛ نبحث عن حقول ADB المكافئة ونحدد لكل حقل مصدره وإمكانية قراءته.
+
+#### 20.29.2 تواريخ التثبيت ومصدر التثبيت والتصدير المنظم
+
+الملفات:
+- `app/src/main/java/io/github/muntashirakon/AppManager/apk/list/ListExporter.java` — blob SHA `78db8bc5fff51a6dc7d22275fe49c98ca80cb837`.
+- `app/src/main/java/io/github/muntashirakon/AppManager/db/entity/App.java` — blob SHA `6af023e5baeeb2b997fe23a35aa93fc28829a0ae`.
+
+المصدر يثبت أن النموذج يمكن أن يحمل:
+- `firstInstallTime` و`lastUpdateTime` من PackageInfo.
+- `installerPackageName` من PackageManagerCompat، مع محاولة إظهار اسم التطبيق المثبت.
+- package name/label/versionCode/versionName/minSdk/targetSdk.
+- SHA-256 لشهادة التوقيع.
+- وجود split APKs عبر `ApplicationInfo.splitSourceDirs` في كيان App.
+- تصدير قوائم التطبيقات بصيغ CSV وJSON وXML وMarkdown، متضمنة بيانات التواريخ والمثبت والتوقيع.
+
+**تحفظ مهم:** هذه التواريخ مقدمة من Android PackageManager؛ لا تثبت تاريخ تنزيل ملف APK الأصلي أو تاريخ تثبيت سابق إذا أعيد تثبيت التطبيق. كما أن installer package name لا يثبت وحده أن المصدر الفعلي موثوق؛ ينبغي عدم تسميته Verified Publisher أو Trusted Source.
+
+**الاستفادة:** نعتمد نفس حقول الجرد والتصدير في برنامج Windows، لكن نعرض حالات للحقول: Available / Unsupported / PermissionDenied / ParseFailed / Unknown، ولا نستبدل القيم المفقودة بتاريخ الملف أو تاريخ أول ظهور في قاعدة بياناتنا.
+
+#### 20.29.3 تثبيت APK وSplit APK عبر PackageInstaller
+
+الملفات:
+- `app/src/main/java/io/github/muntashirakon/AppManager/apk/installer/PackageInstallerCompat.java` — blob SHA `687709863b0c30bdc3be4a38447bfe3eb835403f`.
+- `app/src/main/java/io/github/muntashirakon/AppManager/apk/installer/PackageInstallerViewModel.java` — blob SHA `7fbc11b9dd29ad2777adb260c564d543e01c6612`.
+
+مراجعة المصدر تظهر:
+- تثبيت مبني على Android PackageInstaller sessions.
+- تمرير ملف ApkFile مع مجموعة split IDs مختارة.
+- Session/result callbacks مع operation ID وsession ID لمطابقة النتيجة بالعملية الصحيحة.
+- حالات فشل منفصلة، وwatchdog للعمليات الطويلة، وإشعارات تقدم/نتيجة.
+- يتعامل مع اختيار المستخدم/تأكيدات النظام، وتوافق المستخدمين وملفات OBB وخيارات installer.
+- يوجد تنسيق لإعادة المحاولة في بعض حالات ROM/vendor.
+
+**ما لا ننقله:** PackageInstaller API وواجهات PendingIntent/BroadcastReceiver والـpermissions مرتبطة بتطبيق Android وسياق النظام. لا يمكن استدعاؤها مباشرة من برنامج Windows. نستخدمها كمرجع لسير العمل والحالات والـresult model فقط.
+
+**المقابل عندنا:** ADB host commands:
+- APK مفرد: `adb -s <serial> install <apk>`.
+- عدة splits: `adb -s <serial> install-multiple <base.apk> <split.apk>...`.
+- APKS archive: تحليل/استخراج مجموعة APKs باستخدام bundletool أو parser موثوق، ثم التحقق من مجموعة splits المتوافقة قبل install-multiple.
+- APKM/XAPK: لا نفترض أنها نفس صيغة APKS؛ نحتاج parser/adapter لكل container، ونفحص OBB عند XAPK، ثم نعرض Preview للملفات التي ستثبت.
+
+كل عملية تثبيت يجب أن تربط serial صريحاً، وتتحقق من package/version/signer/ABI/minSdk قبل التنفيذ، وتعرض نتيجة ADB/system installer كما وردت. لا نضيف تعطيل تحقق APK أو downgrade أو تجاوز حماية النظام كخيارات افتراضية.
+
+#### 20.29.4 الأذونات والتوقيعات والمكونات
+
+المصدر يقرأ تفاصيل أعمق من مجرد قائمة التطبيقات:
+- requested permissions وpermission flags.
+- signing certificates وSHA-256.
+- activities/services/receivers/providers.
+- app-ops وبيانات استخدام/تخزين عند توافر الصلاحيات.
+- معلومات التطبيق لكل Android user/profile.
+
+لكن هذه الوظائف تعتمد على PackageManager APIs وصلاحيات ADB/root في بعض الحالات، ولا يمكن ضمان استرجاع جميع البيانات عن طريق ADB shell لكل إصدار Android/OEM.
+
+**القرار:** نضع permission/component inspection ضمن مستوى Advanced Details، ونفصل:
+1. Requested permissions: ما يطلبه Manifest.
+2. Granted runtime permissions: ما تم منحه فعلياً، إذا أمكن قراءته.
+3. AppOps: حالة إضافية مستقلة، لا نخلطها مع granted permissions.
+4. Signing certificate digest: بصمة شهادة، وليست شهادة ثقة أو تحققاً من الناشر.
+5. Components: بيانات وصفية، لا تعني أن المكون قابل للتشغيل أو متاح في كل user.
+
+#### 20.29.5 ADB mode الداخلي وحدود إعادة الاستخدام
+
+يحتوي المشروع على ADB mode وخادم محلي مساعد يعمل على الهاتف، ويستخدم ADB connection لإطلاق/الاتصال بالخادم ثم تبادل رسائل معه. هذا ليس MCP Server ولا host-side ADB manager. أجزاء من هذا التصميم قد تتطلب تشغيل كود على الهاتف وصلاحيات خاصة، ولذلك لا نعتبره حلاً عاماً لجرد تطبيقات Windows.
+
+**القرار:** لا ندمج App Manager كتطبيق فرعي ولا ننقل طبقة Android UI/PackageManager. نستخدمه كمرجع قوي لحقول الجرد، التعامل مع تعدد المستخدمين، البيانات الوصفية، التصدير، حالات التثبيت، والتحقق من النتائج. وننفذ الجانب الخاص بنا من خلال ADB host services مع capability detection واختبارات على Android/OEM فعلي.
+
+روابط المصدر عند commit `dc4154f4c04399602895f31f9390bb66b25ea8a0`: [PackageUtils.java](https://github.com/MuntashirAkon/AppManager/blob/dc4154f4c04399602895f31f9390bb66b25ea8a0/app/src/main/java/io/github/muntashirakon/AppManager/utils/PackageUtils.java) · [PackageManagerCompat.java](https://github.com/MuntashirAkon/AppManager/blob/dc4154f4c04399602895f31f9390bb66b25ea8a0/app/src/main/java/io/github/muntashirakon/AppManager/compat/PackageManagerCompat.java) · [FilterableAppInfo.java](https://github.com/MuntashirAkon/AppManager/blob/dc4154f4c04399602895f31f9390bb66b25ea8a0/app/src/main/java/io/github/muntashirakon/AppManager/filters/FilterableAppInfo.java) · [ListExporter.java](https://github.com/MuntashirAkon/AppManager/blob/dc4154f4c04399602895f31f9390bb66b25ea8a0/app/src/main/java/io/github/muntashirakon/AppManager/apk/list/ListExporter.java) · [PackageInstallerCompat.java](https://github.com/MuntashirAkon/AppManager/blob/dc4154f4c04399602895f31f9390bb66b25ea8a0/app/src/main/java/io/github/muntashirakon/AppManager/apk/installer/PackageInstallerCompat.java) · [PackageInstallerViewModel.java](https://github.com/MuntashirAkon/AppManager/blob/dc4154f4c04399602895f31f9390bb66b25ea8a0/app/src/main/java/io/github/muntashirakon/AppManager/apk/installer/PackageInstallerViewModel.java)
+
+**الحالة:** مراجعة مصدرية لحقول الجرد والتصفية والتصدير والتثبيت؛ لم يتم بناء App Manager أو تشغيله أو تثبيته على هاتف، ولم يتم تنفيذ تثبيت APK/APKS أو تغيير أذونات/حالة أي تطبيق.
