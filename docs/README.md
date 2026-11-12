@@ -19,7 +19,7 @@
 - **Android Manifest/APK parsers:** موثق في القسم 20.34 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2034-محللات-android-manifest-وapk-الجاهزة-مقارنة-axml-parser-وapk-parser-وandroid-sdk-tools-12-نوفمبر-2026).
 - **Android ABI/ELF inspection:** موثق في القسم 20.35 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2035-فحص-abi-وelf-وnative-libraries-داخل-apk-12-نوفمبر-2026).
 - **Native library dependencies (DT_NEEDED/SONAME):** القسم 20.36 محفوظ كتشخيص متقدم مؤجل، وليس شرطاً لمسار تثبيت V1.
-- **APK installation priority and unified engine:** القرار ومصفوفة الصيغ وتدقيق مشاريع Windows/Android موثقة في الأقسام 20.37–20.40 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2037-إعادة-ضبط-الأولوية-التثبيت-واسع-التغطية-هو-هدف-v1-12-نوفمبر-2026) و[إدارة التطبيقات والشبكة](03-app-management-and-network.md#18-محور-التثبيت-واسع-الصيغ-قرار-الأولوية-ومحرك-apk-الموحد).
+- **APK installation priority and unified engine:** القرار ومصفوفة الصيغ وتدقيق المشاريع موثقة في الأقسام 20.37–20.41 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2037-إعادة-ضبط-الأولوية-التثبيت-واسع-التغطية-هو-هدف-v1-12-نوفمبر-2026) و[إدارة التطبيقات والشبكة](03-app-management-and-network.md#18-محور-التثبيت-واسع-الصيغ-قرار-الأولوية-ومحرك-apk-الموحد).
 
 ## مراجع تكامل MCP
 
