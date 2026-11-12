@@ -4112,3 +4112,94 @@ Commit تمت مراجعته: `cd46a145ac4a9f05ec3b21a7d2b10882411d93d7`.
 **حالة التحقق:** Source/Docs Review عند commit محدد، مع وجود اختبارات async في الشجرة. لم يتم تشغيل الاختبارات أو build أو اختبار USB/Wireless على هاتف فعلي.
 
 **قرار الجولة:** نضع AdvancedSharpAdbClient ضمن أقوى المرشحين لطبقة ADB في .NET/Windows، مع إبقاء parser/format adapters منفصلة. قبل اعتماده يجب سد فجوات unique staging وsession abandon وcleanup/reconciliation وpost-install verification.
+
+### 20.55 — اكتشاف التطبيقات وتحميلها من APKPure وF-Droid وAPKMirror
+
+**طلب المنتج:** إتاحة البحث عن التطبيقات وإصداراتها وتنزيل ملفاتها من داخل برنامج Windows، مع تمرير الملفات الناتجة إلى محرك التثبيت متعدد الصيغ الموثق في الأقسام السابقة. هذا المحور خاص بمصادر الحصول على التطبيقات، ولا يغيّر محرك تحليل/تثبيت APK/APKS/APKM/XAPK.
+
+#### 20.55.1 — تقييم المصادر حسب ما هو موثق
+
+| المصدر | ما أمكن إثباته من المصادر العامة | التكامل المقترح مبدئياً | ما لا نفترضه |
+|---|---|---|---|
+| **F-Droid** | يوفر بحثاً، وAPI معلومات للتطبيقات، وفهارس مستودع موقعة index-v1/index-v2، وملفات APK مع hashes وبيانات إصدارات. توصي وثائقه باستخدام الفهرس الموقع والتحقق من توقيعه عند أي استخدام له أثر أمني، لا الاعتماد على API العرض وحده. | تكامل أصلي أولاً: تنزيل entry/index، التحقق من توقيع المستودع بمفتاح موثوق مثبت، قراءة بيانات التطبيقات والإصدارات، ثم تنزيل APK المحدد والتحقق من SHA-256 قبل إتاحته للتثبيت. | لا نعتبر API العرض مصدراً موثوقاً للتحقق الأمني أو لتنزيل الملفات. ولا نفترض أن كل تطبيق في F-Droid ملف APK واحد؛ يجب تمرير الملف عبر Format Detection. |
+| **APKPure** | الموقع يعرض التطبيقات والإصدارات، ويعلن دعم APK وXAPK، كما يصف تطبيقه كأداة لتنزيل وإدارة هذه الصيغ. لم يظهر في البحث الحالي API عام موثق ومخصص لتكامل تطبيقات الطرف الثالث. | Provider Adapter مستقل. في البداية: البحث/فتح صفحة التطبيق الرسمية داخل المتصفح المدمج أو الخارجي، ثم استلام رابط التنزيل النهائي فقط إذا كان متاحاً بشكل طبيعي ومسموحاً؛ تنزيل الملف إلى Download Staging ثم فحصه. | لا نعتمد API غير موثق، ولا نستنتج أن رابط صفحة التطبيق هو رابط الملف، ولا نتجاوز CAPTCHA/Cloudflare أو أي حماية أو قيود وصول. |
+| **APKMirror** | الموقع أرشيف منتقى للتطبيقات وإصداراتها، ويشرح خصائص ABI وDPI وnodpi وملفات Split APKs. يذكر أن الملفات تخضع للتحقق قبل النشر، لكن هذه سياسة يعلنها المصدر وليست تحققاً مستقلاً من طرف برنامجنا. وثائق FAQ تحذر من أن التنزيل المتوازي أو كثرة التنزيلات قد تؤدي إلى حظر Cloudflare مؤقتاً. | Provider Adapter مستقل يبدأ بفتح صفحة التطبيق/الإصدار للمستخدم. إذا أمكن الحصول على رابط ملف مباشر عبر تدفق تنزيل عادي، ينزله Download Manager بتنزيل متسلسل ومحترم للقيود، ثم يمرره لفحوص التوقيع والتوافق. | لا نفترض وجود API عامة أو رابط ثابت، ولا نكسر Cloudflare ولا نستخدم scraping كثيفاً أو تنزيلات متوازية. لا نفترض أن كل إصدار APK واحد؛ بعض التطبيقات تحتاج Split APKs أو Installer خاصاً. |
+
+**مراجع المصدر الأولية:**
+- F-Droid APIs والفهارس والتوقيعات: https://f-droid.org/en/docs/All_our_APIs/
+- F-Droid signed index v2: https://f-droid.org/repo/index-v2.json
+- F-Droid App Search API: https://search.f-droid.org/api/search_apps?q=f-droid
+- APKPure APK/XAPK ومعلومات التنزيل: https://apkpure.net/apkpure-app.html
+- APKPure Terms of Use: https://apkpure.net/terms.html
+- APKMirror FAQ، بما في ذلك سياسة الانتقاء والتنزيل والحظر المؤقت: https://www.apkmirror.com/faq/
+- OWASP MASTG يذكر APKMirror وAPKPure كمرايا بديلة، وينبه إلى أن تنزيلات الأطراف الثالثة لا تضمن سلامة الملف: https://mas.owasp.org/MASTG/techniques/android/MASTG-TECH-0003/
+
+#### 20.55.2 — تجربة المستخدم المطلوبة
+
+1. شاشة **App Sources** تعرض المصادر الثلاثة مع حالة الاتصال وآخر تحديث للفهرس إن كان متاحاً.
+2. مربع بحث واحد، مع اختيار البحث في مصدر واحد أو عدة مصادر.
+3. نتائج البحث تعرض المصدر بوضوح، واسم التطبيق، وPackage ID عند توفره، والمطور، والإصدار، وتاريخ الإصدار، وحجم الملف، ونوع الحزمة، وملخص التوافق.
+4. صفحة التطبيق تعرض الإصدارات المتاحة والـ variants؛ لا نخلط إصداراً من مصدر بآخر حتى لو تشابه رقم الإصدار.
+5. المستخدم يختار الإصدار والـ variant صراحة. عند وجود ABI أو DPI أو locale أو SDK قيود، نعرض المطابقات ونوضح أي معلومة غير معروفة.
+6. زر Download ينزل إلى مجلد staging يديره البرنامج، مع progress وpause/resume عند دعم HTTP Range من الخادم، وcancel، وإعادة محاولة محدودة.
+7. بعد التنزيل: حساب SHA-256، فحص سلامة الأرشيف، تحليل APK metadata، التحقق من التوقيع ومقارنته بالتطبيق المثبت عند التحديث، ثم Device Compatibility.
+8. لا يبدأ التثبيت تلقائياً. يعرض البرنامج نتيجة الفحص ويطلب تأكيداً مستقلاً قبل إرسال الملف إلى Unified Install Engine.
+9. حفظ سجل المصدر والرابط الأصلي والإصدار ووقت التنزيل والـ hash ونتائج الفحص، دون تسجيل tokens أو cookies أو بيانات جلسات المتصفح.
+
+#### 20.55.3 — تصميم Provider Adapter موحد
+
+كل مصدر ينفذ العقد الداخلي نفسه، لكن لا يُجبر على دعم عمليات لا يوفرها:
+
+- `search_apps(query, filters)`
+- `get_app_details(source_app_id)`
+- `list_versions(source_app_id)`
+- `list_variants(source_version_id)`
+- `resolve_download(source_variant_id)`
+- `download(download_descriptor, destination, cancellation)`
+
+النتائج Typed وليست HTML خاماً:
+- `SourceApp`: source_id, source_app_id, package_id?, title, developer?, description?, app_page_url.
+- `SourceVersion`: version_name?, version_code?, release_date?, changelog_url?, source_version_id.
+- `SourceVariant`: artifact_type, architecture?, density?, locale?, min_sdk?, file_size?, checksum?, signature_metadata?.
+- `DownloadDescriptor`: final_url, expected_size?, expected_sha256?, filename_hint?, headers_policy, expires_at?.
+
+كل حقل اختياري يظل unknown إذا لم يقدمه المصدر. لا نستنتج Package ID أو hash أو ABI من اسم الملف فقط. لا تحفظ روابط مؤقتة أو signed URLs على أنها روابط دائمة.
+
+#### 20.55.4 — سياسة تنزيل آمنة وموحدة
+
+- HTTPS فقط، مع التحقق الطبيعي من TLS وعدم قبول downgrade إلى HTTP.
+- السماح بتحويلات HTTP ضمن سياسة محدودة، والتحقق من كل redirect destination لمنع SSRF أو الانتقال إلى localhost/private-network endpoints.
+- لا نرسل cookies أو Authorization headers من مصدر إلى مصدر آخر، ولا نعيد استخدام جلسة المتصفح دون موافقة واضحة.
+- حدود حجم ومهلة وعمق redirects وعدد محاولات؛ streaming إلى ملف مؤقت بدلاً من تحميل الملف كله في الذاكرة.
+- تنزيل متسلسل افتراضياً لكل مصدر، واحترام Retry-After و429 و403؛ لا تدوير IP أو تجاوز الحظر أو CAPTCHA.
+- استئناف التنزيل فقط إذا كان الخادم يدعم Range/ETag/Last-Modified بطريقة متسقة؛ وإلا نبدأ من جديد.
+- تحقق SHA-256 إذا وفره المصدر، لكن hash وحده لا يثبت هوية الناشر. يجب أيضاً التحقق من APK signing certificate عبر apksigner، ومقارنته ببصمة موثوقة/نسخة مثبتة عندما يكون ذلك ممكناً.
+- بالنسبة إلى F-Droid، لا يُقبل index أو metadata في مسار الثقة قبل التحقق من توقيع المستودع وفق مفاتيح موثوقة. ثم تتم مطابقة hash الخاص بالـAPK مع قيمة الفهرس.
+- ملفات APKM/XAPK/APKS أو أي archive تمر إلى المحللات المتخصصة وحدود ZIP الآمنة في الأقسام السابقة؛ لا يتم فكها أو تثبيتها مباشرة بواسطة Provider Adapter.
+- لا يُصنف الملف بأنه آمن لمجرد أن المصدر يقول إنه فُحص؛ نسجل مصدر الملف ونتائج فحوصنا منفصلة.
+
+#### 20.55.5 — مراحل التنفيذ المقترحة
+
+- **P0 — Source discovery:** تكامل F-Droid الأصلي مع index signature verification، وإضافة APKPure وAPKMirror كبحث/فتح صفحات رسمية مع handoff آمن للتنزيل حيثما أمكن دون تجاوز قيود الموقع.
+- **P1 — Download manager:** staging، streaming، progress، cancellation، resume عند دعم الخادم، hash، وإدارة الملفات المكررة.
+- **P2 — Provider expansion:** إضافة direct-download adapters لكل مصدر فقط بعد إثبات وجود تدفق مستقر ومسموح ووجود اختبارات fixture؛ لا scraping هش مرتبط بتصميم HTML.
+- **P3 — Device-aware variants:** ربط نتائج المصادر بـDeviceSpec الذي جرى توثيقه، ثم اختيار variant مناسب مع إبقاء قرار المستخدم واضحاً.
+- **P4 — MCP exposure:** أدوات بحث ومعاينة وتنزيل مثل `search_app_sources`, `get_source_app_versions`, `preview_app_download`, `download_app_artifact`. التنزيل مسموح بعد تأكيد المستخدم، أما التثبيت فيظل عملية منفصلة تحتاج Approval صريحاً.
+
+#### 20.55.6 — اختبارات القبول
+
+- البحث عن تطبيق واحد في المصادر الثلاثة وإظهار مصدر كل نتيجة بشكل لا يسبب خلطاً.
+- F-Droid: توقيع index صحيح/خاطئ/مفتاح غير معروف، index diff، إصدار مؤرشف، hash صحيح/خاطئ، وانقطاع أثناء تنزيل APK.
+- APKPure/APKMirror: صفحة تطبيق بلا رابط تنزيل مباشر، رابط يتغير أو ينتهي، Cloudflare/403/429، redirect غير مسموح، وHTML error page بدلاً من ملف.
+- تنزيل APK منفرد، XAPK، APKM، APKS، وSplit APKs دون افتراض أن الامتداد يثبت الصيغة.
+- ملف ناقص أو hash mismatch أو signature mismatch أو package ID غير متوقع.
+- resume مع HTTP Range وETag، وخادم لا يدعم Range، وإلغاء أثناء التنزيل، وإعادة تشغيل البرنامج أثناء وجود partial file.
+- مصدران يعرضان الاسم نفسه مع Package IDs أو signing certificates مختلفة؛ يجب عرضهما كعنصرين مختلفين وتحذير المستخدم.
+- تنزيل إصدار أقدم أو variant غير متوافق مع الجهاز؛ لا يتم التثبيت قبل ظهور نتيجة Device Compatibility.
+- التأكد من عدم إرسال cookies أو tokens بين المصادر، وعدم تسجيل بيانات حساسة في logs.
+- اختبارات MCP تثبت أن البحث والمعاينة لا يبدآن التنزيل أو التثبيت تلقائياً، وأن التنزيل لا يؤدي إلى تثبيت ضمني.
+
+**الحالة الحالية:** بحث وثائقي أولي. F-Droid هو المصدر الوحيد الذي ظهر له مسار فهرسة وتحقق موثق يصلح لتكامل أصلي واضح. APKPure وAPKMirror مدرجان كمصدري اكتشاف/تنزيل عبر Provider Adapters، لكن لم يثبت وجود API عامة مستقرة أو تكامل مباشر معتمد لهما. لم يتم تنفيذ كود أو تنزيل ملفات أو اختبار أي مصدر runtime في هذه الجولة.
+
+**القرار:** نضيف المصادر الثلاثة إلى نطاق المنتج، مع أولوية تنفيذ F-Droid كتكامل أصلي موثق، وAPKPure/APKMirror كتدفق بحث وصفحات وتنزيل آمن لا يتجاوز آليات الحماية. لا نربط هذه المصادر بمحرك التثبيت مباشرة؛ جميع الملفات تمر عبر نفس الفحص ومحرك التثبيت الموجودين في التصميم.
+
