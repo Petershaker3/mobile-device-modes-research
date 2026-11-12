@@ -2945,3 +2945,111 @@ README blob SHA: fa6b10a8938d0b0a4c25696451424f3c4f2cb548
 **القرار المقترح للمرحلة التالية:** نستخدم xapkInstaller كأقرب implementation reference ونراجع كل format adapter على حدة، ونستخدم bundletool الرسمي لـAPKS القياسي، ونستفيد من SAI/ApkInstaller في APKM/XAPK metadata وsplit selection، مع بناء pipeline موحد آمن في برنامجنا. لا نعمل fork قبل تحديد ما يمكن فصله وإعادة استخدامه دون نقل سلوكياته الخطرة.
 
 **حالة التحقق:** README وملف xapkInstaller.py تمت مراجعتهما على GitHub. لم يتم تنزيل المشروع أو تشغيله أو بناءه أو اختباره على Windows/هاتف. كل نقاط الضعف المذكورة ناتجة عن مراجعة source، وليست نتائج اختبار runtime.
+
+
+### 20.42 تدقيق pacman-apk — واجهة Windows تدعم APK/XAPK/APKS/APKM (12 نوفمبر 2026)
+
+المستودع: [nuloperrito/pacman-apk](https://github.com/nuloperrito/pacman-apk)  
+Commit المصدر الذي تمت مراجعته: `87af1d04541297fdf272813567928a2a6de6e756`  
+الملفات التي تمت مراجعتها:
+- [README.md](https://github.com/nuloperrito/pacman-apk/blob/87af1d04541297fdf272813567928a2a6de6e756/README.md)
+- [reader_apkm.dart](https://github.com/nuloperrito/pacman-apk/blob/87af1d04541297fdf272813567928a2a6de6e756/lib/parser/reader_apkm.dart)
+- [reader_apks.dart](https://github.com/nuloperrito/pacman-apk/blob/87af1d04541297fdf272813567928a2a6de6e756/lib/parser/reader_apks.dart)
+- [reader_xapk.dart](https://github.com/nuloperrito/pacman-apk/blob/87af1d04541297fdf272813567928a2a6de6e756/lib/parser/reader_xapk.dart)
+- [android_utils.dart](https://github.com/nuloperrito/pacman-apk/blob/87af1d04541297fdf272813567928a2a6de6e756/lib/parser/android_utils.dart)
+- [adbwsa_utils.dart](https://github.com/nuloperrito/pacman-apk/blob/87af1d04541297fdf272813567928a2a6de6e756/lib/utils/adbwsa_utils.dart)
+- [pubspec.yaml](https://github.com/nuloperrito/pacman-apk/blob/87af1d04541297fdf272813567928a2a6de6e756/pubspec.yaml)
+
+#### 20.42.1 ما يعلنه المشروع وما ظهر في البنية
+
+- تطبيق Windows بـFlutter/Dart وFluent UI، ويستهدف WSA وأجهزة Android عبر USB ADB.
+- يعلن دعم APK وXAPK وAPKS وAPKM، مع اختيار الجهاز من قائمة عند وجود أكثر من جهاز/WSA.
+- يستخدم Protobuf decoder لـAPKS وmanifest decoders، ويجهز split APKs ثم يمررها إلى `adb install-multiple`.
+- يتضمن مسارات منفصلة لكل من APKM وAPKS وXAPK، وليس مجرد قبول امتدادات الملفات.
+- README يذكر أن تثبيت الهاتف الفعلي عبر USB ADB؛ لم أجد في وصف الاستخدام المراجع دعماً واضحاً لـWireless ADB.
+- يعتمد على مكتبة `archive` لفك ZIP، وعلى ADB وأدوات Android المرفقة/المهيأة في التطبيق.
+
+#### 20.42.2 نقاط قوة قابلة للاستفادة
+
+1. فصل parser حسب الصيغة: APK / APKM / APKS / XAPK.
+2. وجود parser لـ`toc.pb` في APKS، مع ملفات Protobuf المولدة من schema.
+3. قراءة `info.json` في APKM و`manifest.json` في XAPK.
+4. دعم XAPK expansions/OBB كجزء منفصل عن قائمة APK splits.
+5. استخدام `adb -s <device>` في مسارات تثبيت APK وsplit APK، وهو أساس جيد لتحديد الهدف صراحة.
+6. عرض بيانات الحزمة والأذونات قبل التثبيت، والتمييز بين Install وUpdate وReinstall وDowngrade.
+7. استخدام background isolates لمعالجة بعض بيانات الحزم حتى لا تتجمد الواجهة أثناء parsing.
+
+#### 20.42.3 عيوب ومخاطر ظهرت في مراجعة المصدر
+
+**أ. اختيار APKS غير مربوط بمواصفات الهاتف**
+
+- `reader_apks.dart` يمنح أولوية ثابتة لـx86_64 ثم arm64-v8a ثم x86 ثم armeabi-v7a، مع تعليق يوضح أن الترتيب موجه لأداء WSA.
+- هذا ليس DeviceSpec matching عاماً؛ قد يختار variant غير مناسب لهاتف ARM أو جهاز بخصائص مختلفة.
+- عند عدم تكوين قائمة من `toc.pb`، يوجد fallback يجمع كل ملفات APK داخل الأرشيف دون اختيار دقيق للـvariant/configuration.
+- القرار: لا ننسخ خوارزمية الاختيار. يجب استخراج ABI/API/density/locale من الجهاز ومطابقتها مع targeting metadata، أو استخدام bundletool الرسمي لمسار APKS القياسي.
+
+**ب. أمان الأرشيف واستخراج الملفات**
+
+- مسارات APKM وXAPK تستخدم أسماء entries من الأرشيف مع `path.join` لإنشاء ملفات staging.
+- لم يظهر في المسارات التي تمت مراجعتها enforcement موحد لحدود عدد entries والحجم الفعلي بعد فك الضغط ونسبة الضغط والوقت ومساحة القرص.
+- لم يظهر تحقق شامل من path traversal وabsolute paths وdrive/UNC paths والروابط الرمزية والتكرار وتصادم الأسماء قبل الكتابة.
+- استخدام `ZipDecoder().decodeBytes` لفك ملفات APK داخل APKS يضيف طبقة أرشيف متداخلة يجب أن تخضع لنفس الحدود.
+- القرار: لا ننسخ extraction code. نستخدم ZIP staging محدوداً بسياسة القسم 20.33، مع أسماء ملفات مولدة والتحقق من كل entry قبل الكتابة.
+
+**ج. نقل OBB/expansion**
+
+- `copyApkResources` يرفع expansion إلى مسار مؤقت ثم ينفذ shell command لإنشاء المجلد ونقل الملف إلى المسار المستهدف.
+- المسار المستهدف واسم الملف مشتقان من manifest، ثم يدمجان في shell command؛ يجب ألا يسمح لأي قيمة من الأرشيف بتكوين shell command مباشرة.
+- استدعاء تجهيز resources يبدأ قبل انتظار نتيجة تثبيت APK، أي إن نسخ OBB ليس مشروطاً بنجاح تثبيت الحزمة أولاً.
+- القرار: نعامل OBB كخطة مستقلة: تحقق من package mapping والمسار والاسم والحجم، ثم Preview وموافقة، ثم تثبيت APK والتحقق منه، وبعدها نقل OBB باستخدام أوامر ذات arguments منفصلة لا shell string.
+
+**د. إدارة العمليات والنتيجة**
+
+- `ADBUtils._command` يستخدم `Process.run` دون timeout أصلي أو cancellation ظاهر في هذا الملف.
+- `processTimeout` يعتمد على Future timeout ويعيد sentinel عند انتهاء المهلة؛ لا يظهر أنه يقتل عملية ADB الأصلية، ولذلك قد تستمر العملية بعد أن تعرض الواجهة حالة timeout.
+- نجاح التثبيت يُحدد من exit code فقط؛ لم يظهر في المسار المراجع read-back للتحقق من package/version بعد التثبيت.
+- لا يظهر في هذا المسار ربط موافقة المستخدم ببصمات الملفات والجهاز وخطة التثبيت.
+- القرار: نحتاج Process runner يملك العملية ويمكنه إنهاءها، progress/cancel حقيقيين حيثما أمكن، operation ID، ثم تحقق مستقل من package/version على الجهاز.
+
+**هـ. سياسة التثبيت**
+
+- خيار downgrade يضيف `-r -d`، ويظهر للمستخدم كحالة مستقلة. هذا أفضل من تفعيل downgrade دائماً، لكن لا يجوز أن يكون downgrade اختياراً ضمنياً أو fallback عند فشل التحديث.
+- لا يظهر في helper المراجع استخدام `-g` لمنح كل runtime permissions تلقائياً، وهي نقطة نحتفظ بها كقاعدة تصميم: لا منح تلقائي للصلاحيات.
+- لا نستخدم سلوكاً يزيل التطبيق تلقائياً عند فشل التحديث، ولا نعيد تثبيته على نحو قد يفقد بياناته.
+
+#### 20.42.4 الحكم وإعادة الاستخدام
+
+**التصنيف: مرشح Windows GUI قوي لتغطية الصيغ، ومرجع معماري/تنسيقي، لكنه غير معتمد للدمج كما هو.**
+
+| المجال | النتيجة |
+|---|---|
+| Windows GUI | معلن وموجود في بنية Flutter/Windows |
+| APK | مسار موجود |
+| APKS | parser Protobuf موجود؛ اختيار variants يحتاج إعادة تصميم |
+| APKM | parser `info.json` موجود |
+| XAPK | parser manifest/fallback موجود |
+| OBB | مسار expansions موجود، لكنه يحتاج فصل وتأمين |
+| USB ADB | موجود |
+| Wireless ADB | غير مثبت من الملفات التي تمت مراجعتها |
+| DeviceSpec matching | غير كافٍ؛ اختيار APKS منحاز لترتيب ثابت |
+| ZIP security limits | غير مثبتة في المسارات المراجعة |
+| timeout/cancellation | غير كافٍ؛ Future timeout لا يثبت إنهاء process |
+| post-install verification | غير مثبت في المسار المراجع |
+| tests | بحث ملفات الاختبار لم يُظهر suite مرتبطة بهذه parsers؛ لا أعتبر ذلك إثباتاً قاطعاً لعدم وجود اختبارات |
+
+**ما يمكن إعادة استخدامه بعد تحقق إضافي:** تقسيم format adapters، قراءة APKM/XAPK metadata كمرجع، Protobuf schema كمرجع لفهم APKS، وتصميم واجهة اختيار الجهاز ومعاينة بيانات التطبيق.
+
+**ما لا ننسخه:** اختيار ABI الثابت، fallback الذي يجمع جميع APKs، extraction غير المحكوم، shell command المبني من بيانات manifest، نقل OBB بالتوازي مع التثبيت، أو timeout الذي لا يضمن إنهاء العملية.
+
+#### 20.42.5 مقارنة المرشحين بعد الإضافة
+
+| المشروع | الصيغ المعلنة/المراجعة | القيمة الأساسية | القرار الحالي |
+|---|---|---|---|
+| [adhu2018/xapkInstaller](https://github.com/adhu2018/xapkInstaller) | APK/APKS/APKM/XAPK/AAB | تغطية واسعة في تطبيق Windows واحد | أفضل مرجع أولي لتعدد الصيغ؛ لا يدمج كما هو بسبب عيوب موثقة في 20.41 |
+| [nuloperrito/pacman-apk](https://github.com/nuloperrito/pacman-apk) | APK/APKS/APKM/XAPK | واجهة Windows حديثة وparsers مستقلة وOBB path | مرشح قوي ثانٍ للمقارنة؛ لا يدمج كما هو بسبب نقاط 20.42 |
+| [havokentity/android-application-installer](https://github.com/havokentity/android-application-installer) | APK/AAB | Tauri/Rust، تنزيل ADB وbundletool وإدارة عمليات التثبيت | مرجع بنية وتشغيل، وليس تغطية صيغ split كاملة |
+| [Google bundletool](https://github.com/google/bundletool) | AAB/APKS | المرجع الرسمي لتوليد/اختيار/تثبيت APK sets | الخيار الأساسي لمسار APKS القياسي متى أمكن ربطه بالجهاز الصحيح |
+
+**قرار المرحلة:** لا نختار مشروعاً واحداً لمجرد أنه يدعم أكبر عدد امتدادات. نقارن xapkInstaller وpacman-apk على corpus ثابت من عينات APK/APKS/APKM/XAPK، ونفصل parser/selector/installer/OBB. يظل bundletool المسار المرجعي لـAPKS القياسي؛ ولا نستخدم ترتيب ABI ثابتاً أو extraction عامّاً غير محدود.
+
+**حالة التحقق:** تمت مراجعة README وpubspec والملفات المصدرية المحددة على GitHub عند commit المذكور. لم يتم تنزيل المشروع أو بناءه أو تشغيله، ولم يتم تثبيت أي تطبيق على هاتف أو WSA. لا يوجد ادعاء باختبار runtime أو hardware.
