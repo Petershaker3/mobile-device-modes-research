@@ -821,3 +821,36 @@ default_tools_approval_mode = "writes"
 - توثيق إصدار/Commit SHA للمكون المقتبس وإمكانية استبداله دون ربط بقية النظام به.
 
 **حالة الجولة:** [x] مراجعة إضافية لملفات System/Files/UI في us-all. [x] تحديد مسارات إدخال تحتاج اختبارات/إصلاح. [x] مراجعة workflow التوزيع والنشر للمشروعات الثلاثة. [ ] Windows-native execution. [ ] اختبارات injection معزولة. [ ] اعتماد كود خارجي.
+
+
+### 20.16 تدقيق دورة حياة MCP وADB وSTDIO (12 نوفمبر 2026)
+
+#### iksnerd/adb-mcp — نقاط قوة تشغيلية ظهرت في المصدر
+
+- `cmd/adb-mcp/main.go` يشغل MCP عبر `mcp.StdioTransport`، ويتعامل مع إغلاق stdin/EOF كإغلاق طبيعي، ويمرر SIGINT/SIGTERM إلى Context للإلغاء.
+- تسجيل الخادم لا يكتفي بإنشاء الأدوات؛ عند الإغلاق يستدعي `cleanup()` لإيقاف عمليات Gradle الجارية، وإيقاف جلسات التقاط logcat/screen recording، ومحاولة استعادة بعض تغييرات حالة الجهاز التي سجلها الخادم.
+- أخطاء الاستعادة تذهب عبر Go logger، الذي يستخدم stderr افتراضياً، بينما STDIO transport مخصص لبروتوكول MCP. هذا فصل جيد يجب الحفاظ عليه.
+- `internal/adb/adb.go` يوفر Runner interface ويحقن تنفيذ ADB؛ الاختبارات تستطيع تمرير Fake Runner دون تشغيل ADB أو توصيل هاتف. هذا يجعل اختبار command construction وtimeouts أسهل.
+- `exec.CommandContext` ينفذ ADB بوسائط منفصلة ويتيح الإلغاء عند انتهاء Context.
+- يوجد ملف Windows-specific `detach_windows.go`، ويجعل detach no-op على Windows لأن المحاكي يبدأ دون controlling session بحسب تعليق المشروع. هذه معالجة خاصة بالمنصة، لكنها ليست بديلاً عن اختبار lifecycle على Windows.
+
+**تحفظ:** cleanup يحاول استعادة Overrides المعروفة فقط، ولا يضمن استعادة كل حالة يمكن أن تتغير خارج سجل الخادم. لذلك لا نصمم في منتجنا عمليات طويلة أو تغييرات دائمة على افتراض أن إغلاق MCP سيعيد الهاتف دائماً إلى حالته السابقة.
+
+#### us-all/android-mcp-server — طبقة تنفيذ المضيف
+
+- `src/adb.ts` يستخدم Node `execFile` مع arguments array وtimeout افتراضي 30 ثانية؛ لا يستخدم `exec` لتشغيل أمر المضيف كسطر Shell. هذا يقلل مخاطر حقن أوامر Windows host.
+- لكن `adbShell(command)` يرسل command string واحدة بعد `adb shell`؛ لذلك يظل بناء Android shell command مسؤولية كل handler، ولا يحل `execFile` مشكلة الحقن داخل Android shell.
+- `src/config.ts` يجعل `allowWrite` و`allowShell` false افتراضياً، ويختبر وجود ADB عند بدء التشغيل.
+- `src/index.ts` يستخدم MCP server ويغلف handlers عبر `wrapToolHandler` أو `wrapImageToolHandler`. يجب تدقيق wrappers/runtime عند اعتماد المشروع للتأكد من أن stdout لا يتلقى رسائل logging غير بروتوكولية.
+- لم نثبت بعد سلوك الإغلاق وإلغاء العمليات طويلة الأمد أو استعادة الحالة؛ يلزم اختبار عملي قبل النقل.
+
+#### أثر ذلك على تصميم برنامجنا
+
+1. استخدم Runner/Process Adapter موحداً يدعم arguments منفصلة وtimeouts وcancellation وcaptured stdout/stderr.
+2. اجعل MCP transport وحده يملك stdout؛ كل logs/diagnostics تذهب إلى stderr أو ملف سجل منقح.
+3. اربط كل عملية طويلة بـCancellationToken/Context؛ عند قطع اتصال Codex يجب أن نحدد هل نوقف العملية أم نسمح لها بالاكتمال، حسب نوعها.
+4. سجل التغييرات القابلة للاستعادة قبل تنفيذها، وحدد بوضوح العمليات التي لا يمكن rollback لها.
+5. لا تجعل cleanup الآلي يخفي فشل الاستعادة؛ اعرض تقريراً للمستخدم بما تم استعادته وما بقي مطبقاً.
+6. اختبر إغلاق العميل، قتل العملية، انقطاع ADB، وفشل الاستعادة على Windows فعلياً.
+
+**حالة الجولة:** [x] مراجعة دورة حياة MCP في iksnerd. [x] مراجعة ADB process adapter في المشروعين. [x] توثيق فصل STDIO/logging المطلوب. [ ] اختبار Windows-native. [ ] اختبار انقطاع العميل أثناء عملية طويلة. [ ] اختبار الاستعادة بعد crash أو force-kill.
