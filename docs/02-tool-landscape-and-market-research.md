@@ -3593,3 +3593,88 @@ Commit تمت مراجعته: `a88e05386a0fc9751ef7637ad437659bfdd60a43`.
 **حالة التحقق:** Source/Docs Review عند commit محدد. لم يتم بناء المشروع أو تشغيله، ولم يتم تثبيت APK/APKM/APKS/XAPK/AAB على جهاز فعلي. لا توجد Hardware Validation أو Runtime Validation لهذه النتائج.
 
 **قرار الجولة:** نضيف xapkInstaller إلى قائمة المراجع ذات القيمة، ولا نعتمده كـadapter جاهز. نواصل البحث عن parsers/fixtures متخصصة قابلة للفصل، مع إبقاء bundletool هو المسار المرجعي الرسمي لـGoogle APKS/AAB.
+
+
+### 20.48 — تدقيق Android Application Installer: مرجع Tauri 2/Rust لتكامل ADB وAAB
+
+المستودع: [havokentity/android-application-installer](https://github.com/havokentity/android-application-installer)  
+Commit تمت مراجعته: `11acb70c5a8886a1f0e985217a635321d681bc49`.  
+الملفات: `README.md`، `src-tauri/src/adb.rs`، `src-tauri/src/package.rs`، `src-tauri/src/cmd.rs`، `src-tauri/src/lib.rs`، `src-tauri/Cargo.toml`، `package.json`، `.github/workflows/build.yml`، `docs/architecture.md`.
+
+**سبب أهمية المرشح:**
+- تطبيق Desktop مبني فعلياً على Tauri 2 + Rust + React/TypeScript، قريب من شكل تطبيق Windows حديث قابل للتوسعة.
+- يدير نسخته الخاصة من ADB وJava وbundletool، ويقدم اكتشاف أجهزة USB/Wireless ADB، معلومات الجهاز، تثبيت APK/AAB، تقدم العمليات وإلغاءها.
+- واجهة IPC typed تمر عبر `src/api.ts`، وعمليات التثبيت في Rust وليست shell commands مركبة من الواجهة.
+- يطبق device serial صريحاً في أوامر ADB، ويستخدم bundletool `--device-id` في مسار AAB.
+- يضم اختبارات وحدات لبعض parsers وعمليات تحليل المخرجات.
+
+**ما ظهر في الكود:**
+
+1. **اكتشاف الأجهزة والاتصال**
+   - `get_devices` يستخدم `adb devices -l` مع timeout، ويفك serial/state/model/product/transport_id.
+   - `get_device_details` يمرر `-s SERIAL` لكل استعلام ويضع timeout لكل أمر.
+   - يوجد push-based tracking عبر `adb track-devices -l`، إضافة إلى Wireless ADB وmDNS pairing/connect/disconnect.
+   - هذه بنية مرجعية جيدة لـADB lifecycle، device discovery، typed device state، وواجهة اتصال USB/Wireless.
+   - ما زال مطلوباً اختبار حالات unauthorized/offline/disconnect وتعدد الأجهزة على Windows فعلياً؛ اختبارات parser وحدها لا تثبت سلوك الجهاز.
+
+2. **تثبيت APK**
+   - يستقبل `device` صراحةً، ويتحقق من اتصال الجهاز قبل التثبيت.
+   - على Windows ينسخ الملف محلياً عند الحاجة، ثم `adb -s SERIAL push` إلى `/data/local/tmp`، ويتعامل مع حالة EOF التي قد تظهر رغم اكتمال النقل، ثم يفحص وجود الملف على الجهاز.
+   - بعد ذلك ينفذ `pm install -r`، ويسمح بـ`-d` فقط عندما يمرر المستخدم `allow_downgrade=true`.
+   - على macOS/Linux يستخدم `adb -s SERIAL install -r` مع نفس خيار downgrade الاختياري.
+   - توجد progress events وcancellation token مستقل لكل عملية.
+   - هذه السياسة أكثر تحفظاً من المرشحين السابقين لأنها لا تفعّل downgrade أو test-only افتراضياً، ولا يظهر fallback تلقائي لإزالة التطبيق.
+
+3. **نقاط تحتاج معالجة قبل الاقتباس**
+   - اسم الملف المؤقت على الجهاز مبني من basename فقط: `/data/local/tmp/<filename>`. تشغيل عمليتين متزامنتين لملفين بالاسم نفسه قد يسبب تصادم كتابة؛ يلزم remote staging name فريد لكل operation.
+   - إذا ألغيت العملية أثناء push أو install، مسار التنظيف قد لا يزيل الملف البعيد؛ إذ يستخدم أمر `rm` نفس cancellation flag التي أصبحت مفعلة، فيمكن أن يُلغى التنظيف أيضاً. نحتاج cleanup مستقل قصير بمهلة محددة، مع reconcile بعد الانقطاع.
+   - بعد التثبيت يعتمد المسار على exit status ورسالة ADB ولا يظهر تحقق مستقل لاحق من package/version عبر `pm path` أو package metadata.
+   - فحص وصول الملف على الجهاز يستخدم وجود المسار، وليس مقارنة SHA-256 بين الملف المحلي والبعيد.
+   - مسار Windows ينتظر `wait-for-usb-device` بعد push؛ يلزم اختبار أثر ذلك مع Wireless ADB، لأن أمر الانتظار USB-specific وقد يضيف تأخيراً لمسار Wi-Fi.
+   - فشل أو إلغاء بعض مراحل AAB قد يترك ملف APKS مؤقتاً؛ يجب توحيد cleanup في `finally` أو RAII guard.
+
+4. **تثبيت AAB**
+   - ينفذ `bundletool build-apks` ثم `bundletool install-apks`.
+   - يمرر `--device-id=SERIAL` و`--adb=...` في المرحلتين؛ هذا يطابق قاعدة explicit device selection.
+   - يدعم `allow_downgrade` كاختيار منفصل.
+   - عند عدم تحديد keystore ينشئ/يستخدم Android debug keystore الافتراضي لتوقيع الحزمة. هذا مناسب للتجارب والتثبيت الأولي، لكنه قد يجعل التحديث فوق نسخة منشورة بتوقيع المطور الأصلي يفشل بسبب اختلاف الشهادة؛ يجب إظهار هوية التوقيع والتحذير قبل install/update وعدم اعتباره signing مناسباً للإنتاج.
+   - كلمات مرور keystore تُمرر كوسائط process arguments إلى Java/bundletool؛ يلزم مراجعة مدى ظهورها في process listings/logs على الأنظمة المستهدفة، وتفضيل آلية تمرير أسرار تقلل التعرض.
+
+5. **تحليل APK**
+   - يستخدم Rust crate `axmldecoder` لقراءة AndroidManifest من APK ZIP، مع fallback إلى aapt/aapt2.
+   - يستخرج package/version/minSdk/targetSdk/permissions.
+   - قراءة manifest تتم عبر `read_to_end` إلى الذاكرة دون حد ظاهر لحجم entry في المسار المراجع؛ يلزم تطبيق size limit ووقت/ذاكرة محدودين عند التعامل مع ملفات غير موثوقة.
+   - parser metadata لا يمثل بديلاً عن فحص التوقيع أو مطابقة split package/version/signers.
+
+6. **الفجوة في تغطية الصيغ**
+   - ما يعلنه وينفذه المشروع في مسارات التثبيت هو APK وAAB.
+   - لا يظهر في command registry أو install engine مسار مباشر لـAPKS/APKM/XAPK/OBB أو `adb install-multiple`.
+   - لذلك لا يحقق وحده هدف دعم الصيغ المتعددة، لكنه يوفر أساساً جيداً لطبقة ADB وTauri IPC وprogress/cancellation وmanaged tools.
+
+7. **الاختبارات وCI**
+   - توجد اختبارات Rust لتحليل package metadata وADB device/mDNS output وبعض helper functions.
+   - `package.json` يعرّف Vitest و`cargo test` scripts، لكن workflow الذي تمت مراجعته يركز على build/release ولا يحتوي خطوات صريحة لتشغيل `npm test` أو `cargo test`.
+   - لم نجد في الملفات المراجعة اختبارات تثبيت على جهاز حقيقي أو corpus شامل لصيغ APK/APKS/APKM/XAPK.
+   - بالتالي وجود اختبارات parser لا يثبت runtime install success.
+
+**الحكم الهندسي:**
+- **مرشح معماري قوي للاقتباس الانتقائي:** Tauri 2/Rust typed IPC، إدارة ADB، اكتشاف الأجهزة، wireless pairing، progress/cancellation، إدارة أدوات ADB/Java/bundletool.
+- **ليس محرك multi-format جاهزاً:** لا يحقق APKS/APKM/XAPK/OBB ولا split selection.
+- لا ننسخ التطبيق كاملاً ولا نعتبره حلاً نهائياً. نحتفظ به كمرجع لتصميم طبقة الاتصال والتنفيذ، ونقارن بنيته مع خدمة التثبيت الموحدة التي نحتاجها.
+- قبل إعادة استخدام أي جزء: نعالج unique remote staging، cleanup بعد cancellation، file hash verification، post-install package verification، limits لقراءة manifest، وإدارة أسرار keystore.
+- لا ننقل auto-debug-signing إلى تحديثات التطبيقات كإعداد صامت؛ يجب توضيح أن التوقيع الجديد قد لا يطابق توقيع التطبيق المثبت.
+
+**اختبارات قبول مستخلصة:**
+- جهاز USB واحد، جهاز Wi-Fi واحد، جهازان معاً، unauthorized/offline، disconnect أثناء push/install.
+- APK file name collisions عند عمليتين متزامنتين، وإلغاء العملية في كل مرحلة مع التأكد من cleanup.
+- hash محلي/بعيد متطابق، ومقارنة الحجم، ورفض الملف الناقص أو التالف قبل install.
+- تثبيت APK ناجح يتبعه تحقق package/version/signature identity.
+- AAB مع debug keystore ثم محاولة update لحزمة موقعة بمفتاح مختلف؛ يجب عرض signature mismatch بوضوح دون إزالة النسخة الحالية.
+- keystore passwords لا تظهر في logs ولا في تقارير التشخيص، والتحقق من exposure في process command line.
+- APK manifest ضخم/تالف/ZIP bomb؛ يرفض ضمن حدود موارد معلنة.
+- Wireless ADB: لا ينتظر USB-only transport دون سبب، ولا يبقى في حالة انتظار غير محدودة.
+- CI يشغل Rust tests وVitest إضافة إلى build، مع اختبارات parser وfixtures للـAPK.
+
+**حالة التحقق:** Source/Docs Review عند commit محدد. لم يتم build أو تشغيل البرنامج أو تثبيت APK/AAB على جهاز فعلي في هذه الجولة. نتائج CI workflow قُرئت من المصدر ولم ننفذ workflow بأنفسنا.
+
+**قرار الجولة:** نعتمد هذا المستودع مرجعاً معمارياً قوياً لطبقة Windows/Tauri/Rust/ADB، لا مرجعاً لتغطية الصيغ. نواصل البحث عن مكونات متخصصة لـAPKS/APKM/XAPK/OBB يمكن ربطها بخدمة ADB موحدة.
