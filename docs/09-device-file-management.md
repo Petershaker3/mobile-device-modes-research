@@ -394,4 +394,4 @@ Device Selection (explicit DeviceHandle)
 - لم يتم اختبار آلاف الملفات أو ملفات كبيرة جداً أو أسماء newline على جهاز فعلي.
 - لم يتم اعتماد WinDroidFS أو WinFsp أو أي كود للدمج.
 
-**الحالة:** البحث ومراجعة المصدر تمت للمرشحين المحددين؛ لا يوجد اعتماد دمج أو اختبار Hardware. الخطوة التالية هي بحث مستقل في Firmware & Software Inventory، ثم Storage & Partition Information، مع استمرار مراجعة backup/restore كمسار منفصل.
+**الحالة:** البحث ومراجعة المصدر تمت للمرشحين المحددين؛ لا يوجد اعتماد دمج أو اختبار Hardware. محورا Firmware/Software وStorage/Partitions موثقان بالفعل في [07](07-firmware-software-inventory.md) و[08](08-storage-partition-information.md)، والنسخ الاحتياطي في [11](11-backup-restore-boundaries.md). الخطوة التالية هي Source Revalidation ثم PoC للنقل والـMTP/WPD وفق [12](12-REUSE-AND-IMPLEMENTATION-PLAN.md).
