@@ -2861,3 +2861,84 @@ Operation result + redacted report + MCP result
 10. اختبارات Windows automated للـparser/security، ثم اختبارات ADB على أجهزة حقيقية موثقة؛ لا نخلط النوعين.
 
 **حالة التحقق:** مراجعة وثائق ADB وbundletool رسمياً؛ مراجعة README ومقتطفات source لمشاريع المرشحين المذكورة؛ مراجعة unit tests في ApkInstaller. لم يتم تشغيل build أو test suite لأي مشروع خارجي، ولم يتم تثبيت APK على هاتف في هذه الجولة.
+
+### 20.41 تدقيق xapkInstaller — أقرب مرشح Windows يغطي الصيغ المطلوبة (12 نوفمبر 2026)
+
+المستودع: [adhu2018/xapkInstaller](https://github.com/adhu2018/xapkInstaller)  
+الملف الأساسي المراجع: xapkInstaller.py  
+Commit source الذي تمت مراجعته: a88e05386a0fc9751ef7637ad437659bfdd60a43  
+README blob SHA: fa6b10a8938d0b0a4c25696451424f3c4f2cb548
+
+#### 20.41.1 التغطية المعلنة في README
+
+المشروع Windows desktop/GUI، ويتيح ربط امتدادات الملفات به أو تمرير الملفات/المجلدات من command line. README يعلن:
+- APK
+- APKM
+- APKS القياسي وSAI-generated
+- XAPK، مع XAPK v1 وv2
+- AAB عبر Java + bundletool
+- ADB، وaapt اختيارياً لبعض المسارات
+- OBB ضمن بعض حزم XAPK
+
+هذه التغطية تجعله أقرب مشروع Windows وجدناه إلى هدفنا من ناحية عدد الصيغ، لكنه لا يصبح معتمداً بمجرد قائمة README.
+
+#### 20.41.2 ما ظهر في مراجعة الكود
+
+- يوجد dispatcher حسب امتداد الملف يوجه إلى install_apk/install_apkm/install_apks/install_xapk/install_aab.
+- APKM يقرأ info.json ويستخرج min_api وpname وversioncode وبيانات arches، ثم يحاول اختيار ABI/density/language.
+- APKS القياسي يفضل bundletool install-apks عندما يجد toc.pb؛ ويفصل SAI v1/v2 metadata إلى مسار مختلف.
+- XAPK يقرأ manifest.json، ويعالج split_apks أو expansions/OBB.
+- توجد قراءة لمواصفات الجهاز عبر ABI وdensity وlocale وSDK، ومقارنة min SDK.
+- توجد محاولة لاستخدام Package Manager install sessions كمسار احتياطي لبعض حالات split install.
+- المشروع يملك Windows build script وGitHub Actions حسب README.
+
+#### 20.41.3 عيوب تمنع الدمج كما هو
+
+**هذه نقاط ظهرت مباشرة في source الذي تمت مراجعته:**
+
+1. **خيارات تثبيت متساهلة افتراضياً:** APK وAPKM وXAPK split paths تستخدم قيمة flags الافتراضية -rtd؛ وهذا يجمع replace وtest-only وdowngrade. لا ننسخ هذا السلوك. downgrade وtest-only يجب أن يكونا opt-in منفصلين.
+2. **إزالة التطبيق عند فشل التحديث:** مسار APK قد يحاول uninstall بعد فشل replace ثم يعيد التثبيت؛ هذا قد يفقد بيانات المستخدم. لا نستخدم uninstall fallback تلقائياً.
+3. **اختيار أجهزة غير صريح:** check() يجمع الأجهزة المتاحة، ويبدو أن main يكرر العملية على الأجهزة المكتشفة بدلاً من فرض اختيار جهاز واحد واضح؛ هذا لا يطابق شرط Serial صريح لكل عملية.
+4. **bundletool device targeting:** مسار install-apks لا يمرر device-id في الأمر الظاهر؛ يجب فرض target device عند تعدد الأجهزة والتحقق من أن bundletool يستخدم نفس Serial الذي اختاره المستخدم.
+5. **Fallback APKS ضعيف:** عند فشل bundletool يوجد parser يدوي يمرر جميع entries تحت splits/ إلى install-multiple دون إظهار مطابقة DeviceSpec كاملة. لا نستخدم هذا fallback كما هو.
+6. **قائمة لغات ثابتة:** APKM/XAPK locale handling يعتمد قائمة لغات محددة، وقد يفوّت locales أو scripts/regions غير الموجودة بها.
+7. **اختيار density تقريبي:** mapping من dpi إلى drawable qualifiers مبسط، ويحتاج مقارنة بخوارزمية Android/bundletool وسلوك nodpi/anydpi.
+8. **OBB:** مسار expansions ينسخ الملفات إلى مسارات مستمدة من manifest؛ يجب التحقق من package identity والمسارات والملفات، ويجب أن يكون النقل بعد نجاح التثبيت وموافقة مستقلة. يجب أيضاً تغطية أكثر من expansion؛ الكود الظاهر يعيد نتيجة داخل loop بعد أول عنصر.
+9. **Archive/resource limits:** لا تظهر في المسارات المفحوصة حدود شاملة لعدد entries أو actual extracted bytes أو زمن/مساحة extraction. يجب إضافة سياسة القسم 20.33.
+10. **APKM/APKS extraction:** استخدام ZipFile.extract دون سياسة موحدة معلنة للتحقق من المحتوى والـhash والـmanifest consistency قبل تثبيت الملفات.
+11. **تحقق النتيجة:** يجب أن نقرأ package/version من الجهاز بعد العملية؛ لا نكتفي بexit code أو نص stdout.
+12. **اختبارات:** لم أجد في نتائج البحث التي راجعتها suite اختبارات واضحة للـparsers/selection أو Windows ADB integration؛ لا أعتبر هذا إثباتاً لعدم وجود أي tests، لكنه فجوة تحقق قبل اعتماد المشروع.
+13. **AAB:** README نفسه يذكر مشكلة مع bundletool/aapt2 في بيئة معينة، ولذلك يبقى AAB خارج P0، ونستخدم bundletool الرسمي مباشرة عند إدخال هذا المسار لاحقاً.
+
+#### 20.41.4 قرار إعادة الاستخدام
+
+**التصنيف: أفضل مرشح Windows حالي لتغطية الصيغ، لكنه يحتاج fork/adapter محدوداً بعد تدقيق أمني واختبارات.**
+
+ما يمكن استخلاصه وإعادة استخدامه بعد إعادة التصميم:
+- format dispatch structure.
+- APKM info.json field mapping كمرجع، مع parser يتحقق من schema والنسخ المختلفة.
+- فصل APKS standard عن SAI-generated.
+- XAPK manifest/expansion mapping كمرجع.
+- فكرة fallback عبر Package Installer sessions لا تُنقل حرفياً؛ نستخدم ADB install-multiple أو آلية مدروسة ومختبرة على Windows.
+- بعض اختبارات corpus يمكن بناؤها على عينات ممثلة مستمدة من التنسيقات المعلنة.
+
+ما لا نعيد استخدامه:
+- flags الافتراضية -rtd.
+- uninstall/reinstall تلقائي.
+- تثبيت كل الأجهزة المكتشفة تلقائياً.
+- fallback الذي يثبت كل splits دون اختيار دقيق.
+- قائمة locale ثابتة كقاعدة قرار.
+- أي مسار OBB لا يمر عبر validation وpreview وموافقة مستقلة.
+
+#### 20.41.5 المقارنة العملية بين مرشحي Windows
+
+| المشروع | Windows | APK | APKS | APKM | XAPK/OBB | قرارنا |
+|---|---|---|---|---|---|---|
+| adhu2018/xapkInstaller | معلن | نعم | نعم | نعم | نعم، OBB جزئياً | أفضل مرشح format coverage؛ لا يدمج كما هو |
+| havokentity/android-application-installer | معلن | نعم | AAB output/install عبر bundletool؛ لا دليل على APKS input | غير مثبت | غير مثبت | مرجع بنية Tauri/Rust وADB progress/cancel |
+| chihafuyu/App-Bundle-Installer | Windows PowerShell | ملفات داخل الأرشيف | نعم بحسب README | نعم بحسب README | OBB push معلن | مرفوض للدمج المباشر بسبب installer spoofing وضعف validation |
+| zechuan-start/adb-gui | معلن | تثبيت APK ضمن أدوات ADB | غير مثبت | غير مثبت | غير مثبت | مرجع لإدارة الجهاز والتطبيقات لا format engine |
+
+**القرار المقترح للمرحلة التالية:** نستخدم xapkInstaller كأقرب implementation reference ونراجع كل format adapter على حدة، ونستخدم bundletool الرسمي لـAPKS القياسي، ونستفيد من SAI/ApkInstaller في APKM/XAPK metadata وsplit selection، مع بناء pipeline موحد آمن في برنامجنا. لا نعمل fork قبل تحديد ما يمكن فصله وإعادة استخدامه دون نقل سلوكياته الخطرة.
+
+**حالة التحقق:** README وملف xapkInstaller.py تمت مراجعتهما على GitHub. لم يتم تنزيل المشروع أو تشغيله أو بناءه أو اختباره على Windows/هاتف. كل نقاط الضعف المذكورة ناتجة عن مراجعة source، وليست نتائج اختبار runtime.
