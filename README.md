@@ -29,7 +29,6 @@
 | [10 — Android Diagnostics & Logs](docs/10-android-diagnostics-and-logs.md) | Logcat والتسجيل وBugreport وdumpsys وDropbox وPerfetto وتحليل السجلات ومراجعة المشاريع الجاهزة |
 | [11 — Backup & Restore Boundaries](docs/11-backup-restore-boundaries.md) | أنواع النسخ، حدود adb backup وAuto Backup، incremental snapshots، APK export، واستعادة الملفات دون ادعاء نسخة كاملة |
 | [12 — Reuse & Implementation Plan](docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md) | خطة إعادة الاستخدام، source revisions، المعمارية، قرارات Stack، PoC ومراحل البناء |
-| [12 — Reuse & Implementation Plan](docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md) | خطة موحدة لإعادة استخدام المشاريع، Source SHAs، المعمارية والعقود المشتركة، قرارات Stack، وPoC وترتيب التنفيذ |
 | [Research Methodology](docs/RESEARCH-METHODOLOGY.md) | الأدلة، الاختبارات، إعادة الاستخدام، أمان MCP وصيانة الوثائق |
 
 ## بيئة التشغيل المعتمدة
