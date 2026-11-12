@@ -2174,3 +2174,120 @@ DeviceAnalyzer يجمع أكثر من ABI، وليس قيمة ABI واحدة ف�
 - [Android APK Signature Scheme v3](https://source.android.com/docs/security/features/apksigning/v3)
 - [Android apksigner](https://developer.android.com/tools/apksigner)
 - [OWASP ZIP Slip, symlink and archive bomb testing](https://wstg.owasp.org/stable/4-Web_Application_Security_Testing/10-Business_Logic_Testing/09-Test_Upload_of_Malicious_Files/)
+
+
+### 20.34 محللات Android Manifest وAPK الجاهزة: مقارنة AXML Parser وAPK Parser وAndroid SDK tools (12 نوفمبر 2026)
+
+**نوع المراجعة:** مراجعة source-level لمشاريع Androguard ومراجعة وثائق Android الرسمية. لا يوجد build أو تشغيل CLI أو Windows runtime test أو اختبار APK من ملفات المستخدم في هذه الجولة.
+
+#### 20.34.1 Android SDK — apkanalyzer وaapt2
+
+الأدوات الرسمية في Android SDK تظل مرجعاً عملياً قوياً لتحليل APK على جهاز Windows بعد تثبيت Android SDK Build Tools/Command-line tools.
+
+- apkanalyzer manifest print <apk> يعرض Manifest بصيغة XML.
+- apkanalyzer manifest application-id وversion-name وversion-code وmin-sdk وtarget-sdk تستخرج حقولاً محددة.
+- apkanalyzer files list يعرض محتويات APK، وfiles cat يقرأ entry من الأرشيف.
+- aapt2 dump badging وaapt2 dump permissions خياران عمليان لاستخراج معلومات تعريف التطبيق والصلاحيات.
+- هذه الأدوات تتعامل مع APK داخلي؛ لا نفترض أنها تحلل APKM/XAPK/APKS كحاويات خارجية. طبقة archive adapter الآمنة تسبقها.
+- لا نعتبر إخراج CLI وحده دليلاً على صحة التوقيع؛ نستخدم apksigner verify منفصلاً.
+
+**القرار:** نجعل Android SDK tools خياراً مرجعياً/adapter أولياً في Windows PoC، خصوصاً لمقارنة النتائج والتحقق المتبادل. نثبت نسخة Build Tools ونفحص exit code وstderr وtimeouts ونحلل المخرجات إلى DTOs typed بدلاً من عرض نص خام فقط. لا يوجد تأكيد تشغيل Windows حتى الآن.
+
+#### 20.34.2 androguard/axml-parser — محلل AXML/ARSC بلغة Rust
+
+المستودع: [androguard/axml-parser](https://github.com/androguard/axml-parser) — default branch commit المراجع 93d008a7ce337fb9bafb708bc8ce93ecdc25f80b.
+
+الملفات:
+- src/axml/parser.rs — blob SHA 079701dbe0e30e813212a0e0df4cb035e9fd87ff.
+- src/stringblock.rs — blob SHA 1cc20576e4a4e5eaecb605d86b1cb772e4c70cb5.
+- src/header.rs — blob SHA f00ecec7eb995b55c832e57a465c2fbc03d90d82.
+- src/lib.rs — blob SHA 42e7179c3977524f3d05671f2e1f56b77ebefe60.
+
+ما يقدمه:
+- Pure Rust library مع CLI باسمَي axml وarsc، وPython bindings اختيارية.
+- يفك Android binary XML، ويقرأ package/version/permissions، كما يحلل resources.arsc ويحل resource IDs.
+- API مباشر: AXMLPrinter وARSCParser، ويمكن دمجه دون تشغيل عملية خارجية.
+- README يذكر fixtures واختبارات عبر cargo test، لكن لم نشغّلها.
+- هذا parser لطبقة AXML/ARSC وليس APK archive parser كاملاً؛ يحتاج قارئ ZIP آمن لاستخراج AndroidManifest.xml وresources.arsc من APK.
+
+**نتائج مراجعة حدود الإدخال:** وجدنا مواضع تستحق PoC أمني قبل الاعتماد:
+- StringBlock::parse يستخدم Vec::with_capacity(string_count) وVec::with_capacity(style_count) اعتماداً على أعداد من الملف، ويحسب أحجاماً من header_size - strings_offset وheader_size - styles_offset دون ظهور تحقق شامل من ترتيب هذه offsets وحدود chunk قبل التخصيص والقراءة.
+- AXMLParser::do_next يقرأ attribute_count من البيانات ويضيف عناصر إلى vector، كما أن بعض مسارات القراءة تستخدم default values عند فشل القراءة؛ نحتاج التحقق من أن كل chunk والـattribute array محصوران داخل حدود chunk والملف.
+- هذه ملاحظات مراجعة كود وليست إثبات استغلال. لكنها تمنع اعتماده production مباشرة قبل إضافة limits وفحوص bounds واختبارات malformed-input/fuzzing.
+
+**القرار:** مرشح جيد كـRust AXML/ARSC component في PoC بعد تدقيق وإصلاح حدود الإدخال. لا نمرر إليه bytes غير محدودة من APK غير موثوق، ولا نعتبره بديلاً عن ZIP reader أو apksigner.
+
+#### 20.34.3 androguard/apk-parser — مكتبة APK/APKM كاملة (Rust + Python)
+
+المستودع: [androguard/apk-parser](https://github.com/androguard/apk-parser) — default branch commit المراجع 95ec9b00b4e2e30d16ac98c09868e5d6b58d3fdb.
+
+الملفات:
+- README.md — blob SHA 5bf6c110de7b8cc6fc5dec6039405bb03e41380b.
+- apkparser-rs/README.md — blob SHA d7c8f7af5c4d435f4afb137da51e13410742ce57.
+- apkparser-rs/src/lib.rs — blob SHA b69347330f0622d372c432fc8fff428450e79b83.
+- apkparser-rs/src/apkm.rs — blob SHA 6720cd960a82de1193cdf52910fb25867f36dbca.
+- apkparser-rs/src/zip.rs — blob SHA 65a2398f774f89f563bb77bfca1c7a9c672576c0.
+- apkparser-rs/src/main.rs — blob SHA 16e05fba268b2a48ad80d1e4d5791703f58aba5c.
+
+ما يقدمه:
+- Rust library وCLI، وPython facade.
+- APK metadata: package, versionCode/versionName, minSdk/targetSdk, requested/declared permissions، entries وDEX names.
+- قراءة بعض معلومات التوقيع v1/v2/v3 وبصمات الشهادات.
+- يدعم APKM تحديداً: base/split enumeration وunwrap؛ لا يعني ذلك دعماً عاماً لكل XAPK/APKS/APKM variants.
+- يوفر tests وsample APKs بحسب README؛ لم يتم تشغيلها.
+
+**تحفظ أمني حاسم:** README يصف ZIP reader بأنه lenient ويتسامح مع Extra Field TLV غير السليم وطرق ضغط معدلة لأغراض تحليل ملفات مشوهة. مراجعة zip.rs تؤكد وجود fallback من deflate إلى stored، وتسمح ببعض حالات local/central mismatch مع تسجيلها، وتستخدم capped output. هذا مفيد في malware forensics لكنه لا يطابق سياسة القبول الصارمة التي وضعناها لمسار التثبيت.
+
+كما أن ApkmArchive::extract_apks_to يكتب entries إلى مجلد عبر safe_filename لتقليل مخاطر path traversal، لكننا لا نعتبر هذا وحده إثباتاً لاستيفاء حدود ZIP الأمنية لدينا: يلزم رفض duplicate/case-collision، والتحقق من CRC/header consistency، وحدود عدد entries والـmetadata والـactual output، وstaging آمن. كما أن الاستخراج المباشر ليس مطلوباً أصلاً في مسارنا؛ نفضل قراءة entries المطلوبة إلى staging داخلي مضبوط.
+
+**القرار:** لا نعتمد apk-parser الحالي مباشرةً في install pipeline بسبب سياسة ZIP المتسامحة. يمكن الاستفادة من نماذج DTO وحقول Manifest وAPKM classification كمرجع، أو إجراء PoC منفصل لتحليل read-only مع مدخلات محدودة. لا ننسخ ZIP fallback أو extraction إلى الإنتاج دون مراجعة/تعديل.
+
+#### 20.34.4 Androguard 5 — طبقة تحليل أعلى من APK parser
+
+المستودع: [androguard/androguard](https://github.com/androguard/androguard) — commit 581f7a3251545a97f66ee92b674dd810ee380a00.
+
+الملفات:
+- pyproject.toml — blob SHA 71f9f2eb56a9227bd614c060173c92b079791d5c.
+- androguard/application.py — blob SHA 7513843697bf8fe9c6a3a8f90833047d307a2cc2.
+- androguard/cli/main.py — blob SHA 0b77cd03045334e85bbfbae2b25a6da843ee6a28.
+
+المشروع يعرض Application API وCLI، ويعتمد على apkparser-ag وdexparser-ag وAXML parser. يمكنه قراءة Manifest وDEX وتحليل strings/classes/methods، كما يتيح أوامر مثل --getmanifest وملخص APK. لكنه أوسع من احتياجنا الأساسي لاستخراج package/version/SDK/permissions/ABI، ويضيف تبعيات Python/Rust.
+
+**القرار:** ليس dependency افتراضياً للبرنامج. نحتفظ به كأداة تحليل متقدمة اختيارية أو مرجع بحثي، بينما نبدأ في V1 بمكوّن أخف: Android SDK CLI adapter أو Rust AXML parser بعد hardening، مع ZIP layer الصارم المستقل.
+
+#### 20.34.5 ما الذي نحتاجه فعلياً من محلل APK في برنامجنا؟
+
+نستخرج ونطبع إلى نموذج موحد:
+- Package ID، versionName، versionCode.
+- minSdkVersion، targetSdkVersion، maxSdkVersion إن وُجد.
+- requested permissions وdeclared permissions بشكل منفصل.
+- Activities/services/receivers/providers عند الحاجة، وليس بالضرورة في شاشة القائمة الأساسية.
+- native libraries paths وABI inventory من lib/<abi>/*.so، مع التحقق من ELF headers عند الحاجة.
+- split name/configuration metadata عند وجود split APK.
+- SDK/ABI compatibility estimate مع DeviceSpec؛ النتيجة Preview وليست ضماناً للتثبيت.
+- مصدر الحقل: manifest أو archive metadata أو SDK tool output؛ لا نخلط metadata الخارجية مع الحقيقة الموجودة داخل APK.
+- أخطاء parsing والتحذيرات وحالة التحقق، مع الاحتفاظ بالفرق بين Missing وInvalid وUnsupported.
+
+#### 20.34.6 القرار المقترح وخطة PoC
+
+1. **Baseline مرجعي:** Android SDK apkanalyzer وaapt2 لاستخراج Manifest والحقول المطلوبة من APK على Windows.
+2. **Rust in-process candidate:** androguard/axml-parser بعد إصلاح/اختبار حدود chunk وstring pool وattribute counts.
+3. **Not approved for install path:** androguard/apk-parser الحالي بسبب lenient ZIP behavior؛ لا نستخدمه لتجاوز ZIP security policy.
+4. **Optional advanced analyzer:** Androguard 5 للتحليل المتقدم، وليس شرطاً في V1.
+5. **Signature:** apksigner مستقل ومثبت الإصدار؛ لا نستبدله بفحص signature metadata داخل parser.
+6. **Container adapters:** APKS عبر bundletool؛ APKM/XAPK عبر adapters منفصلة؛ كل APK داخلي يمر عبر نفس Manifest/ABI/signature validation.
+7. **Cross-check fixtures:** نمرر نفس APK corpus عبر apkanalyzer وaapt2 وAXML parser ونقارن الحقول؛ أي اختلاف يسجل ولا نخفيه.
+8. **Security gate:** malformed AXML, oversized string/style counts, invalid offsets, truncated chunks, huge attribute counts, malformed UTF-8/UTF-16, nested archive limits، fuzzing وWindows CI.
+9. **Performance gate:** قياس bulk APK metadata extraction، ذاكرة كل ملف، ووقت التحليل قبل تحديد parallelism أو caching.
+10. **Approval gate:** لا نختار dependency production ولا ندمج كوداً قبل PoC على Windows ونتائج الاختبارات.
+
+**حالة الجولة:** [x] مراجعة Android SDK apkanalyzer docs. [x] مراجعة Androguard axml-parser source. [x] مراجعة apk-parser Rust/Python APIs وAPKM extraction. [x] مراجعة Androguard 5 dependency/API. [ ] تشغيل Android SDK tools على Windows. [ ] تشغيل cargo tests للمكتبات. [ ] إضافة AXML malformed fixtures/fuzzing. [ ] PoC ومقارنة النتائج. [ ] اختبار corpus APK/APKM/XAPK/APKS. [ ] اعتماد production.
+
+**خلاصة الاختيار:** لا نكتب Manifest parser جديداً الآن. نبدأ بمقارنة Android SDK tools كـbaseline، ونختبر axml-parser كخيار Rust داخلي بعد hardening. نرفض إدخال lenient ZIP reader إلى مسار التثبيت، ونفصل تحليل Manifest عن قراءة الأرشيف والتحقق من التوقيع.
+
+المراجع:
+- [Android apkanalyzer documentation](https://developer.android.com/tools/apkanalyzer)
+- [Android AAPT2 documentation](https://developer.android.com/tools/aapt2)
+- [androguard/axml-parser source](https://github.com/androguard/axml-parser/tree/93d008a7ce337fb9bafb708bc8ce93ecdc25f80b)
+- [androguard/apk-parser source](https://github.com/androguard/apk-parser/tree/95ec9b00b4e2e30d16ac98c09868e5d6b58d3fdb)
+- [androguard/androguard source](https://github.com/androguard/androguard/tree/581f7a3251545a97f66ee92b674dd810ee380a00)
