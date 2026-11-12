@@ -206,6 +206,7 @@ Windows Desktop UI                 AI Client (Codex)
 | `docs/09-device-file-management.md` | ADB وMTP/WPD وعمليات الملفات والنقل |
 | `docs/10-android-diagnostics-and-logs.md` | Logcat وBugreport وdumpsys والتشخيص |
 | `docs/11-backup-restore-boundaries.md` | حدود النسخ الاحتياطي والاستعادة وأنواع البيانات |
+| `docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md` | قائمة إعادة الاستخدام وSource SHAs والعقود والمعمارية وقرارات Stack وخطة PoC والبناء |
 | `docs/RESEARCH-METHODOLOGY.md` | منهجية الأدلة والاختبارات والأمان وإعادة الاستخدام وMCP |
 | `docs/README.md` | فهرس تنقل مرتب حسب رحلة القراءة والوظائف |
 
@@ -237,12 +238,12 @@ Windows Desktop UI                 AI Client (Codex)
 
 ## 10. الخطوات التالية بالترتيب
 
-1. تدقيق الاتساق بين وثائق 00–11، وإزالة أي تعارض بين القرارات والوثائق البحثية والفهرس.
-2. تثبيت قائمة المرشحين لكل محور مع رابط commit/version محدد، وتحديد المكونات القابلة للاقتباس مباشرةً وملاحظات الأمان والاختبارات المطلوبة.
-3. بناء corpus محلي غير حساس من outputs وملفات OTA/super/logcat/bugreport متنوعة، مع fixtures صناعية للحالات الحدية، دون جمع بيانات خاصة من أجهزة المستخدمين.
-4. إعداد خطة تحقق على Windows 10/11 وأجهزة Android API 24+؛ تمييز اختبارات parser/unit عن Runtime وHardware.
-5. ترتيب قرارات التنفيذ المفتوحة: معمارية Windows، إدارة الاعتماديات، DeviceHandle الصريح، Service Layer، Operation lifecycle، وMCP authorization.
-6. بعد اكتمال التدقيق والحصول على موافقة تنفيذ مستقلة، تنفيذ نواة مشتركة صغيرة ثم ربط المحاور عبر adapters قابلة للاستبدال.
-7. عدم بدء أي كتابة على هاتف أو إصلاح تعريفات أو تغيير DNS أو تفليش/تحديث جهاز ضمن هذه المرحلة البحثية.
+1. تم تدقيق الاتساق الأساسي بين الوثائق 00–12 وتحديث الفهرس وروابط المحاور؛ تبقى مراجعة تفصيلية متجددة عند تغير أي قرار أو مصدر.
+2. تم التقاط Source HEAD SHAs للمرشحين الرئيسيين في [12](12-REUSE-AND-IMPLEMENTATION-PLAN.md)؛ يجب إعادة مراجعة الفروق عند كل اقتباس، وعدم الخلط بين HEAD الملتقط وcommit تمت مراجعته فعلياً.
+3. تنفيذ Source Revalidation للمرشحين الأعلى أولوية، ثم إعداد corpus محلي غير حساس من outputs وملفات OTA/super/logcat/bugreport وAPK fixtures، دون جمع بيانات خاصة.
+4. تنفيذ PoC مقارنة لـ.NET 10 وTauri/Rust في ADB USB/Wireless وmulti-device وcancellation وWindows PnP/WPD، ثم حسم Host/UI/ADB/MTP/MCP/dependency delivery.
+5. تثبيت عقود DeviceHandle وCapability وOperation وResult وAudit، وخطة اختبار Windows 10/11 وAndroid API 24+ مع فصل Unit/Parser/Runtime/Hardware.
+6. بعد موافقة تنفيذ مستقلة، تنفيذ النواة المشتركة ثم ربط المحاور عبر adapters قابلة للاستبدال، دون بناء برامج منفصلة لكل محور.
+7. لا تبدأ أي كتابة على هاتف أو إصلاح تعريفات أو تغيير DNS أو تفليش/تحديث جهاز ضمن هذه المرحلة البحثية.
 
 **لا نختار تقنية التنفيذ النهائية أو نبدأ إعادة كتابة النظام قبل مراجعة المرشحين الحاليين وتحديد ما يمكن اقتباسه مباشرة.** ولا تُعد هذه الوثيقة موافقة على تنفيذ أي تغييرات على هاتف أو Windows.
