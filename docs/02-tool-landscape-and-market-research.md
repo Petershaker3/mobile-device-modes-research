@@ -1162,3 +1162,140 @@ Droidsmith يظل أقوى مرجع وظيفي وجدناه حتى الآن في
 لكن لا ننسخ MCP adapter كما هو: نحتاج إضافة Approval Token حقيقية مرتبطة بالـplan، timeout/cancellation للـchild process، وتوسيع tool surface لتشمل الوظائف المطلوبة لدينا. كما يجب بناء Windows CI خاص بنا لأن وجود Windows binaries أو اختبارات فرع قديم لا يثبت CI الحالي على الفرع الافتراضي.
 
 **حالة الجولة:** [x] تحديد الفرع الافتراضي وتصحيح تقييم CI السابق. [x] مراجعة MCP source وbinary. [x] حصر الأدوات التسع. [x] مراجعة confirmation gate واختباراته. [x] مراجعة CLI delegation وprocess handling. [ ] اختبار Codex فعلياً. [ ] Windows CI/runtime validation. [ ] تصميم Approval Token. [ ] إضافة timeout/cancellation. [ ] اعتماد أي كود مقتبس.
+
+
+### 20.20 تدقيق قابلية فصل وإعادة استخدام مكونات Droidsmith (12 نوفمبر 2026)
+
+المصدر: الفرع الافتراضي `master` في `SysAdminDoc/Droidsmith`، نسخة المصدر `0.9.19`. هذه مراجعة ملفات المصدر؛ لم يتم بناء المشروع أو تشغيله أو توصيل هاتف.
+
+#### 20.20.1 بنية Rust: مكتبة واحدة متعددة الـbinaries، وليست workspace مفصولاً
+
+الملفات:
+- `src-tauri/src/lib.rs` — SHA `c3c5e23111ab8254afbc9786742b9a8c88244d32`
+- `src-tauri/Cargo.toml` — SHA `bc1bc4a1a16b4a2d5db277bd89dcb546e3c2d8af`
+- `src-tauri/src/commands.rs` — SHA `962d266a3b69b3f9fa74f363b915302cf516beb9`
+
+**المثبت في المصدر:**
+- يوجد Rust library باسم `droidsmith_lib` بنوعي crate `cdylib` و`rlib`.
+- GUI وCLI وMCP وpack/schema/bindings/upgrade helper binaries كلها ضمن package واحدة.
+- CLI وMCP يربطان نفس المكتبة.
+- `adb`, `journal`, `operations`, `profile`, `packs`, `recovery_baseline` وبعض الوحدات الأخرى public، بينما وحدات مثل `backup`, `host_path`, `fs_util`, `process_capture` و`commands` private.
+- لا يظهر Cargo workspace أو crates مستقلة لـADB core أو app-management service أو MCP protocol.
+
+**النتيجة:** يوجد فصل منطقي جيد نسبياً داخل Rust library، لكن لا يوجد فصل حزم/اعتماديات يسمح بأخذ ADB core وحده دون سحب package Droidsmith واعتماديات Tauri. حتى `operations.rs` يستورد `tauri::ipc::Channel`، و`lib.rs` يستورد Tauri runtime. لذلك لا نعتبر هذه modules مكتبات مستقلة قابلة للـvendoring مباشرة.
+
+#### 20.20.2 طبقة ADB: أفضل مرشح للاستخراج إلى Core مستقل
+
+الملفات:
+- `src-tauri/src/adb/transport.rs` — SHA `c8d4e055d3eca3a529f59307ee6b97968c2cd8a5`
+- `src-tauri/src/adb/packages.rs` — SHA `c326da55f257e6ee6ffe96fca64d266320fcbb3d`
+- `src-tauri/src/adb/device.rs` — SHA `231d3b642e5966914e78ae0d52f96765d8cda21d` (راجع أيضاً محتوى الملف قبل تثبيت أي اقتباس)
+- `src-tauri/src/adb/wireless.rs` — SHA `5fec47cc2c4ea235a83ec899ac5cc925c28e0789`
+
+نقاط تستحق إعادة الاستخدام:
+- `AdbTransport` abstraction مع `ShellTransport` و`MockTransport` للاختبارات.
+- تمرير arguments منفصلة إلى ADB وعدم تركيب command string من مدخلات المستخدم.
+- `DeviceTarget` يربط Serial ببصمة build وconnection generation؛ و`validate_device_target` يعيد اكتشاف الجهاز ويتحقق من عدم تغيّر الهدف قبل العملية.
+- جرد التطبيقات يدعم Android user المحدد، enabled/disabled، system/user، APK path، UID، installer، archived/retained.
+- فلاتر package manager الإضافية تُعامل كقدرات يتم probe لها من الجهاز، وليس افتراضها من API level فقط.
+- Wireless ADB يفصل pairing عن connect، ويميز TLS mDNS provenance عن legacy TCP.
+- اختبارات parser وMockTransport وfake adb توفر أساساً جيداً لعقود الاختبار.
+
+**قرار:** لا ننسخ مجلد `adb` بالكامل قبل فصل الاعتماديات. نستخدمه كمرجع تصميم، ونستخرج تدريجياً Core خاصاً بنا بواجهات transport وdevice target وpackage inventory وwireless discovery، مع اختبارات مستقلة. نحتفظ بواجهة adapter مع ADB Platform Tools بدلاً من ربط منطق الأعمال بواجهة Tauri.
+
+#### 20.20.3 إدارة التطبيقات: جرد غني، لكن لا يوجد تاريخ تثبيت/تحديث في نموذج الجرد
+
+`AppPackage` في `adb/packages.rs` يحتوي package/enabled/system/apk_path/uid/installer/archived/retained. لا يحتوي `firstInstallTime` أو `lastUpdateTime`.
+
+`apk_metadata.rs` يقوم بإثراء label/icon وبيانات APK عبر سحب lazy محدود/cache؛ هذا ليس تاريخ تثبيت التطبيق. و`preflight_package_backup` يقرأ بيانات package لأهلية legacy backup، وليس تاريخ التثبيت.
+
+**أثر ذلك على متطلباتنا:** لا نعيد استخدام جرد Droidsmith وحده لتوفير فلتر تاريخ التثبيت أو آخر تحديث. نحتاج enrichment service منفصلة لكل package، بمصدر Android موثوق (مثل PackageManager/dumpsys parsing بعد التحقق من اختلافات الإصدارات/OEM)، وتخزين الحقول كـoptional مع حالة evidence/unsupported. يجب ألا نخترع تاريخاً من وقت APK أو وقت النسخ إلى الجهاز. كما يجب اختبار دقة التواريخ على أجهزة فعلية قبل اعتبارها خاصية مدعومة.
+
+#### 20.20.4 تصدير APK/Split APK: مرشح قوي لإعادة التنفيذ/الاقتباس الانتقائي
+
+الملفات:
+- `src-tauri/src/backup.rs` — SHA `02e932240fd7fd64ea79c3c581d52c68ca429ff4`
+- `src-tauri/src/fs_util.rs` — SHA `1ffa0c18dc3ea5267979b174524f7035274a5893`
+- `src-tauri/src/commands/system.rs` — SHA `c6abc5b632ff5169a20aac879ef654505e9d4794`
+
+السلوك الذي تمت مراجعته:
+- preflight يقرأ `pm path --user` ويجمع كل base/split APK paths، ويرفض المسارات غير المطلقة أو غير المنتهية بـAPK، والقائمة الفارغة، وأكثر من 64 جزءاً.
+- التصدير يعيد preflight داخل أمر التصدير نفسه، فلا يعتمد على نتيجة preflight قديمة أرسلها renderer.
+- كل split يسحب منفصلاً، ثم يتحقق من artifact، ويسجل الاسم والحجم وSHA-256 في manifest.
+- ZIP يكتب عبر staging file بجوار الهدف، ثم flush/sync وatomic replace، وDrop يحذف staging عند الفشل.
+- صلاحية مسار الحفظ تأتي من native dialog one-shot grant purpose محدد؛ أمر التصدير يستهلك grant قبل التنفيذ، وبعد نجاح الإنتاج يسجل الملف كـproduced artifact.
+- target يعاد التحقق منه عبر privileged transport، ويُستخدم operation runner مع timeout وcancel/progress لكل مرحلة.
+
+**حدود يجب الاحتفاظ بها في تصميمنا:**
+- APK export ليس backup لبيانات التطبيق الخاصة.
+- Android package paths والـsplit naming وقيود OEM تحتاج اختبارات أجهزة.
+- فحص header للـAPK/ZIP وحده ليس تحققاً كاملاً من سلامة محتوى ZIP أو توقيع APK؛ manifest hashes تثبت سلامة الملفات بعد التصدير عند إعادة حسابها، ولا تثبت هوية الناشر.
+- لا نعرض العملية كـنسخ بيانات أو استعادة تطبيق كاملة.
+
+**قرار:** هذا أقوى مرشح وظيفي في Droidsmith لميزة Export Installed APK/Split APK. نعيد استخدام التصميم والخطوات مع اختباراتنا، ولا ننقل `backup.rs` كما هو قبل فصل `operations` و`fs_util` عن Tauri.
+
+#### 20.20.5 Path Grants والملفات: نمط أمني جيد لكنه مرتبط حالياً بواجهة Tauri
+
+`host_path.rs` — SHA `27965dce0ff3a8cb84cbc63f964ee84b22d60522`.
+
+الخصائص المؤكدة:
+- grant له purpose محدد، TTL خمس دقائق، وحد أقصى 64 grant نشط.
+- grant يستهلك مرة واحدة؛ لا يقبل purpose مختلفاً.
+- read path يُcanonicalize ويتحقق أنه ملف عادي.
+- write path يتحقق من absolute normalized path، ويرفض symlink/directory، ويcanonicalize parent.
+- reveal/open لا يعتمد على مسار renderer وحده؛ يجب أن يكون artifact أنتجه التطبيق، ثم يعاد التحقق من canonical identity لمنع symlink retargeting.
+- أسماء الملفات المقترحة تتحقق من reserved Windows names ومكونات المسار.
+
+**حدود المراجعة:** لم نثبت مقاومة كل حالات TOCTOU بين canonicalization والفتح/الكتابة، ولا تعامل جميع أنظمة الملفات/صلاحيات Windows؛ لا نعلن أن المسار محصّن بالكامل من كل race. كما أن grants الحالية تعتمد على native dialog وTauri state؛ MCP headless لا يمكنه افتراض وجود dialog grant.
+
+**قرار:** نقتبس مفهوم purpose-scoped one-shot grants، لكن في برنامجنا نحتاج فصل File Authorization Service عن Tauri dialog. بالنسبة لـMCP، نستخدم مسارات app-owned أو file handles/IDs مع consent واضح، ولا نقبل arbitrary host paths من agent مباشرة.
+
+#### 20.20.6 Operations: قوية داخل GUI لكن ليست مستقلة عن Tauri
+
+`operations.rs` — SHA `c68f8de860315dbe57614c5b719948b8bee9dc65`.
+
+يوفر operation IDs، cancellation registry، progress events، output limits، timeouts، وقتل process tree. الاختبار `tests/fake_tool_contract.rs` — SHA `013cfd4810967fcba10318f0367d0d204b4afcc8` يختبر argv preservation، stdout/stderr limits، cancellation وقتل descendant tree، target drift، disk failure.
+
+لكن الملف يستورد `tauri::ipc::Channel`، لذلك ليس مستقلاً عن Tauri حالياً. والأهم أن MCP الحالي لا يستخدم هذه الطبقة؛ هو يشغل CLI child process باستخدام `.output()` المتزامن، ولذلك لا يرث تلقائياً cancellation/progress/timeout.
+
+**قرار:** نستخرج Process Runner/Operation Registry كـRust core مستقل لا يعرف Tauri. GUI يربط events إلى Tauri Channel، وMCP يربطها إلى progress notifications/cancellation، وCLI يستخدم نفس core. هذه خطوة أعلى أولوية من نسخ MCP adapter.
+
+#### 20.20.7 CLI/MCP: فصل مفيد لكن يحتاج عقد تشغيل أكثر اكتمالاً
+
+- CLI binary يستخدم `droidsmith_lib`، وMCP binary ينادي `mcp::run_stdio()`.
+- MCP يستدعي sibling CLI، ويستخدم argument arrays، وهذا يحد من shell injection على مستوى تشغيل child process.
+- CLI يدعم `devices`, `packages`, `pack plan/apply`, `profile run`, `baseline export/inspect/apply`، مع JSON وdry-run وبعض fleet workflows.
+- MCP يعرّض تسع أدوات فقط كما وثق القسم 20.19، ولا يقدم كل أوامر CLI أو وظائف GUI.
+- MCP لا يستخدم Tauri native path grants؛ لذلك لا ينبغي فتح أدوات تصدير ملفات أو استيرادها عبر مسارات حرة من MCP.
+
+**قرار:** نستخدم CLI كمرجع لعقود JSON والـexit codes والـdry-run/revalidation، لكن معمارية برنامجنا الأفضل هي MCP وGUI وCLI كـadapters فوق Service Layer واحدة، وليس MCP → CLI → Service Layer كطبقة process إضافية. يمكن الإبقاء على CLI كمنتج مستقل/اختبار تكامل، لكن لا نجعل استدعاء process بين adapterين هو الطريق الداخلي الوحيد.
+
+#### 20.20.8 مصفوفة قرار إعادة الاستخدام
+
+| المكوّن | النتيجة | القرار المقترح |
+|---|---|---|
+| ADB transport + MockTransport | تصميم واختبارات جيدة، داخل package Tauri-coupled | استخراج Core مستقل ثم adapter |
+| DeviceTarget + target revalidation | نمط أمان أساسي | إعادة تصميم/تنفيذ مطابق مع tests |
+| Package inventory | غني، لا يحتوي install/update timestamps | اقتباس المفاهيم، إضافة enrichment مستقل |
+| Wireless ADB | mDNS/pair/connect/provenance | adapter فوق Platform Tools مع تحقق Windows/device |
+| APK/Split export | مسار متكامل ومراجع بالمصدر | مرشح قوي للاستخراج بعد فك Tauri coupling |
+| Path grants | one-shot scoped authorization | إعادة تصميم ليتناسب GUI وMCP |
+| Operations runner | timeout/cancel/output caps/process tree | استخراج Core مستقل أولوية عالية |
+| MCP STDIO | minimal local adapter | إعادة كتابة/اقتباس انتقائي، لا نسخ كامل |
+| CLI JSON workflows | dry-run/validation/journal/fleet | مرجع للعقود، وليس process dependency إلزامي |
+| App install/update timestamps | غير موجودة في AppPackage | تطوير خاص بنا مع evidence + device tests |
+
+#### 20.20.9 القرار المعماري النهائي المبدئي
+
+لا نوصي بعمل fork كامل لـDroidsmith كأساس لبرنامجنا، ولا بنسخ مستودعه بالكامل. نوصي بـ**Selective extraction / clean-room adaptation guided by source audit**:
+
+1. تصميم حزم داخلية مستقلة: `device-core`, `process-core`, `package-service`, `artifact-service`, `permission-service`, `mcp-adapter`, `desktop-adapter`.
+2. فصل أي Tauri type أو Channel أو AppHandle من الخدمات الأساسية.
+3. اعتماد `DeviceTarget` immutable مع generation/build identity revalidation قبل كل mutation.
+4. كل تغيير يمر عبر Plan → Approval Token → Apply → Verify → Journal؛ لا Boolean confirmation منفرد.
+5. مشاركة Process Runner بين GUI/CLI/MCP، مع timeout/cancellation/output limits.
+6. استخدام Native file picker في GUI، وfile IDs/grants مقيدة في MCP؛ لا arbitrary paths.
+7. إضافة install/update timestamps كـenrichment مستقل، مع Unknown/Unavailable بدلاً من التخمين.
+8. بناء Windows CI واختبارات fake ADB/contract tests، ثم اختبار فعلي على أجهزة Android محددة قبل إعلان الدعم.
+
+**الحالة:** [x] مراجعة Rust crate boundaries. [x] مراجعة ADB transport وpackage inventory. [x] مراجعة split APK export وpath grants. [x] مراجعة operation cancellation tests. [x] مقارنة MCP/CLI boundaries. [ ] إثبات build محلي أو CI على Windows الحالي. [ ] اختبارات على أجهزة حقيقية. [ ] استخراج core تجريبي في مستودعنا (لم يبدأ). [ ] اعتماد مكونات نهائياً.
