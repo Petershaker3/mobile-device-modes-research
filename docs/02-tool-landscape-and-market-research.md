@@ -3509,3 +3509,87 @@ Commit تمت مراجعته: `ce2139ae27c3685e8c31cac637d701cb1d24a666`.
 **حالة التحقق:** تمت مراجعة ملفات المصدر المذكورة عند commits محددة ووثائق Android الرسمية. لم يتم بناء أو تشغيل VInstall أو Brokk أو bundletool في هذه الجولة، ولم يتم اختبار AAB/APKV على جهاز فعلي. النتائج Source/Docs Review فقط، وليست Runtime أو Hardware Validation.
 
 **قرار الجولة:** نعتمد bundletool كمسار AAB الرسمي الاختياري؛ نحتفظ بـVInstall وBrokk كمراجع Android-side لا كدمج Windows؛ نؤجل APKV؛ ونواصل إعطاء الأولوية للصيغ الشائعة ومسار التثبيت الآمن والتحقق بعد التثبيت.
+
+
+### 20.47 — تدقيق xapkInstaller: مرشح Windows متعدد الصيغ (APK/APKM/APKS/XAPK/AAB)
+
+المستودع: [adhu2018/xapkInstaller](https://github.com/adhu2018/xapkInstaller)  
+Commit تمت مراجعته: `a88e05386a0fc9751ef7637ad437659bfdd60a43`.  
+الملفات التي تمت مراجعتها: `README.md`، `xapkInstaller.py`، `requirements.txt`، `config.yaml`، `.github/workflows/test.yml`، `.github/workflows/release.yml`، `build.bat`.
+
+**لماذا دخل المرشح؟**
+- تطبيق Windows/Python يقبل APK وAPKM وAPKS وXAPK وAAB.
+- يعتمد على ADB، ويستخدم Google bundletool لمسار AAB وGoogle APKS.
+- يعلن اختيار ملفات splits حسب ABI وDPI واللغة، ويدعم OBB في XAPK.
+- يمكن بناء ملف تنفيذي عبر PyInstaller، وتوجد GitHub Actions للبناء على Windows.
+
+**ما ظهر في الكود:**
+
+1. **APK مفرد**
+   - يقرأ AndroidManifest باستخدام `aapt dump badging` أو AXMLParserPY كمسار بديل.
+   - يستخرج package/version/minSdk وبعض معلومات ABI، ثم ينفذ `adb install`.
+   - خيارات التثبيت الافتراضية في المسار هي `-rtd`، أي أن مسار التثبيت يطلب replace وtest وdowngrade معاً بدلاً من إبقاء السماح بالـdowngrade وtest-only اختيارات صريحة مستقلة.
+   - عند فشل محاولة `-rtd` ينتقل إلى `-r`، وإذا فشلت محاولة `-r` يستدعي مسار uninstall ثم يعيد المحاولة؛ هذا السلوك لا يصلح كسياسة افتراضية آمنة، ولا يجوز نقله دون فصل أسباب الفشل وطلب موافقة واضحة قبل إزالة التطبيق.
+
+2. **APKM**
+   - يقرأ `info.json` ويستخدم حقولاً مثل `pname` و`versioncode` و`min_api` و`arches`.
+   - يختار ملفات ABI وDPI واللغة بقواعد أسماء ثابتة/heuristics، ثم يستخدم `install-multiple`.
+   - هذا مرجع عملي لتنوع metadata، لكنه لا يثبت تغطية كل إصدارات APKMirror أو كل أشكال أسماء splits.
+   - لم يظهر في مسار APKM الذي تمت مراجعته تحقق كامل موحد من وجود base واحد، وتطابق package/version/signing certificates، وتفرد split names قبل التثبيت.
+
+3. **APKS**
+   - يميز Google bundletool APKS بوجود `toc.pb`، وSAI APKS بوجود `meta.sai_v1.json` أو `meta.sai_v2.json`.
+   - يحاول استخدام bundletool لمسار Google APKS، ويدعم SAI v2 في الكود؛ أما SAI v1 فيرجع إلى مسار معلّم صراحة بأنه غير مكتمل.
+   - fallback الداخلي لـGoogle APKS يجمع entries تحت `splits/` ويثبتها دون أن يظهر في هذا المسار تطبيق DeviceSpec matcher مكافئاً لـbundletool؛ لا نعتمد هذا fallback بديلاً عن bundletool.
+   - أمر `bundletool install-apks` في الكود لا يمرر device ID صريحاً.
+
+4. **XAPK وOBB**
+   - يقرأ `manifest.json`، ويستخدم split metadata لاختيار ABI وDPI واللغة.
+   - عند وجود expansions ينفذ تثبيت APK ثم يرسل ملفات OBB إلى مسار مبني من `install_path` في manifest.
+   - لا يظهر في المسار المراجع تحقق موحد من hash/read-back لملفات OBB أو مصالحة حالة النقل بعد انقطاع الاتصال.
+   - فك XAPK يتم عبر `shutil.unpack_archive` دون طبقة موحدة ظاهرة لفرض حدود عدد entries والحجم الفعلي المستخرج والوقت والمساحة قبل وأثناء الفك.
+
+5. **AAB**
+   - يحول AAB إلى APKS باستخدام `bundletool build-apks` مع `--connected-device`.
+   - README يذكر مشكلة توافق aapt2 المضمنة في bundletool في بعض البيئات، ويشير إلى أن AAB قد لا يعمل في إعداد Termux الموصوف.
+   - الأمر يعتمد على connected-device ولا يحدد Serial/Device ID صراحة؛ لذلك لا يصلح كما هو في بيئة قد تحتوي أكثر من جهاز.
+
+6. **ADB وإدارة الأجهزة**
+   - كائن Device يضيف `adb -s SERIAL` للأوامر التي تمر عبره، وهي نقطة جيدة لإعادة الاستخدام.
+   - لكن اكتشاف الأجهزة يسجل حالة تعدد الأجهزة ثم يدخل في loop على الأجهزة؛ لا توجد خطوة اختيار صريحة من المستخدم. كما أن بعض مسارات bundletool لا تمر عبر كائن Device ولا تستخدم Serial صريحاً.
+   - فحص الحالة يستبعد `offline` فقط؛ ولا يعامل `unauthorized` كحالة توقف مستقلة واضحة قبل محاولة التثبيت.
+   - بعض مسارات التنفيذ ترجع من داخل loop بعد أول جهاز، لذلك لا يمكن اعتبارها دعماً سليماً لعملية batch على عدة أجهزة.
+   - `run_msg` يستخدم `subprocess.run` دون timeout ظاهر، ولا يقدم مسار cancellation يضمن إنهاء العملية الخارجية.
+
+7. **الأمان والتحقق**
+   - يوجد استخراج ZIP في أكثر من مسار عبر `ZipFile.extract`، وفك XAPK عبر `shutil.unpack_archive`؛ لم تظهر طبقة مركزية موحدة لرفض path traversal/symlinks/collisions أو فرض limits على الحجم الفعلي والـentries والوقت.
+   - بعض عمليات النسخ/الفك تعتمد على أسماء الملفات وCurrent Working Directory عالمياً؛ هذا يزيد صعوبة عزل كل عملية وتزامنها بأمان.
+   - نجاح exit code هو النتيجة الظاهرة؛ لم يظهر تحقق لاحق مستقل من package/version/path عبر `pm path` وبيانات الحزمة بعد التثبيت.
+   - لا توجد في الملفات التي تمت مراجعتها مقارنة موحدة لشهادات توقيع كل split قبل `install-multiple`.
+
+**CI والبناء:**
+- GitHub Actions يعمل على Windows وPython 3.11 ويشغل فحص flake8 ثم PyInstaller.
+- ملف `test.yml` لا يحتوي على مجموعة اختبارات وحدات أو اختبارات صيغ؛ هو lint/build workflow رغم وصف التعليقات العامة بأنه test.
+- وجود نجاح بناء/CI لا يثبت صحة اختيار splits أو نجاح التثبيت على أجهزة فعلية.
+
+**الحكم الهندسي:**
+- **قيمة بحثية مرتفعة:** لأنه يجمع مسارات فعلية لـAPKM وSAI APKS وXAPK/OBB وAAB في مشروع Windows واحد، ويوضح تعقيدات اختيار splits والتوافق.
+- **غير معتمد للدمج كما هو:** بسبب غياب اختيار Serial موحد، وغياب timeout/cancellation، وخيارات downgrade/test الافتراضية، ومحاولة uninstall التلقائية بعد فشل update، وضعف توحيد حدود الاستخراج والتحقق بعد التثبيت.
+- لا ننسخ المشروع كاملاً ولا نضعه كـsubprocess خلف واجهتنا. نحتفظ به كمرجع لسلوك schemas وfixtures المحتملة، ونفضل bundletool الرسمي لمسار Google APKS/AAB، مع Adapters منفصلة ومحددة للصيغ الأخرى.
+- أي إعادة استخدام مستقبلية يجب أن تفصل parser عن CLI وglobal working directory و`sys.exit`، وتعيد typed result/error، وتفرض explicit device serial وPreview/Approval/Apply/Verify.
+
+**اختبارات قبول مستخلصة من المراجعة:**
+- جهاز واحد، جهازان متصلان، جهاز unauthorized، جهاز offline؛ لا يبدأ install دون Serial محدد وصالح.
+- Google APKS مع DeviceSpec مختلف في ABI/DPI/locale؛ إثبات أن الملفات المختارة مطابقة للجهاز.
+- SAI APKS v1/v2، مع رفض صريح للنسخ غير المدعومة بدلاً من نجاح شكلي.
+- APKM variants مختلفة في metadata وترتيب entries وغياب الحقول الاختيارية.
+- XAPK مع OBB وبدونه، وOBB hash mismatch وانقطاع ADB أثناء النقل وإعادة المحاولة.
+- archive path traversal وsymlink وduplicate/case-collision وZIP bomb وentry count overflow.
+- APK test-only وdowngrade: لا يتم السماح بهما إلا باختيار منفصل وموافقة واضحة.
+- فشل update بسبب signature mismatch أو insufficient storage: لا uninstall تلقائي، ولا حذف لنسخة قائمة.
+- ADB timeout/disconnect: حالة العملية تكون unknown/reconcile، ثم تحقق من package/version قبل تقرير النجاح أو إعادة المحاولة.
+- بعد كل install: تحقق من package name/version عبر الجهاز المحدد؛ افصل `INSTALL_COMMAND_SUCCEEDED` عن `PACKAGE_STATE_VERIFIED`.
+
+**حالة التحقق:** Source/Docs Review عند commit محدد. لم يتم بناء المشروع أو تشغيله، ولم يتم تثبيت APK/APKM/APKS/XAPK/AAB على جهاز فعلي. لا توجد Hardware Validation أو Runtime Validation لهذه النتائج.
+
+**قرار الجولة:** نضيف xapkInstaller إلى قائمة المراجع ذات القيمة، ولا نعتمده كـadapter جاهز. نواصل البحث عن parsers/fixtures متخصصة قابلة للفصل، مع إبقاء bundletool هو المسار المرجعي الرسمي لـGoogle APKS/AAB.
