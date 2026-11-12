@@ -703,3 +703,48 @@ default_tools_approval_mode = "writes"
 - لا يوجد حتى الآن تشغيل محلي أو تحقق على Windows أو هاتف حقيقي.
 
 **حالة هذه الجولة:** [x] قراءة ملفات مصدر أساسية للمشروعات الثلاثة. [x] فحص مبدئي لاختيار الجهاز وبناء أوامر ADB. [x] تحديد أدلة الاختبارات الموجودة. [ ] تدقيق كامل لكل الأدوات الحساسة. [ ] تشغيل اختبارات أو بناء Windows. [ ] اعتماد أي كود لإعادة الاستخدام.
+
+
+### 20.14 نتائج تدقيق الصلاحيات ومسارات بناء Shell (12 نوفمبر 2026)
+
+هذه الجولة وسّعت الفحص من الملفات الأساسية إلى تعريفات الأمان، اختبارات annotations، ومواضع استخدام `adbShell`. ما زالت مراجعة كود ساكنة؛ لم يتم تنفيذ payloads أو اختبار استغلال.
+
+#### 20.14.1 iksnerd/adb-mcp — تصنيف الأثر ليس حارس تنفيذ
+
+**ما ثبت من الكود:**
+- `internal/tools/annotations.go` يعرّف كل أداة كـobserve أو change أو destroy، ثم يحول التصنيف إلى MCP safety hints.
+- التعليق داخل الملف يشرح صراحة أن هذه hints يستخدمها العميل ليقرر ما يمكن اعتماده تلقائياً وما يستدعي سؤال المستخدم.
+- `internal/tools/annotations_test.go` يثبت أن كل أداة لها title وhints، وأن مجموعة الأدوات المدمرة محددة بالأسماء.
+- `internal/tools/annotations_invariants_test.go` يختبر ألا توصف الأدوات ذات مدخلات التغيير بأنها read-only، وأن تمرير task/args حرة يصنف كـdestructive.
+- في `internal/tools/apps.go`، handlers الخاصة بـ`installApp` و`uninstallApp` تتحقق من المدخلات وتحدد الجهاز ثم تستدعي ADB مباشرة؛ لم يظهر في هذه المسارات فحص authorization داخلي قبل التنفيذ.
+
+**الاستنتاج الدقيق:** المشروع لديه نظام تصنيف أثر واختبارات اتساق جيدة، وهذا مفيد لتصميم واجهة MCP. لكنه لا يثبت وحده وجود حظر server-side لعمليات التغيير. لا نعتمد على annotations كطبقة أمان؛ يجب أن يكون لدى برنامجنا Permission/Approval Service داخل طبقة الخدمة، ويجب أن ترفض الخدمة العملية حتى لو استدعاها MCP client مباشرة.
+
+#### 20.14.2 us-all/android-mcp-server — نقاط Shell تحتاج مراجعة/إصلاح قبل الاقتباس
+
+**مسارات سليمة أو أفضل نسبياً:**
+- `src/tools/apps.ts` يتحقق من Package name في `getPackageInfo` قبل إدخاله إلى `dumpsys package`.
+- عمليات الكتابة التي تمت مراجعتها تستدعي `assertWriteAllowed()`، وملفات أخرى مثل `files.ts` تستخدم `validateDevicePath` و`shellEscape`.
+- `src/tools/shell.ts` يضع arbitrary shell خلف `assertShellAllowed()`، لكنه يظل خطراً كبيراً إذا تم تمكينه.
+
+**نقاط تستحق التحقق الأمني العاجل:**
+- `src/tools/debug.ts`: `getMemInfo` يبني `dumpsys meminfo ${params.packageName}`، و`getGfxInfo` يبني `dumpsys gfxinfo ${params.packageName} framestats`. الـschemas تقبل packageName كسلسلة نصية، ولم يظهر في handlers المعروضة استدعاء `validatePackageName` أو `shellEscape` قبل interpolation.
+- `src/resources.ts`: Resource template الخاص بأنشطة التطبيق يأخذ packageName من URI ثم يبني `dumpsys package ${packageName}`؛ لم يظهر في المقطع الذي تمت مراجعته تحقق مماثل قبل تمرير الأمر.
+- هذه المواضع تستخدم `adbShell` الذي يمرر command string واحدة إلى `adb shell`. لذلك يوجد خطر محتمل لحقن أوامر داخل Android shell إذا وصلت محارف خاصة عبر المدخلات. لا نسجل ذلك كاستغلال مؤكد قبل اختبار معزول ومراجعة سلوك shell على Android، لكن لا يجوز اقتباس هذه الأجزاء كما هي.
+- `tests/shell.test.ts` يختبر schema لأداة Shell الحرة، و`tests/utils.test.ts` يختبر بعض validators وescaping. لم يظهر في الاختبارات التي تمت مراجعتها اختبار عدائي مباشر يغطي packageName في `getMemInfo` أو `getGfxInfo` أو URI resource.
+- `CONTRIBUTING.md` يطلب من المساهمين استخدام `assertWriteAllowed()` لكل أداة تغير حالة الجهاز و`assertShellAllowed()` للأوامر الحرة؛ هذه قاعدة مساهمة جيدة، لكنها لا تمنع أخطاء في handlers بعينها.
+
+**القرار:** لا ننسخ `debug.ts` أو Resource template المذكورين قبل إصلاح التحقق والاختبارات. الأفضل ألا نبني Shell command من مدخل خارجي أصلاً إذا أمكن تمرير arguments منفصلة؛ وإذا كانت Android shell تفرض command string، نستخدم validators ضيقة وescaping موحداً ونضيف اختبارات hostile-input لكل handler.
+
+#### 20.14.3 متطلبات أمان نضيفها إلى تصميم برنامجنا
+
+1. كل عملية تغيّر حالة الهاتف تمر عبر Permission Service داخل طبقة الخدمة، لا عبر MCP annotations فقط.
+2. الموافقة تكون مرتبطة بعملية محددة وجهاز محدد ومدخلات محددة، وتنتهي صلاحيتها بعد التنفيذ أو التعديل.
+3. لا يُسمح باستدعاء install/uninstall/disable/enable/DNS change أو driver repair عبر مسار داخلي بديل يتجاوز الموافقة.
+4. لا نسمح بـarbitrary shell كأداة عامة في النسخة الأساسية.
+5. كل مدخل يدخل Android shell يجب أن يمر بتحقق خاص بنوعه، مع رفض افتراضي للمحارف غير المسموحة.
+6. نضيف اختبارات injection على كل handler/resource يستقبل package name أو path أو URL أو اسم نشاط أو قيمة إعداد.
+7. نختبر مباشرة أن write tools تُرفض عند عدم وجود Approval Grant حتى لو تم استدعاؤها عبر MCP transport أو GUI أو خدمة داخلية.
+8. تبقى annotations وصفاً للعميل وواجهةً مساعدة، لا حدّاً أمنياً.
+
+**حالة هذه الجولة:** [x] مراجعة نظام hints واختباراته في iksnerd. [x] مراجعة مسارات Shell الإضافية في us-all. [x] تحديد نقاط interpolation تستحق الإصلاح/اختبار injection. [ ] تنفيذ اختبارات استغلال معزولة. [ ] مراجعة بقية ملفات system/UI/resources. [ ] اعتماد أي كود خارجي.
