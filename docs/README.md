@@ -14,6 +14,7 @@
 5. [01 — الاتصال وقراءة المعلومات والتحويل بين الأوضاع](01-connectivity-protocols.md) — USB، ADB، Fastboot/Fastbootd، MTP/WPD، Samsung AT/Download، Xiaomi Mi Assistant، Huawei/Honor، انتقالات الأوضاع، وحالات النتائج.
 6. [03 — إدارة تطبيقات Android والشبكة عبر ADB](03-app-management-and-network.md) — إدارة التطبيقات، USB/Wireless، البحث والفلاتر، تواريخ التثبيت والتحديث، Installer Source، DNS، وأولوية محرك التثبيت.
 7. [04 — تشخيص وإصلاح تعريفات Android على Windows](04-windows-driver-diagnostics.md) — SetupAPI/PnP، Hardware IDs، مصادر التعريفات الرسمية، الإصلاح، التراجع، واختبارات القبول.
+8. [10 — تشخيص Android والسجلات](10-android-diagnostics-and-logs.md) — Live Logcat، التسجيل، Bugreport، dumpsys، Dropbox، Perfetto، تحليل الملفات الكبيرة، ومراجعة مشاريع GitHub.
 
 ## 3. سجل الأدوات والأبحاث التفصيلية
 
@@ -45,7 +46,7 @@
 - 07-firmware-software-inventory.md — جرد السوفتوير والفريموير وملفات التحديث وmetadata.
 - 08-storage-partition-information.md — معلومات التخزين والأقسام وما يمكن قراءته بأمان.
 - 09-device-file-management.md — استعراض الملفات ونقلها وإدارتها.
-- 10-android-diagnostics-and-logs.md — Logcat وBugreport وdumpsys وdumpstate والعمليات والخدمات.
+
 - 11-backup-restore-boundaries.md — أنواع النسخ الاحتياطي والاستعادة وحدود Android.
 
 ## 5. القرارات الحالية المختصرة
