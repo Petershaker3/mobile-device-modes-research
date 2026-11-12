@@ -15,6 +15,12 @@
 - **Reuse Before Rebuild:** موثق في القسم 19 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#19-مبدأ-إعادة-استخدام-مشاريع-github-قبل-بناء-بديل-reuse-before-rebuild).
 - **AI/MCP Integration:** موثق في القسم 20 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#20-إتاحة-وظائف-البرنامج-لوكلاء-الذكاء-الاصطناعي-عبر-mcp).
 
+## مراجع تكامل MCP
+
+- [Codex MCP setup](https://developers.openai.com/codex/mcp) — إعداد خوادم STDIO وStreamable HTTP.
+- [MCP specification](https://modelcontextprotocol.io/specification/latest) — المعيار الأساسي ومكونات الأدوات والموارد والمطالبات.
+- [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) — SDK رسمي مرشح لخادم TypeScript.
+
 ## قواعد القراءة
 
 - المتطلبات المقترحة ليست دليلاً على أن أداة جاهزة تدعمها.
