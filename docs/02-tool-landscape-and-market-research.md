@@ -2587,3 +2587,277 @@ Android Bionic يستخدم linker namespaces ذات search paths وpermitted pa
 - [Goblin reviewed bounds-validation commit](https://github.com/m4b/goblin/commit/cc6beec889d74680d8f77626f508cb9d949dfc23)
 - [LIEF ELF reader example](https://github.com/lief-project/LIEF/blob/main/api/python/examples/elf_reader.py)
 - [LIEF reviewed latest commit](https://github.com/lief-project/LIEF/commit/a3c9ca3a36a3b1ad6d099c8e3318175c175918fb)
+
+### 20.37 إعادة ضبط الأولوية: التثبيت واسع التغطية هو هدف V1 (12 نوفمبر 2026)
+
+**قرار معتمد من مالك المنتج:** الأولوية القصوى هي تمكين المستخدم من تثبيت أكبر عدد عملي من صيغ وحالات حزم Android الشائعة على جهاز محدد. لا نواصل التوسع في تحليل ELF وDT_NEEDED وSONAME وsymbol/API compatibility كشرط أساسي لمسار التثبيت.
+
+#### 20.37.1 ما الذي نعتبره نجاحاً؟
+
+لا يكفي أن يتعرف البرنامج على امتداد الملف أو أن يستخرج ملفات APK. النجاح يمر بالمراحل التالية:
+
+1. التعرف على الصيغة الفعلية من المحتوى، وليس الامتداد وحده.
+2. قراءة بيانات الحزمة وملفاتها الداخلية دون تنفيذ محتوى الأرشيف.
+3. التأكد من أن مجموعة APK تنتمي إلى package/version متسقين، وأن base والـsplits المطلوبة موجودة.
+4. تحديد مواصفات الجهاز المستهدف: Serial صريح، Android API، ABI list، density، locales، وحالة الاتصال.
+5. اختيار الملفات التي تطابق الجهاز، أو بيان سبب عدم القدرة على الاختيار.
+6. عرض ملخص قبل التنفيذ: التطبيق المتوقع، الإصدار، عدد الملفات، OBB إن وجد، وأي تحذيرات.
+7. تنفيذ التثبيت بأداة Android المناسبة، مع تقدم وإلغاء حيث تسمح العملية.
+8. قراءة النتيجة النهائية والتحقق من ظهور الحزمة والإصدار على الجهاز.
+9. فصل نجاح تثبيت الحزمة عن نجاح تشغيل التطبيق؛ لا نعد بإمكانية التشغيل لمجرد نجاح التثبيت.
+
+#### 20.37.2 ترتيب صيغ V1
+
+| الأولوية | المدخل | المعالجة المطلوبة | المحرك المرجعي | معيار القبول |
+|---|---|---|---|---|
+| P0 | APK مفرد | فحص manifest والتوقيع والتوافق الأساسي ثم التثبيت | Android Platform-Tools adb install | تثبيت/تحديث حزمة واحدة على Serial محدد والتحقق من package/version |
+| P0 | ملفات APK منفصلة تمثل base + splits | تجميع وفحص الاتساق واختيار splits ثم التثبيت كمجموعة واحدة | adb install-multiple أو PackageInstaller sessions | رفض المجموعة الناقصة أو المختلطة؛ نجاح المجموعة المتسقة |
+| P0 | APKS (Bundletool APK Set) | قراءة TOC/device targeting واختيار مجموعة الجهاز | Google bundletool install-apks أو extract ثم install-multiple | اختيار splits المطابقة للجهاز وعدم تثبيت standalone مع splits في نفس المجموعة |
+| P1 | APKM غير المشفر | قراءة metadata/manifest، واستخراج APKs بأسماء staging مولدة، ثم التحقق والتجميع | Adapter مبني على format parser مدقق؛ SAI مرجع تنفيذي | دعم عينات APKM معروفة، ورفض encrypted/unknown variants بوضوح |
+| P1 | XAPK | قراءة manifest.json عند وجوده، مطابقة package/version مع APK manifests، تصنيف APKs وOBB | Adapter خاص بـXAPK؛ parser مرجعي من SAI/ApkInstaller | تثبيت APK set المتوافق، ومعالجة OBB منفصلة بموافقة وتحقق |
+| P1 | APKs متعددة مختارة من المستخدم | تجميعها في package set واحد فقط بعد فحص package/version/split identity | نفس split pipeline | لا يتم تمرير ملفات من تطبيقات مختلفة إلى install-multiple |
+| P2 | AAB | تحويل bundle إلى APK Set عبر bundletool مع إعدادات توقيع واضحة | Google bundletool | لا يُعرض كملف APK جاهز؛ يطلب signing config عند الحاجة ويشرح أثر إعادة التوقيع |
+| P2 | صيغ/امتدادات أخرى أو حاويات معدلة | كشف النوع وبيان عدم الدعم أو طلب عينة اختبار | Adapter منفصل فقط بعد إثبات الحاجة | لا يوجد fallback أعمى يفك كل شيء ويثبت كل APK داخله |
+
+هذه الترتيبات تصف أولوية التطوير، ولا تعني أن كل الصيغ تم اختبارها فعلياً.
+
+#### 20.37.3 مصفوفة الحالات التي يجب تغطيتها
+
+- APK عادي صالح، APK تالف، وملف غير APK أُعيدت تسميته إلى .apk.
+- APK جديد، تحديث لنفس package، إصدار أقدم، وتوقيع مختلف عن النسخة المثبتة.
+- Split set مكتمل، split مفقود، duplicate split، base مفقود، package mismatch، version mismatch.
+- ABI واحد، عدة ABI، ABI غير مدعوم، تطبيق بلا native libraries.
+- density وlocale متطابقان، بديل مناسب، split غير متاح، split عام، وfeature split.
+- APKS يحتوي toc.pb وsplits/ وstandalones/ وasset slices؛ يجب اتباع metadata/targeting ولا نخلط standalone مع split install set.
+- APKM غير مشفر، APKM مشفر أو variant غير معروف، metadata ناقصة أو متناقضة.
+- XAPK مع APK فقط، APK splits، OBB واحد أو أكثر، manifest مفقود، package mismatch، OBB path غير متوقع.
+- جهاز واحد، عدة أجهزة، unauthorized/offline، انقطاع USB/Wi-Fi أثناء النقل، مساحة غير كافية.
+- إلغاء قبل التثبيت، إلغاء أثناء التحضير، وفشل أثناء التثبيت؛ يجب توضيح ما إذا كانت العملية قد وصلت إلى مرحلة لا يمكن إيقافها بأمان.
+- تثبيت عدة تطبيقات مستقلة: لا نستخدم install-multiple لها؛ يمكن تقييم install-multi-package كعملية ذرية مستقلة عند الحاجة.
+
+#### 20.37.4 قواعد ADB التي نعتمدها
+
+توثيق Android الرسمي يفرق بين:
+- adb install: ملف APK مفرد.
+- adb install-multiple: ملفات APK متعددة لحزمة واحدة (base + splits).
+- adb install-multi-package: أكثر من package في عملية ذرية واحدة، وليس بديلاً عن split install.
+
+خيارات يجب ألا تُفعّل تلقائياً:
+- -t: السماح بملفات test-only، لا يُستخدم إلا بطلب صريح.
+- -d: downgrade، ولا يمرر افتراضياً؛ يخضع لقيود Android.
+- -g: منح كل runtime permissions، لا يُستخدم افتراضياً.
+- -p: partial install، ليس مسار التثبيت الكامل المعتاد.
+- -i: يحدد installer attribution؛ لا نستخدمه لانتحال متجر أو مصدر تثبيت آخر.
+
+**القاعدة:** أقل مجموعة خيارات لازمة، مع عرض أي خيار استثنائي للمستخدم قبل التنفيذ. لا نستخدم أمر shell عام عندما يتوفر ADB command typed ومحدد.
+
+#### 20.37.5 ما نؤجله من ELF
+
+- فحص DT_NEEDED/SONAME وsymbol versions وdependency graph ليس شرطاً لتثبيت APK.
+- نحتفظ بفحص ABI الأساسي وminSdk والـmanifest والـsplit targeting لأنها تؤثر مباشرة في اختيار الحزمة أو توقع فشل التثبيت.
+- فحص ELF المتقدم يبقى أداة تشخيص اختيارية بعد V1، عندما نحتاج تفسير تطبيق ثبت بنجاح لكنه يفشل عند تحميل مكتبة native.
+- لا نحذف البحث السابق؛ نعيد تصنيفه من blocker إلى advanced diagnostics.
+
+**المراجع الرسمية:** [ADB install commands](https://developer.android.com/tools/adb) — [ADB command-line reference](https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/user/adb.1.md) — [bundletool install-apks and device targeting](https://developer.android.com/tools/bundletool).
+
+### 20.38 تدقيق مرشحي Windows الجاهزين للتثبيت واسع الصيغ
+
+#### 20.38.1 havokentity/android-application-installer — أقرب مرشح معماري لواجهة Windows
+
+المستودع: [havokentity/android-application-installer](https://github.com/havokentity/android-application-installer)  
+الملفات التي تمت مراجعتها: README، docs/architecture.md، src-tauri/src/adb.rs، src/api.ts، ومقتطفات أوامر Tauri.  
+Commit source الذي ظهر في روابط مراجعة الكود: 11acb70c5a8886a1f0e985217a635321d681bc49.
+
+**ما يثبته README/المصدر:**
+- Desktop app بـTauri 2 + Rust + React/TypeScript.
+- حزم Windows x64 معلنة، وGitHub Actions لبناء الإصدارات.
+- يدير ADB وbundletool وJava محلياً، ويدعم APK install وAAB build/install.
+- يملك typed IPC بين الواجهة وRust، progress events، cancellation tokens، اختيار الجهاز، وتتبّع اتصال Wireless ADB.
+- الكود يتضمن مساراً خاصاً لـWindows لنقل APK ثم pm install يذكر المشروع أنه workaround لمشكلة EOF، ومسار ADB install للأنظمة الأخرى.
+- يوجد فصل بين ADB commands وcommand runner وpackage metadata وtool management.
+
+**ما لا يثبته المصدر المفحوص:**
+- لا يعلن دعم APKS كملف إدخال مباشر من الواجهة، ولا APKM/XAPK/OBB.
+- لا يوجد دليل في الملفات المفحوصة على parser شامل لملفات APK containers.
+- README يثبت ادعاء ميزات المطور، وليس نجاحها على أجهزة متعددة في بيئتنا.
+
+**نقاط مراجعة قبل إعادة الاستخدام:**
+1. نعيد استخدام أنماط typed service/IPC وprogress/cancel/device selection بعد تدقيقها، لا ننسخ التطبيق كاملاً.
+2. مسار Windows اليدوي adb push ثم pm install يحتاج اختباراً مستقلاً قبل اعتماده؛ لا نعممه على split/APKS.
+3. نتحقق من نتيجة التثبيت فعلياً، لأن نجاح النقل أو عدم ظهور كلمة Failure وحدهما ليسا أفضل معيار وحيد.
+4. لا نسمح بمسار يسمح بتجاوز سياسة downgrade أو test-only افتراضياً.
+5. نراجع إدارة الملفات المؤقتة والتزامن عند تثبيت ملفين لهما الاسم نفسه.
+
+**التصنيف:** مرشح قوي لإعادة استخدام بنية Windows/ADB وإدارة الأدوات، وليس محركاً جاهزاً لتغطية APKM/XAPK.
+
+#### 20.38.2 zechuan-start/adb-gui — مرجع إدارة الجهاز والتطبيقات
+
+المستودع: [zechuan-start/adb-gui](https://github.com/zechuan-start/adb-gui).
+
+README يعلن Tauri 2 + React، Windows x64، ADB مضمّن، USB/Wi-Fi، قائمة تطبيقات تعرض الإصدار وتاريخ التثبيت والحجم، وعمليات lifecycle، بالإضافة إلى أدوات ADB أخرى. لم يظهر في README دليل على APKS/APKM/XAPK أو OBB أو parser split متكامل.
+
+**التصنيف:** مرجع قوي لواجهة ADB العامة واكتشاف الجهاز وإدارة التطبيقات، وليس محرك تثبيت متعدد الصيغ. لا نكرر هذه الوظائف إذا استطعنا إعادة استخدام خدمة أو نمط مناسب بعد مراجعة المصدر.
+
+#### 20.38.3 chihafuyu/App-Bundle-Installer — سكربت Windows يغطي صيغاً متعددة لكنه غير صالح للدمج كما هو
+
+المستودع: [chihafuyu/App-Bundle-Installer](https://github.com/chihafuyu/App-Bundle-Installer).  
+الملف المفحوص: App-Bundle-Installer.ps1.
+
+**ما يعلنه وينفذه المصدر:**
+- PowerShell على Windows، يبحث عن .apkm و.apks و.xapk و.zip و.apk+.
+- يفك الأرشيف، يجمع كل ملفات APK التي يعثر عليها، ثم يمررها إلى adb install-multiple.
+- يحاول نقل مجلد Android/obb إلى /sdcard/Android/obb/.
+- يتضمن حدوداً أولية لعدد entries والحجم الإجمالي المعلن، واختيار Serial عند تعدد الأجهزة.
+
+**ملاحظات حرجة من مراجعة الكود:**
+1. يطلب اختيار Fake Installer Source ويضيف adb install-multiple -i <installerSource>؛ هذا انتحال لبيانات مصدر التثبيت ولا يدخل في تصميمنا.
+2. وصف README بأن ذلك يتجاوز APK signature verification غير مثبت من الكود المعروض؛ خيار -i يحدد installer attribution، وليس دليلاً على تعطيل تحقق توقيع APK. لا نعتمد هذا الادعاء.
+3. يجمع جميع ملفات APK داخل الأرشيف دون بناء package/split set موثوق أو التأكد من تطابق package/version، ما قد يخلط ملفات غير متجانسة.
+4. وجود base.apk شرط وحيد تقريباً في مسار الفحص؛ لا يثبت أن كل split مطلوب موجود أو أن المجموعة مطابقة للجهاز.
+5. يفحص الحجم المعلن وعدد entries فقط؛ لا يظهر حد فعلي للبايتات المفكوكة أثناء streaming، ولا معالجة كاملة للتصادمات والمسارات والروابط الرمزية.
+6. ينفذ ExtractToDirectory على archive غير موثوق دون إظهار طبقة staging آمنة مفصلة أو سياسة path/duplicate/case collision.
+7. مسار OBB يبدأ بعد محاولة التثبيت دون اشتراط نجاحها، ولا يظهر تحقق كافٍ من مطابقة package name داخل manifest مع مجلد OBB قبل النقل.
+8. يستخدم kill-server في نهاية العملية، وهذا قد يعطل جلسات ADB أخرى يديرها المستخدم أو أدوات أخرى.
+9. يعرض نجاح التثبيت عند exit code ووجود Success في النص؛ يلزم التحقق من package/version على الجهاز بعد العملية.
+
+**التصنيف:** مرجع لاستخراج متطلبات Windows/OBB وحالات الاستخدام فقط. **مرفوض للدمج المباشر**؛ يمكن اقتباس أفكار محددة بعد إعادة تصميم آمنة. لا نستخدم installer spoofing أو تعطيل التحقق أو استخراج الأرشيف بهذه الصورة.
+
+### 20.39 مرجع Android-side لتغطية APKM/XAPK وSplit APKs
+
+#### 20.39.1 CarlosSuarezFernandez/ApkInstaller
+
+المستودع: [CarlosSuarezFernandez/ApkInstaller](https://github.com/CarlosSuarezFernandez/ApkInstaller).  
+Commit المصدر المراجع: cb49fcd7bf1308ab71dc2e7dd548c6745d612bc6.
+
+README يعلن دعم:
+- APK
+- APKS بصيغ SAI/bundletool
+- XAPK من APKPure
+- APKM غير المشفر
+- ملفات APK منفصلة base + splits
+- اختيار splits حسب ABI/density/language
+- PackageInstaller API على Android
+
+**مراجعة المصدر:**
+- ArchiveExtractor.kt: يتعرف على APK من وجود AndroidManifest.xml، ويستخرج APK entries إلى أسماء staging مولدة لا تعتمد على مسارات archive. يدعم container extraction لـAPKS/XAPK/APKM غير المشفر.
+- ManifestReader.kt: يقرأ package/split/version/configForSplit/isFeatureSplit من Binary AndroidManifest.
+- SplitClassifier.kt: يصنف ABI/density/language/feature splits.
+- SplitSelector.kt: يختار ABI حسب ترتيب ABI للجهاز، وكثافة قريبة، واللغات المتوافقة.
+- SessionInstaller.kt: يستخدم Android PackageInstaller sessions ويكتب APK files ثم commit، مع progress وabandon عند exception.
+- ApkParsingTest.kt: fixtures حقيقية موصوفة بأنها ناتجة من aapt2 link --split، وتغطي قراءة manifest وAPKS وXAPK واختيار ABI/density/language ورفض package/version mismatch وغياب base.
+
+**قيود مهمة عند نقل الفكرة إلى Windows host:**
+1. المشروع Android app؛ PackageInstaller API تعمل على الجهاز المضيف Android، ولا يمكن نقل هذا installer كما هو إلى برنامج Windows.
+2. ArchiveExtractor.selectEntries يتعامل مع splits/ وasset-slices/ وstandalones/ بقاعدة أولية؛ لا نعتبرها بديلاً كاملاً عن قراءة Bundletool TOC واختيار DeviceSpec.
+3. استخراج APK يستخدم copyTo دون حدود حجم فعلية/عدد entries أو وقت/مساحة staging ظاهرة في هذا الملف؛ نحتاج تطبيق سياسة archive security الموجودة بالقسم 20.33.
+4. SplitSelector مرجع مفيد، لكن يجب تدقيق حالات default language، locales المتعددة، SDK-targeted splits، feature dependencies، وasset delivery قبل النقل.
+5. الاختبارات الوحدوية لا تثبت نجاح التثبيت على Windows/ADB أو كل صيغ APKM/XAPK.
+
+**التصنيف:** مرجع source-level ممتاز لبناء parser/selector واختبارات fixtures، وليس مكوّناً قابلاً لإعادة الاستخدام مباشرة في Windows. نفضل إعادة استخدام خوارزميات/أفكار محددة بعد التحقق، مع bundletool كمرجع APKS رسمي.
+
+#### 20.39.2 Aefyr/SAI
+
+المستودع: [Aefyr/SAI](https://github.com/Aefyr/SAI).
+
+README يوضح أن SAI مثبت Android لحزم Split APKs، ويدعم طرق تثبيت Rooted وRootless، ويصرح المطور أن المشروع شبه متوقف مع احتمال إصلاحات محدودة. سبق تدقيق parser الخاص بـAPKM/XAPK في القسم 20.31.
+
+**التصنيف:** مرجع تاريخي/تنفيذي لتنسيقات APKM وXAPK وسلوك split installation. لا نعتمد عليه كخدمة Windows جاهزة أو كخيار وحيد للمستقبل.
+
+### 20.40 المعمارية المستهدفة لمحرك التثبيت الموحد
+
+لا نبني parser واحداً يحاول تفسير كل صيغة؛ نستخدم dispatcher يوجه كل نوع إلى adapter متخصص، ثم يوحد الناتج في نموذج Package Install Plan.
+
+```text
+User / GUI / MCP
+       |
+       v
+Install Request (explicit device serial)
+       |
+       v
+Format Detection + File Intake
+       |
+       +--> Plain APK Adapter
+       +--> Loose Split Set Adapter
+       +--> APKS Adapter (bundletool)
+       +--> APKM Adapter
+       +--> XAPK Adapter ----> OBB Plan (separate approval)
+       +--> AAB Adapter (later / optional)
+       |
+       v
+Normalized Package Install Plan
+       |
+       +--> package/version consistency
+       +--> signature verification evidence
+       +--> device ABI/API/density/locale match
+       +--> selected APKs + OBB metadata
+       +--> warnings / unsupported reasons
+       |
+       v
+Preview + explicit approval
+       |
+       v
+ADB Install Engine (typed args, serial-bound)
+       |
+       +--> adb install
+       +--> adb install-multiple
+       +--> bundletool install-apks
+       |
+       v
+Verify package/version on the same device
+       |
+       v
+Operation result + redacted report + MCP result
+```
+
+#### 20.40.1 نموذج بيانات موحد
+
+- InstallInput: source paths, detected format, file hashes, intake timestamp.
+- DeviceTarget: exact serial, transport, API level, ABI list, density, locales, online state.
+- PackageIdentity: package name, version code/name, signing certificate digest evidence, base/split identity.
+- ApkArtifact: staging ID, original archive entry, size, hash, manifest metadata, split role, ABI/density/locale qualifier.
+- ObbArtifact: package directory, file names/sizes/hashes, expected destination, provenance from container manifest.
+- InstallPlan: package identity, selected APK artifacts, skipped variants/reasons, OBB plan, flags, warnings, estimated bytes.
+- InstallResult: command path, operation state, raw exit status, normalized failure reason, installed package/version read-back, OBB copy state.
+
+#### 20.40.2 قواعد التنفيذ
+
+- تحديد Serial صريح لكل عملية، وعدم الاعتماد على اختيار ADB الضمني.
+- لا shell command string؛ كل process invocation arguments منفصلة.
+- لا -i لانتحال مصدر التثبيت، ولا -g أو -d أو -t تلقائياً.
+- لا install-multiple قبل التحقق من package/version/base/split consistency.
+- لا OBB push قبل نجاح تثبيت APK والتحقق من package mapping، ويحتاج معاينة وموافقة منفصلة.
+- staging directory خاص باسم عشوائي، وحذف آمن بعد انتهاء العملية، مع الاحتفاظ بالتقرير فقط.
+- حدود archive الفعلية تشمل عدد entries، أحجام الملفات المفكوكة فعلياً، الحجم الكلي، نسبة الضغط، الوقت، الذاكرة، ومساحة القرص.
+- منع path traversal وabsolute/drive/UNC paths والروابط الرمزية والتكرار والتصادمات.
+- التوقيع: التحقق من سلامة شهادة التوقيع ومقارنة split set؛ لا ندعي أن التوقيع يثبت أن التطبيق آمن أو موثوق.
+- لا نعيد توقيع APKs الموردة ولا نعدل محتواها تلقائياً.
+- التحديث بنفس package يتطلب توافق signing certificate؛ اختلاف التوقيع يعرض خطأ واضحاً ولا يقترح إزالة التطبيق تلقائياً.
+- إلغاء العملية يوقف التحضير/النقل عندما يكون ذلك ممكناً؛ بعد commit قد لا يمكن التراجع عن تثبيت Package Manager الجاري.
+- نتيجة التثبيت لا تساوي نجاح تشغيل التطبيق. يمكن إضافة Launch smoke check لاحقاً وبطلب منفصل.
+
+#### 20.40.3 MCP
+
+تُعرض نفس خدمة InstallPlan عبر MCP، وليس مسار تثبيت موازياً:
+- inspect_install_input — تحليل الملفات فقط، read-only.
+- preview_install — إنشاء الخطة واختيار الجهاز وعرض المخاطر.
+- install_package — تنفيذ الخطة بعد موافقة واضحة ومربوطة بنفس plan/device/hash.
+- get_install_operation — متابعة التقدم والنتيجة.
+- verify_installed_package — قراءة package/version بعد التنفيذ.
+- preview_obb_copy وapply_obb_copy — فصل بيانات OBB عن تثبيت APK.
+
+يجب أن تكون الموافقة مرتبطة ببصمات الملفات والجهاز والخطة؛ أي تغيير في الملف أو Serial أو selected splits يبطل الموافقة السابقة.
+
+#### 20.40.4 شروط قبول V1
+
+1. تثبيت APK عادي وتحديث متوافق.
+2. تثبيت split set صحيح، ورفض مجموعة ناقصة أو مختلطة.
+3. APKS عبر bundletool مع اختيار الجهاز الصحيح.
+4. APKM/XAPK غير المشفرين للعينات المحددة في corpus الاختبار، مع إظهار الصيغ غير المدعومة بوضوح.
+5. توافق ABI/API الأساسي، واختيار density/locale عند الحاجة.
+6. XAPK OBB: اكتشاف ومطابقة ومعاينة ونقل منفصل بعد موافقة.
+7. عدة أجهزة: لا تحدث أي كتابة دون Serial محدد.
+8. أخطاء التوقيع والـdowngrade والمساحة والاتصال تظهر برسالة قابلة للتصرف.
+9. التحقق النهائي من package/version على الجهاز.
+10. اختبارات Windows automated للـparser/security، ثم اختبارات ADB على أجهزة حقيقية موثقة؛ لا نخلط النوعين.
+
+**حالة التحقق:** مراجعة وثائق ADB وbundletool رسمياً؛ مراجعة README ومقتطفات source لمشاريع المرشحين المذكورة؛ مراجعة unit tests في ApkInstaller. لم يتم تشغيل build أو test suite لأي مشروع خارجي، ولم يتم تثبيت APK على هاتف في هذه الجولة.
