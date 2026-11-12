@@ -55,3 +55,5 @@
 - **App Manager multi-format/parser and install lifecycle reference:** تدقيق APKM/APKS/XAPK، split metadata، OBB handling، PackageInstaller streaming، session watchdog/orphan cleanup، ونتائج الاختبارات موثق في القسم 20.51 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2051-تدقيق-app-manager-apkmapksxapk-وsplit-metadata-وobb-lifecycle).
 
 - **Legacy encrypted APKM decryptor:** تدقيق souramoo/unapkm، والتمييز بين APKM ZIP الحديث والملفات المشفرة التاريخية، ومخاطر streaming/error propagation، وقرار تأجيل decryption من V1 موثق في القسم 20.52 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2052-تدقيق-unapkm-القديم-فك-تشفير-apkm-المشفر-مقابل-apkm-zip-الحديث).
+
+- **Paving-Base/APK-Installer Windows UI/ADB reference:** تدقيق WinUI/.NET وAdvancedSharpAdbClient وAAPTForNet وWSA-specific flow وsplit install flags وغياب preflight/post-install checks موثق في القسم 20.53 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2053-تدقيق-paving-baseapk-installer-windows-ui-وadvancedsharpadbclient-وaaptfornet).
