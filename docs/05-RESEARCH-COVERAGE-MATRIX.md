@@ -33,9 +33,9 @@
 | تثبيت APK وSplit APK وAPKS وAPKM وXAPK وOBB وAAB | [03 §18](03-app-management-and-network.md)؛ [02 §20.30–20.54](02-tool-landscape-and-market-research.md) | بحث موسع جيد — غير مختبر | إعداد corpus حقيقي للملفات المتنوعة، وتثبيت/تحقق على أجهزة مستهدفة؛ لا تُعتبر مراجعة parser أو CI دليلاً على نجاح التثبيت الفعلي | لا؛ استكمال الاختبارات في 02/03 |
 | البحث والتنزيل من APKPure وF-Droid وAPKMirror | [02 §20.55](02-tool-landscape-and-market-research.md) | بحث أولي جيد | تدقيق كل Provider Adapter من حيث البحث والإصدارات والvariants وروابط التنزيل والـredirects والـhash وقيود المصدر، مع اختبار تنزيلات عينات؛ لا تجاوز CAPTCHA/Cloudflare | لا؛ استكمال 02 |
 | استعراض الملفات ونقلها وإدارتها | [02 §20.15 و20.20 و20.27–20.28](02-tool-landscape-and-market-research.md)؛ أوامر ADB في [03](03-app-management-and-network.md) بصورة محدودة | جزئي | مقارنة أدوات File Explorer/dual-pane وADB push/pull وMTP/WPD؛ استعراض المجلدات، التصفح، النقل الكبير، resume/cancel، الأذونات، المسارات، وتعارضات الأسماء | نعم: 09 |
-| Logcat وسجلات النظام والأحداث | إشارات إلى Logcat في [02 §8 و§11 و§20.15](02-tool-landscape-and-market-research.md) و[03 §16](03-app-management-and-network.md) | جزئي | بحث مستقل في buffers/filters/timestamps/streaming/save/search، اختلاف الإصدارات والصلاحيات، وربط السجلات بالجلسة والجهاز؛ لا جمع غير محدود أو تسجيل بيانات حساسة افتراضياً | نعم: 10 |
-| Bugreport وdumpsys وdumpstate والتقارير | مراجع عامة في أدوات البحث، دون محور بحث مستقل | غير مغطى بما يكفي | دراسة ADB bugreport ومحتويات ZIP وتحليلها بأمان، ما يتطلب صلاحيات، حجم الملفات، redaction، وفهرسة التقارير؛ تصميم تقرير تشخيص قابل للمشاركة بعد مراجعة الخصوصية | نعم: ضمن 10 |
-| العمليات والخدمات والذاكرة والبطارية والتشخيص | إشارات إلى Process Monitor وDevice Info في [02 §8 و§20.15](02-tool-landscape-and-market-research.md) | إشارة فقط | حصر أوامر/واجهات القراءة المتاحة، التمييز بين process list وservice state وdumpsys، وتوثيق القيود حسب API والصلاحية؛ لا إيقاف عمليات أو خدمات تلقائياً | نعم: ضمن 10 |
+| Logcat وسجلات النظام والأحداث | [10](10-android-diagnostics-and-logs.md)؛ تدقيق AdbGui Logcat Core وLogcat Viewer وLogCater وLogFilter وSherlog | بحث جيد — غير مختبر | تدقيق wiring والبناء والاختبارات وعمليات Runtime؛ مراجعة privacy/retention وحدود stream/cancel على أجهزة فعلية | الوثيقة المستقلة موجودة |
+| Bugreport وdumpsys وdumpstate والتقارير | [10](10-android-diagnostics-and-logs.md)؛ مراجع AOSP وAndroid Studio وPerfetto، ومراجعة AdbGui bugreport command | بحث جيد — غير مختبر | اختبارات ZIP corpus من إصدارات/OEM مختلفة، اختبار cancellation/progress، وفحص خصوصية/سلامة الأرشيف | الوثيقة المستقلة موجودة |
+| العمليات والخدمات والذاكرة والبطارية والتشخيص | [10](10-android-diagnostics-and-logs.md)؛ مراجع ADB وLogCater/AdbGui | جزئي | توسيع كتالوج أوامر القراءة واختبار اختلاف مخرجات ps/dumpsys حسب API/OEM؛ لا إيقاف عمليات أو خدمات تلقائياً | ضمن 10 |
 | النسخ الاحتياطي والاستعادة | ملاحظات عن APK export وlegacy backup في [02 §20.18 و20.20](02-tool-landscape-and-market-research.md) | جزئي، مع فجوة تعريف مهمة | فصل تصدير APK عن نسخ بيانات التطبيق، ونسخ ملفات المستخدم، ونسخ إعدادات البرنامج. بحث حدود Android backup/restore وتعدد المستخدمين والقيود والصلاحيات؛ لا وعد باستعادة كاملة | نعم: 11 |
 | DNS وPrivate DNS وحجب الإعلانات | [03 §17.1 و17.3–17.4](03-app-management-and-network.md)؛ [02 §20.22](02-tool-landscape-and-market-research.md) | بحث جيد — غير مختبر | تثبيت مصفوفة اختلافات Android 7+ وOEM وWi-Fi/mobile؛ اختبار Preview/Apply/Verify/Restore لاحقاً؛ توثيق متطلبات Local VPN منفصلة عن ADB DNS | لا؛ الموجود مناسب |
 | تعريفات Windows وتشخيصها وإصلاحها | [04](04-windows-driver-diagnostics.md)؛ [02 §20.23–20.25](02-tool-landscape-and-market-research.md) | بحث جيد — غير مختبر | استكمال Hardware-ID matrix واختبار Windows 10/11 وrollback؛ الالتزام بالمصادر الرسمية فقط | لا؛ الموجود مناسب |
@@ -63,7 +63,6 @@
 1. **07 — Firmware & Software Inventory:** جرد البرمجيات والفريموير وملفات التحديث وmetadata والتوافق، مع فصل القراءة عن التفليش.
 2. **08 — Storage & Partition Information:** معلومات التخزين والأقسام وما يمكن قراءته بأمان، وحدود الصلاحيات والموديلات.
 3. **09 — Device File Management:** استعراض الملفات ونقلها عبر ADB/MTP/WPD، مع أدوات جاهزة وتدقيق أمان النقل.
-4. **10 — Android Diagnostics & Logs:** Logcat وBugreport وdumpsys وdumpstate والعمليات والخدمات والتقارير.
 5. **11 — Backup & Restore Boundaries:** أنواع النسخ الاحتياطي المختلفة، ما يمكن تصديره فعلاً، قيود Android، والاستعادة والتحقق.
 
 لا ننشئ وثائق مستقلة جديدة للاتصال أو التطبيقات أو DNS أو تعريفات Windows أو MCP؛ هذه المجالات لديها وثائق حالية ينبغي استكمالها بدلاً من تشتيت المعلومات.
@@ -73,7 +72,7 @@
 | الترتيب | الجولة | ناتج البحث المطلوب |
 |---:|---|---|
 | 1 | تم إنجاز 06 — Android System Information | بحث أولي ومراجعة مصدر Host-side وAndroid-side؛ لا اختبار Hardware ولا اعتماد دمج |
-| 2 | Android Diagnostics & Logs | أدوات Logcat وBugreport وdumpsys وتحليل التقارير، مع حدود الخصوصية والصلاحيات |
+| 2 | تم إنجاز 10 — Android Diagnostics & Logs | بحث ومراجعة مصدر لمرشحي Logcat وBugreport وDropbox وPerfetto؛ لا تشغيل أو اختبار Hardware |
 | 3 | Device File Management | مقارنة مشاريع إدارة الملفات ونقل الملفات USB/Wireless/MTP/WPD |
 | 4 | Firmware & Software Inventory | جرد البرمجيات وملفات التحديث وmetadata ومصادر البيانات، دون تفليش |
 | 5 | Storage & Partition Information | قدرات القراءة والتخزين والأقسام وحدود كل واجهة |
@@ -99,4 +98,4 @@
 - [Capture and read bug reports — Android Studio](https://developer.android.com/studio/debug/bug-report): إنشاء تقرير bugreport وقراءة ملف ZIP.
 - [Logcat command-line tool — Android Developers](https://developer.android.com/tools/logcat): buffers وfilters وصيغ السجلات وحدود بعض الخيارات والصلاحيات.
 
-**حالة المصفوفة:** مراجعة الوثائق تمت؛ الوثيقة 06 أُنشئت في هذه الجولة. الوثائق 07–11 لم تُنشأ بعد. لا يوجد ادعاء باختبار Hardware أو اعتماد مشروع للدمج.
+**حالة المصفوفة:** الوثيقتان 06 و10 أُنشئتا بعد مراجعة المصدر. الوثائق 07 و08 و09 و11 لم تُنشأ بعد. لا يوجد ادعاء باختبار Hardware أو اعتماد مشروع للدمج.
