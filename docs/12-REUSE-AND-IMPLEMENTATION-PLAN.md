@@ -6,7 +6,7 @@
 **المنصة المستهدفة:** Windows 10/11، وAndroid 7.0 / API 24 فأحدث.  
 **حالة المستودع:** بحث وتصميم؛ لا يوجد منتج منفذ أو اختبار Hardware معتمد.
 
-**تقدم Source Revalidation:** اكتملت مراجعة المصدر عند SHAs محددة لـAdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)، ولـbundletool وapkfile وPacMan-APK وxapkInstaller في [14](14-source-revalidation-app-installers.md)، ولـadb-mcp وus-all/android-mcp-server في [15](15-source-revalidation-mcp-codex.md). بقية المرشحين ما زالت تحتاج إعادة تحقق قبل الاقتباس.
+**تقدم Source Revalidation:** اكتملت مراجعة المصدر عند SHAs محددة لـAdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)، ولـbundletool وapkfile وPacMan-APK وxapkInstaller في [14](14-source-revalidation-app-installers.md)، ولـadb-mcp وus-all/android-mcp-server في [15](15-source-revalidation-mcp-codex.md)، ولـpayload-dumper-go وlucky-arch وlpunpack_cyth وchen3feng/android-backup في [16](16-source-revalidation-firmware-storage-backup.md). بقية المرشحين ما زالت تحتاج إعادة تحقق قبل الاقتباس.
 
 ## 1. القرار التنفيذي
 
@@ -34,11 +34,11 @@
 | واجهة/معلومات ADB وLogcat | [AdbGui](https://github.com/RookieJay/AdbGui) | Device discovery، read info، Logcat ring buffer/filter/controller، parser fixtures | Kotlin/Compose؛ generic shell موجود؛ clear/fix-logcat لها آثار على الجهاز | Source revalidated عند SHA محدد؛ parser/fixtures/design فقط وفق [13](13-source-revalidation-adb-file-core.md) |
 | تثبيت APKS القياسي | [Google bundletool](https://github.com/google/bundletool) | DeviceSpec، TOC/APKS selection، install-apks | SAI APKS صيغة مختلفة؛ target serial إلزامي؛ Java process adapter يحتاج timeout/cancel | Source revalidated في [14](14-source-revalidation-app-installers.md)؛ المرجع القياسي لـtoc.pb |
 | APK metadata وAPKM/XAPK/APKS | [apkfile](https://github.com/david-lev/apkfile) أولاً؛ PacMan-APK وxapkInstaller للمقارنة | metadata، signing information، split selection، OBB وformat edge cases | archive hardening، cryptographic signature verification، remote install lifecycle، Python runtime decision | Source revalidated في [14](14-source-revalidation-app-installers.md)؛ مرشح parser أولي وليس installer معتمداً |
-| OTA payload | [payload-dumper-go](https://github.com/ssut/payload-dumper-go) | Header/manifest/partition metadata وhash، واستخراج محلي اختياري | لا flash/sideload أو كتابة جهاز؛ نبدأ metadata-only | مرشح مكتبة Go |
-| Dynamic partitions | [AOSP partition_tools/liblp](https://android.googlesource.com/platform/system/extras/+/master/partition_tools/)، [lucky-arch](https://github.com/soe1hom-arch/lucky-arch) | مرجع صحة metadata وlist-only/sparse parsing | لا lpmake/lpflash/lpadd في المنتج؛ مرشحو Windows يحتاجون corpus/tests | AOSP مرجع، وlucky-arch مرشح |
+| OTA payload | [payload-dumper-go](https://github.com/ssut/payload-dumper-go) | Header/manifest/partition metadata وhash، list-only، Go API وWindows builds | manifest resource caps وOTA signature trust وunsupported delta ops | Source revalidated في [16](16-source-revalidation-firmware-storage-backup.md)؛ مرشح metadata أول |
+| Dynamic partitions | [AOSP partition_tools/liblp](https://android.googlesource.com/platform/system/extras/+/master/partition_tools/)، [lucky-arch](https://github.com/soe1hom-arch/lucky-arch) | AOSP correctness oracle؛ lucky-arch list-only sparse ReaderAt | lucky-arch slot0 فقط، لا tests، header checksum/block mapping/resource caps gaps | Source revalidated في [16](16-source-revalidation-firmware-storage-backup.md)؛ AOSP المرجع وlucky-arch PoC فقط |
 | Logcat viewer | [logcat-viewer](https://github.com/daitouniao/logcat-viewer)، AdbGui | parsing/viewer/indexing/performance | لا اعتماد تلقائي على UI أو auto-device selection | مرجعان لاستخراج أجزاء محددة |
 | Bugreport/Perfetto | [Bugreport_analyzer](https://github.com/VenkateshJallu/Bugreport_analyzer)، [Perfetto](https://github.com/google/perfetto) | parser/analysis references وأداة متخصصة | لا تحميل تقارير الهاتف إلى خدمات خارجية، ولا parser دون ZIP limits/privacy | مرشحان للتجارب المعزولة |
-| Backup files | [chen3feng/android-backup](https://github.com/chen3feng/android-backup) | incremental sync، include/exclude، snapshots | auto-select لكل الأجهزة، وsize/mtime-only comparison، وتنزيل المستبعد قبل حذفه | مرجع خوارزمي؛ نحتاج إعادة تصميم |
+| Backup files | [chen3feng/android-backup](https://github.com/chen3feng/android-backup) | scan/sync، include/exclude، hardlink snapshots، Windows Unicode workaround | auto-all-devices، size/mtime-only، exclude-after-pull، لا restore/tests واضحة | Source revalidated في [16](16-source-revalidation-firmware-storage-backup.md)؛ patterns فقط |
 | Legacy .ab | [Android Backup Extractor](https://github.com/nelenkov/android-backup-extractor) | import/unpack legacy .ab | لا ينشئ backup حديثاً ولا يتجاوز Android 12 restrictions | ميزة استيراد اختيارية P2 |
 | MCP/ADB | [iksnerd/adb-mcp](https://github.com/iksnerd/adb-mcp) و[us-all/android-mcp-server](https://github.com/us-all/android-mcp-server) | typed ADB client، stdio، tool schemas، context lifecycle، validators، categories | annotations ليست approval؛ auto-single-device مرفوض؛ generic shell/write flags غير معتمدة | Source revalidated في [15](15-source-revalidation-mcp-codex.md)؛ Read-only V1 فقط |
 | Windows PnP/Drivers | Windows PnP/SetupAPI/Configuration Manager وPnPUtil، ومصادر Microsoft/Google/OEM | APIs الرسمية للتشخيص والمطابقة | لا تثبيت/إزالة driver تلقائياً دون exact Hardware ID وpreview/approval/rollback | تصميم في 04؛ يحتاج PoC Windows |
@@ -83,7 +83,11 @@
 |---|---|---|
 | ADB/File/Logcat | [13](13-source-revalidation-adb-file-core.md) عند SHAs محددة | PoC .NET/Tauri، build/tests، USB/Wireless/Hardware |
 | APK/APKM/XAPK/APKS | [14](14-source-revalidation-app-installers.md) عند SHAs محددة | archive corpus، apksigner verification، PoC Python sidecar مقابل adapters، install session failure tests |
-| OTA/Partitions/Backup/Drivers | HEAD snapshots موثقة في هذا الملف ومراجعات المجال | Source revalidation تفصيلية لكل مرشح قبل الاقتباس/الدمج |
+| Drivers | مصادر Windows الرسمية وتصميم 04 | PoC Windows PnP/driver diagnosis/rollback |
+
+## 3.2 تقدم Source Revalidation — OTA/Partitions/Backup
+
+تمت مراجعة payload-dumper-go وlucky-arch وlpunpack_cyth وchen3feng/android-backup عند SHAs المثبتة في [16](16-source-revalidation-firmware-storage-backup.md). هذه المراجعة لا تغني عن corpus/PoC ولا تثبت runtime.
 
 ## 4. المعمارية المستهدفة
 
