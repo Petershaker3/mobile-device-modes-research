@@ -6,6 +6,8 @@
 **المنصة المستهدفة:** Windows 10/11، وAndroid 7.0 / API 24 فأحدث.  
 **حالة المستودع:** بحث وتصميم؛ لا يوجد منتج منفذ أو اختبار Hardware معتمد.
 
+**تقدم Source Revalidation:** اكتملت مراجعة المصدر عند SHAs محددة لكل من AdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md). بقية المرشحين ما زالت تحتاج إعادة تحقق قبل الاقتباس.
+
 ## 1. القرار التنفيذي
 
 المشروع ليس APK installer ولا ADB GUI موسعاً. هو منصة Windows لإدارة أجهزة Android وفهم بياناتها وأوضاعها وسوفتويرها وتطبيقاتها وملفاتها وتشخيصها وشبكتها، مع واجهة MCP محلية للذكاء الاصطناعي.
@@ -27,9 +29,9 @@
 
 | المحور | المرشح الأساسي | ما يمكن الاستفادة منه | ما لا نأخذه كما هو | الحالة الحالية |
 |---|---|---|---|---|
-| ADB protocol/client | [AdvancedSharpAdbClient](https://github.com/SharpAdb/AdvancedSharpAdbClient) | DeviceData/Serial/TransportId، SyncService، PackageManager، install-multiple، progress/cancellation | لا parser صيغ، ولا سياسة أمان أو lifecycle مكتملة؛ نحتاج unique staging وabandon/cleanup وpost-verify | أقوى مرشح Host Core؛ مراجعة مصدر محددة في 02 §20.54 |
-| إدارة الملفات | [ADB-Explorer](https://github.com/Alex4SSB/ADB-Explorer) | File listing، transfer queue، sync/streaming، progress patterns | لا ننسخ GUI أو كل dependencies؛ نفصل AdvancedSharpAdbClient خلف adapter | مرشح استخراج مكونات؛ يلزم تثبيت commit المراجعة قبل الاقتباس |
-| واجهة/معلومات ADB وLogcat | [AdbGui](https://github.com/RookieJay/AdbGui) | Device discovery، read info، Logcat Core وواجهات التشخيص | لا سياسة اختيار الجهاز أو كل التطبيق؛ مراجعة اختلاف README عن المصدر | مرجع مكونات، لا دمج كامل |
+| ADB protocol/client | [AdvancedSharpAdbClient](https://github.com/SharpAdb/AdvancedSharpAdbClient) | DeviceData/Serial/TransportId، SyncService، PackageManager، install-multiple، progress/cancellation | raw shell argument construction، basename collisions، cleanup/session abandon وpost-verify gaps | Source revalidated عند SHA محدد؛ مرشح Host Core مع فجوات مسجلة في [13](13-source-revalidation-adb-file-core.md) |
+| إدارة الملفات | [ADB-Explorer](https://github.com/Alex4SSB/ADB-Explorer) | File listing، transfer queue، SyncPipe bounded streaming/backpressure، progress throttling | WPF/fork محلي من AdvancedSharpAdbClient؛ Hardware tests تحتاج جهازين ومسار test مخصص | Source revalidated عند SHA محدد؛ مرشح استخراج patterns فقط وفق [13](13-source-revalidation-adb-file-core.md) |
+| واجهة/معلومات ADB وLogcat | [AdbGui](https://github.com/RookieJay/AdbGui) | Device discovery، read info، Logcat ring buffer/filter/controller، parser fixtures | Kotlin/Compose؛ generic shell موجود؛ clear/fix-logcat لها آثار على الجهاز | Source revalidated عند SHA محدد؛ parser/fixtures/design فقط وفق [13](13-source-revalidation-adb-file-core.md) |
 | تثبيت APKS | [Google bundletool](https://github.com/google/bundletool) | DeviceSpec، TOC/APKS selection، install-apks | لا يستبدل APKM/XAPK parser ولا سياسة اختيار الجهاز | المرجع الأساسي لصيغة APKS القياسية |
 | تحليل APKM/XAPK | [xapkInstaller](https://github.com/adhu2018/xapkInstaller)، [pacman-apk](https://github.com/nuloperrito/pacman-apk)، [apkfile](https://github.com/david-lev/apkfile) | مقارنة parsers وmanifest/OBB handling | لا نعتمد parser واحداً قبل corpus واختبارات ZIP/signature/path؛ لا نفترض schema موحداً | مرشحون متنافسون؛ لا اعتماد دمج |
 | OTA payload | [payload-dumper-go](https://github.com/ssut/payload-dumper-go) | Header/manifest/partition metadata وhash، واستخراج محلي اختياري | لا flash/sideload أو كتابة جهاز؛ نبدأ metadata-only | مرشح مكتبة Go |
