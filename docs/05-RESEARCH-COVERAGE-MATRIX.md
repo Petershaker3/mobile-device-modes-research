@@ -36,7 +36,7 @@
 | Logcat وسجلات النظام والأحداث | [10](10-android-diagnostics-and-logs.md)؛ تدقيق AdbGui Logcat Core وLogcat Viewer وLogCater وLogFilter وSherlog | بحث جيد — غير مختبر | تدقيق wiring والبناء والاختبارات وعمليات Runtime؛ مراجعة privacy/retention وحدود stream/cancel على أجهزة فعلية | الوثيقة المستقلة موجودة |
 | Bugreport وdumpsys وdumpstate والتقارير | [10](10-android-diagnostics-and-logs.md)؛ مراجع AOSP وAndroid Studio وPerfetto، ومراجعة AdbGui bugreport command | بحث جيد — غير مختبر | اختبارات ZIP corpus من إصدارات/OEM مختلفة، اختبار cancellation/progress، وفحص خصوصية/سلامة الأرشيف | الوثيقة المستقلة موجودة |
 | العمليات والخدمات والذاكرة والبطارية والتشخيص | [10](10-android-diagnostics-and-logs.md)؛ مراجع ADB وLogCater/AdbGui | جزئي | توسيع كتالوج أوامر القراءة واختبار اختلاف مخرجات ps/dumpsys حسب API/OEM؛ لا إيقاف عمليات أو خدمات تلقائياً | ضمن 10 |
-| النسخ الاحتياطي والاستعادة | ملاحظات عن APK export وlegacy backup في [02 §20.18 و20.20](02-tool-landscape-and-market-research.md) | جزئي، مع فجوة تعريف مهمة | فصل تصدير APK عن نسخ بيانات التطبيق، ونسخ ملفات المستخدم، ونسخ إعدادات البرنامج. بحث حدود Android backup/restore وتعدد المستخدمين والقيود والصلاحيات؛ لا وعد باستعادة كاملة | نعم: 11 |
+| النسخ الاحتياطي والاستعادة | [11](11-backup-restore-boundaries.md)؛ Android Auto Backup/adb backup limits؛ مراجعة chen3feng/android-backup وOpen Android Backup وAndroid Backup Extractor وJigar Tools | بحث جيد — غير مختبر | اختبار backup/restore فعلياً على Android API 24+، واختبار manifest/hash/incremental/conflict handling | الوثيقة المستقلة موجودة |
 | DNS وPrivate DNS وحجب الإعلانات | [03 §17.1 و17.3–17.4](03-app-management-and-network.md)؛ [02 §20.22](02-tool-landscape-and-market-research.md) | بحث جيد — غير مختبر | تثبيت مصفوفة اختلافات Android 7+ وOEM وWi-Fi/mobile؛ اختبار Preview/Apply/Verify/Restore لاحقاً؛ توثيق متطلبات Local VPN منفصلة عن ADB DNS | لا؛ الموجود مناسب |
 | تعريفات Windows وتشخيصها وإصلاحها | [04](04-windows-driver-diagnostics.md)؛ [02 §20.23–20.25](02-tool-landscape-and-market-research.md) | بحث جيد — غير مختبر | استكمال Hardware-ID matrix واختبار Windows 10/11 وrollback؛ الالتزام بالمصادر الرسمية فقط | لا؛ الموجود مناسب |
 | MCP وربط Codex بطبقة خدمات البرنامج | [02 §20.1–20.20](02-tool-landscape-and-market-research.md)؛ [RESEARCH-METHODOLOGY](RESEARCH-METHODOLOGY.md) | بحث معماري وتدقيق مرشحين جيد — غير مختبر | تثبيت عقود الأدوات والـschemas وApproval Tokens وtimeouts/cancellation وعمليات الجهاز المحدد؛ اختبار MCP فعلياً مع Codex بعد وجود Service Layer | لا؛ استكمال 02 والمنهجية |
@@ -56,13 +56,18 @@
 | Logcat والتشخيص | ATA-GUI، QADB، Android Multitool Universal، مراجع ADB/MCP في 02 | دعم streaming/filters/export، دورة حياة الجلسة، حفظ السجلات، حدود الصلاحيات والخصوصية |
 | تعريفات Windows | PnPUtil، SetupAPI/Configuration Manager، Driver Store Explorer كمرجع | لا تثبيت تلقائي؛ مطابقة Hardware IDs ومصادر Microsoft/Google/OEM والتحقق والتراجع |
 
-## 4. الفجوات التي تستحق وثائق مستقلة
+## 4. حالة الوثائق المستقلة
 
-الأولوية هنا هي سد فجوات البحث لا بدء التنفيذ:
+تم إنشاء الوثائق الست التي حددتها المراجعة السابقة:
 
-5. **11 — Backup & Restore Boundaries:** أنواع النسخ الاحتياطي المختلفة، ما يمكن تصديره فعلاً، قيود Android، والاستعادة والتحقق.
+- [06 — Android System Information](06-android-system-information.md)
+- [07 — Firmware & Software Inventory](07-firmware-software-inventory.md)
+- [08 — Storage & Partition Information](08-storage-partition-information.md)
+- [09 — Device File Management](09-device-file-management.md)
+- [10 — Android Diagnostics & Logs](10-android-diagnostics-and-logs.md)
+- [11 — Backup & Restore Boundaries](11-backup-restore-boundaries.md)
 
-لا ننشئ وثائق مستقلة جديدة للاتصال أو التطبيقات أو DNS أو تعريفات Windows أو MCP؛ هذه المجالات لديها وثائق حالية ينبغي استكمالها بدلاً من تشتيت المعلومات.
+لا نحتاج فتح وثائق مستقلة إضافية حالياً. الفجوات المتبقية تسجل داخل هذه الوثائق أو ملفات المجال الحالية، وتتحول إلى عمل جديد فقط إذا ظهر سبب تقني واضح.
 
 ## 5. ترتيب العمل البحثي بعد المصفوفة
 
@@ -73,7 +78,7 @@
 | 3 | تم إنجاز 09 — Device File Management | تدقيق مشاريع ADB-Explorer وAdbFileManager وWinDroidFS وJSleim ومراجع WPD؛ لا اختبار Hardware |
 | 4 | تم إنجاز 07 — Firmware & Software Inventory | مراجعة AOSP OTA metadata وupdate_metadata.proto وpayload-dumper-go وAVB؛ لا extraction أو flash |
 | 5 | تم إنجاز 08 — Storage & Partition Information | مراجعة AOSP liblp/lpdump وlpunpack-go وlucky-arch وlpunpack_cyth؛ لا اختبار Hardware أو extraction |
-| 6 | Backup & Restore Boundaries | تصنيف النسخ الاحتياطي والاستعادة حسب نوع البيانات وإصدار Android |
+| 6 | تم إنجاز 11 — Backup & Restore Boundaries | حدود Android Auto Backup وadb backup، ومراجعة أدوات incremental/legacy/Windows؛ لا اختبار Backup/Restore فعلي |
 | 7 | تحديث مصفوفة التغطية | ربط كل نتيجة بمشروع ومصدر وملف/قسم ودليل وحالة تحقق، ثم تحديث 00 وREADME |
 
 ## 6. قواعد تحديث هذه المصفوفة
@@ -95,4 +100,4 @@
 - [Capture and read bug reports — Android Studio](https://developer.android.com/studio/debug/bug-report): إنشاء تقرير bugreport وقراءة ملف ZIP.
 - [Logcat command-line tool — Android Developers](https://developer.android.com/tools/logcat): buffers وfilters وصيغ السجلات وحدود بعض الخيارات والصلاحيات.
 
-**حالة المصفوفة:** الوثائق 06 و07 و08 و09 و10 أُنشئت بعد مراجعة المصدر. الوثيقة 11 لم تُنشأ بعد. لا يوجد ادعاء باختبار Hardware أو اعتماد مشروع للدمج.
+**حالة المصفوفة:** جميع الوثائق المستقلة المقترحة 06–11 أُنشئت بعد مراجعة المصادر. لا يوجد ادعاء بتشغيل الأدوات أو اختبار Hardware. لا يوجد ادعاء باختبار Hardware أو اعتماد مشروع للدمج.
