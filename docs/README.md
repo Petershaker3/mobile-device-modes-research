@@ -39,3 +39,5 @@
 - وجود وظيفة في الكود أو صفحة تسويقية لا يثبت عملها على كل الأجهزة.
 - لا يُسجل الاختبار على أنه ناجح إلا مع ذكر الجهاز وإصدار Android وWindows والأداة وإصدارها وخطوات الاختبار والنتيجة.
 - راجع حالة كل محور في نهايته قبل اتخاذ قرار تنفيذ.
+
+- **APKM/XAPK schema variants, OBB transfer, and apkfile candidate audit:** موثق في القسم 20.45 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2045-تدقيق-عميق-لتنوع-apkmxapk-وملفات-obb-وإعادة-استخدام-apkfile-12-نوفمبر-2026). يتضمن مقارنة Host-side/Android-side، حدود streaming، واختبارات variants وOBB.
