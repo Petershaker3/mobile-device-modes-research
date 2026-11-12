@@ -2905,10 +2905,13 @@ README blob SHA: fa6b10a8938d0b0a4c25696451424f3c4f2cb548
 7. **اختيار density تقريبي:** mapping من dpi إلى drawable qualifiers مبسط، ويحتاج مقارنة بخوارزمية Android/bundletool وسلوك nodpi/anydpi.
 8. **OBB:** مسار expansions ينسخ الملفات إلى مسارات مستمدة من manifest؛ يجب التحقق من package identity والمسارات والملفات، ويجب أن يكون النقل بعد نجاح التثبيت وموافقة مستقلة. يجب أيضاً تغطية أكثر من expansion؛ الكود الظاهر يعيد نتيجة داخل loop بعد أول عنصر.
 9. **Archive/resource limits:** لا تظهر في المسارات المفحوصة حدود شاملة لعدد entries أو actual extracted bytes أو زمن/مساحة extraction. يجب إضافة سياسة القسم 20.33.
-10. **APKM/APKS extraction:** استخدام ZipFile.extract دون سياسة موحدة معلنة للتحقق من المحتوى والـhash والـmanifest consistency قبل تثبيت الملفات.
-11. **تحقق النتيجة:** يجب أن نقرأ package/version من الجهاز بعد العملية؛ لا نكتفي بexit code أو نص stdout.
-12. **اختبارات:** لم أجد في نتائج البحث التي راجعتها suite اختبارات واضحة للـparsers/selection أو Windows ADB integration؛ لا أعتبر هذا إثباتاً لعدم وجود أي tests، لكنه فجوة تحقق قبل اعتماد المشروع.
-13. **AAB:** README نفسه يذكر مشكلة مع bundletool/aapt2 في بيئة معينة، ولذلك يبقى AAB خارج P0، ونستخدم bundletool الرسمي مباشرة عند إدخال هذا المسار لاحقاً.
+10. **Archive extraction:** دالة unpack تستخدم shutil.unpack_archive على ZIP دون إظهار حدود فعلية لعدد entries أو bytes أو وقت أو مساحة الاستخراج؛ يجب استبدالها بمسار staging محدود وآمن.
+11. **Process runner:** دالة run_msg تستخدم subprocess.run دون timeout أو cancellation أو حد لحجم stdout/stderr؛ يلزم Process runner مضبوط.
+12. **تدفق XAPK:** الشرط الظاهر في main يعالج status=true (أي نتيجة نجاح وفق install_xapk/install_multiple) على أنه فشل ويعرض مسار uninstall/reinstall؛ هذه علامة على خطأ تدفق يحتاج اختباراً وإصلاحاً قبل أي إعادة استخدام.
+13. **APKM/APKS extraction:** استخدام ZipFile.extract دون سياسة موحدة معلنة للتحقق من المحتوى والـhash والـmanifest consistency قبل تثبيت الملفات.
+14. **تحقق النتيجة:** يجب أن نقرأ package/version من الجهاز بعد العملية؛ لا نكتفي بexit code أو نص stdout.
+15. **اختبارات:** لم أجد في نتائج البحث التي راجعتها suite اختبارات واضحة للـparsers/selection أو Windows ADB integration؛ لا أعتبر هذا إثباتاً لعدم وجود أي tests، لكنه فجوة تحقق قبل اعتماد المشروع.
+16. **AAB:** README نفسه يذكر مشكلة مع bundletool/aapt2 في بيئة معينة، ولذلك يبقى AAB خارج P0، ونستخدم bundletool الرسمي مباشرة عند إدخال هذا المسار لاحقاً.
 
 #### 20.41.4 قرار إعادة الاستخدام
 
