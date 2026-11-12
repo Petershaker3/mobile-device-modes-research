@@ -59,3 +59,5 @@
 - **Paving-Base/APK-Installer Windows UI/ADB reference:** تدقيق WinUI/.NET وAdvancedSharpAdbClient وAAPTForNet وWSA-specific flow وsplit install flags وغياب preflight/post-install checks موثق في القسم 20.53 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2053-تدقيق-paving-baseapk-installer-windows-ui-وadvancedsharpadbclient-وaaptfornet).
 
 - **AdvancedSharpAdbClient ADB library audit:** مراجعة DeviceData serial/transport identity وPackageManager APK/split sessions وprogress/cancellation، مع مخاطر basename collision وsession abandon وpost-install verification، موثقة في القسم 20.54 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2054-تدقيق-advancedsharpadbclient-مكتبة-net-مباشرة-لبروتوكول-adb-وتثبيت-split-apks).
+
+- **App source discovery and downloads (APKPure/F-Droid/APKMirror):** موثق في القسم 20.55 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2055-اكتشاف-التطبيقات-وتحميلها-من-apkpure-f-droid-apkmirror). يتضمن الفهرسة الموقعة لـF-Droid، وحدود التكامل المباشر مع APKPure وAPKMirror، وProvider Adapters، وسياسة التنزيل الآمن، واختبارات القبول.
