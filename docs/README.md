@@ -5,7 +5,7 @@
 ## الوثائق
 
 1. [مرجع الاتصال وقراءة المعلومات والتحويل بين الأوضاع](01-connectivity-protocols.md) — طبقات USB وADB وFastboot وMTP، أوضاع القراءة، انتقالات الأوضاع، وبنية المحولات.
-2. [دراسة الأدوات الجاهزة والسوق وتجارب المستخدمين](02-tool-landscape-and-market-research.md) — أدوات GitHub والأدوات التجارية، مراجعة الأدلة، تجارب المجتمع، ومقارنة المرشحين، بما في ذلك تحليل حاويات APK/APKS/APKM/XAPK.
+2. [دراسة الأدوات الجاهزة والسوق وتجارب المستخدمين](02-tool-landscape-and-market-research.md) — أدوات GitHub والأدوات التجارية، مراجعة الأدلة، تجارب المجتمع، ومقارنة المرشحين، بما في ذلك تحليل حاويات APK/APKS/APKM/XAPK وأمن ZIP وتوقيع APK.
 3. [إدارة التطبيقات والشبكة عبر ADB](03-app-management-and-network.md) — إدارة التطبيقات، APK/APKS، ABI، DNS، تواريخ التثبيت والتحديث، ومصدر التثبيت.
 4. [تشخيص وإصلاح تعريفات Android على Windows](04-windows-driver-diagnostics.md) — تشخيص التعريفات، المصادر الرسمية، الإصلاح الآمن، التراجع، واختبارات القبول.
 5. [منهجية البحث وضبط جودة الأدلة](RESEARCH-METHODOLOGY.md) — درجات الثقة، حالات التحقق، قواعد التوثيق، وإعادة الاستخدام الآمن للمشاريع وتكامل MCP.
@@ -14,7 +14,8 @@
 
 - **Reuse Before Rebuild:** موثق في القسم 19 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#19-مبدأ-إعادة-استخدام-مشاريع-github-قبل-بناء-بديل-reuse-before-rebuild).
 - **AI/MCP Integration:** موثق في القسم 20 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#20-إتاحة-وظائف-البرنامج-لوكلاء-الذكاء-الاصطناعي-عبر-mcp).
-- **APK/APKS/APKM/XAPK containers:** موثق في القسمين 20.30–20.32 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2030-تدقيق-google-bundletool-اختيار-split-apk-المتوافق-وتثبيت-apks-12-نوفمبر-2026).
+- **APK/APKS/APKM/XAPK containers:** موثق في الأقسام 20.30–20.32 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2030-تدقيق-google-bundletool-اختيار-split-apk-المتوافق-وتثبيت-apks-12-نوفمبر-2026).
+- **ZIP/APK security:** موثق في القسم 20.33 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2033-تدقيق-أمان-zipapk-zip-slip-وzip-bomb-والروابط-الرمزية-والتحقق-من-التوقيع-12-نوفمبر-2026).
 
 ## مراجع تكامل MCP
 
