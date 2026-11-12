@@ -25,6 +25,8 @@
 
 - **ADB install command strategy:** توثيق الفرق بين install وinstall-multiple وinstall-multi-package وسياسة flags الآمنة في القسم 20.43 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2043-تثبيت-android-عبر-adb--حدود-الأوامر-والخيارات-التي-يجب-أن-يبني-عليها-المحرك-12-نوفمبر-2026).
 
+- **Split APK compatibility and failure matrix:** شروط package/version/signature/base/split، مطابقة الجهاز، رسائل الفشل، وAcceptance Test Matrix في القسم 20.44 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2044-قواعد-توافق-split-apk-والتوقيع-وإدارة-حالات-الفشل-12-نوفمبر-2026).
+
 ## مراجع تكامل MCP
 
 - [Codex MCP setup](https://developers.openai.com/codex/mcp) — إعداد خوادم STDIO وStreamable HTTP.
