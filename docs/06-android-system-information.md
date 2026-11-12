@@ -202,7 +202,7 @@ Property Reader              Command Adapters
   - الاختبار يغطي الخصائص الموجودة والناقصة.
   - الملاحظة: بناء regex الحالي يضم property key مباشرة داخل regex دون Regex.escape; أسماء الخصائص التي تحتوي . قد تطابق أي حرف بدل النقطة الحرفية. يجب إصلاح ذلك قبل نقل parser أو اعتماد سلوكه.
   - النموذج الحالي محدود؛ لا يغطي fingerprint/security patch/build fields/feature lists/structured provenance.
-- README يصرح أن Logcat streaming وfile push/pull وshell وscrcpy مؤجلة في v1؛ لا ننسبها إلى الإصدار الحالي.
+- يوجد تعارض في README: قسم v1/Next steps يذكر أن Logcat streaming مؤجل، لكن المصدر الحالي يحتوي LogcatController وLogcatRecorder وLogcatViewModel وLogcatScreen واختبارات مرتبطة. وثيقة التشخيص 10 تسجل هذا التعارض وتفصل ما ثبت وجوده في المصدر عن حالة الإصدار المنشور.
 - يذكر README أنه auto-selects أول جهاز online. هذا السلوك لا يناسب سياستنا؛ نعيد استخدام الـcore/parsers فقط بعد إزالة أي اختيار تلقائي وربط كل عملية بجهاز محدد.
 
 **الحكم:** أقوى مرشح مبدئي لاقتباس مكونات ADB/Parser واختبارها داخل Host Core، وليس نسخ التطبيق أو سياسة اختيار الجهاز. لا يوجد اعتماد دمج بعد.
