@@ -45,3 +45,5 @@
 - **AAB/APKV and Android-side installer references:** موثق في القسم 20.46 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2046-aab-apkv-ومراجع-android-side-إضافية-لتوسيع-صيغ-التثبيت-12-نوفمبر-2026). يشمل مسار AAB عبر bundletool، وتدقيق VInstall/APKV وBrokk، وتصنيف الأولويات واختبارات القبول.
 
 - **Windows multi-format installer candidate (xapkInstaller):** تدقيق APK/APKM/APKS/XAPK/AAB، إدارة Serial، أمان الاستخراج، flags، OBB، وقيود CI موثق في القسم 20.47 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2047-تدقيق-xapkInstaller-مرشح-windows-متعدد-الصيغ-apkapkmapksxapkaab).
+
+- **Tauri 2/Rust ADB installer architecture reference:** تدقيق Android Application Installer، device lifecycle، wireless ADB، APK/AAB، cancellation/progress، وأوجه النقص في multi-format وpost-install verification موثق في القسم 20.48 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2048-تدقيق-android-application-installer-مرجع-tauri-2rust-لتكامل-adb-وaab).
