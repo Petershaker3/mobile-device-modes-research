@@ -3826,3 +3826,93 @@ Commit تمت مراجعته: `a43b37a22493969be2c8161f3e0551bd462b0d30`.
 **حالة التحقق:** Source/Docs Review عند commit محدد. لم يتم بناء APK أو تشغيله على هاتف، ولم نختبر split selection على جهاز فعلي. لا يوجد اعتماد على هذه المراجعة كـRuntime/Hardware Validation.
 
 **قرار الجولة:** نحتفظ بـApksFilter/ZipParser كمرجع تصميم لاختيار split APKs والـPackageInstaller streaming فقط. لا نستبدل bundletool بها، ولا ننقل Android-side Shizuku implementation إلى Windows Host.
+
+
+### 20.51 — تدقيق App Manager: APKM/APKS/XAPK وsplit metadata وOBB lifecycle
+
+المستودع: [MuntashirAkon/AppManager](https://github.com/MuntashirAkon/AppManager)  
+Commit تمت مراجعته: `dc4154f4c04399602895f31f9390bb66b25ea8a0`.  
+الملفات: `apk/ApkFile.java`، `apk/splitapk/ApksMetadata.java`، `apk/splitapk/SplitApkChooser.java`، `apk/splitapk/SplitApkExporter.java`، `apk/installer/PackageInstallerCompat.java`، `PackageInstallerService.java`، `PackageInstallerRetryPolicy.java`، `PackageInstallerSessionRegistry.java`، واختبارات PackageInstallerCompat.
+
+**سبب أهمية المرشح:**
+- تطبيق Android ناضج لإدارة التطبيقات وتثبيتها، ويعلن دعم APK وAPKS وAPKM وXAPK مع OBB.
+- يفصل parsing عن installer session، ويحتوي نموذج بيانات للـbase/splits/OBB، وواجهة لاختيار splits.
+- يطبق stream copy إلى PackageInstaller Session، ويدير تقدم العملية ونتيجتها وحالات timeout/abandon/retry.
+- يوفر تفاصيل مفيدة عن APKM encrypted/decrypted، وSAI metadata، وfeature/config splits.
+
+**ما ظهر في الكود:**
+
+1. **التعرف على الصيغ**
+   - `ApkFile` يدعم امتدادات APK/APKM/APKS/XAPK وMIME types المقابلة.
+   - APKM: إذا كان ZIP غير مشفر يعامل كـAPKS؛ وإذا كان APKM مشفراً يستخدم `UnApkm` لتحويله إلى ملف APKS مؤقت ثم يكمل parsing.
+   - APKS وXAPK: يفتح ZIP ويقرأ APK entries من الداخل، ويقرأ `info.json` metadata عند وجوده، ويجمع ملفات `.obb`.
+   - لا يعتمد على امتداد الملف وحده في كل الحالات؛ لكنه ما زال يستخدم extension/MIME لتحديد مسار المعالجة الأولي.
+   - عند قراءة APK entries، يميز base APK من split عبر AndroidManifest attribute `split`، ويرفض غياب base أو تكرار base.
+
+2. **Split metadata وتصنيفها**
+   - `Entry` يميز Base، Feature split، ABI split، Density split، Locale split، Unknown split.
+   - يقرأ `android:isFeatureSplit` و`android:isSplitRequired` و`android:isolatedSplits` و`configForSplit` واسم split.
+   - يصنف config suffix إلى ABI/Density/Locale، ويرتب المرشحين بحسب قدرات الجهاز عبر StaticDataset وBuild.SUPPORTED_ABIS وDevice Density وLocale ranking.
+   - هذا مرجع أقوى لنموذج البيانات والعلاقات من الاعتماد على اسم الملف فقط؛ فهو يحاول فهم feature ownership وrequired/isolated splits.
+   - `SplitApkChooser` يحدد required splits افتراضياً، ويمنع إلغاء required split، ويجمع split components المرتبطة بنفس feature.
+   - توجد TODO صريحة لفحص duplicate split names؛ كما أن المراجعة لم تجد تحققاً موحداً يثبت تطابق package name وversion code وsigning certificates لكل split مع base قبل تثبيت المجموعة. يجب ألا نعتبر وجود Manifest parsing كافياً لهذا التحقق.
+
+3. **SAI metadata وdependencies**
+   - `ApksMetadata` يقرأ `info.json`، ويتعامل مع meta version وpackage/version/minSdk/targetSdk وdependencies.
+   - يمكن أن تحتوي dependencies على package/version/signature/match/required/path.
+   - هذه metadata خاصة بتنسيق export الذي ينتجه App Manager/SAI؛ لا تساوي Google bundletool `toc.pb` ولا يجوز تفسيرها على أنها نفس schema.
+   - وجود dependencies في metadata مفيد لتصميم Dependency Preview، لكن يجب أن تكون dependency installation مرحلة منفصلة بموافقة واضحة.
+
+4. **OBB**
+   - يلتقط `ApkFile` ملفات `.obb` كـObbEntry منفصلة عن APK entries.
+   - `PackageInstallerCompat` ينسخ OBB إلى Android OBB directory مع progress، ويحسب مجموع أحجامها.
+   - قبل النسخ يحذف الملفات القديمة من OBB directory، ثم ينسخ الجديدة.
+   - عند فشل النسخ يسجل الخطأ ويعرض رسالة، لكن دالة `copyObb` لا ترجع failure إلى install pipeline؛ لذلك يمكن أن يستمر تثبيت APK حتى مع فشل OBB.
+   - لا يظهر تحقق hash/read-back للملفات المنسوخة أو rollback للـOBB القديمة عند فشل النسخ.
+   - هذا مثال عملي على ضرورة فصل APK install عن OBB transfer وجعل نتيجة كل مرحلة مستقلة، مع حفظ النسخة السابقة أو استخدام staging/atomic replace.
+
+5. **Install Session lifecycle**
+   - `PackageInstallerCompat` يختار entries المحددة، يحسب أحجامها مع overflow checks، ثم يفتح Session ويكتب كل APK عبر `openWrite` و`fsync`.
+   - يدير callback identities لكل operation/session، ويدعم pending user action، ويضع completion watchdog يصل إلى 30 دقيقة.
+   - عند timeout يفحص session state ويحاول abandon للجلسة، ويحتفظ بحالة الجلسة إذا تعذر حسمها.
+   - `PackageInstallerSessionRegistry` يحتفظ بسجل للجلسات ويزيل orphaned sessions بعد موت العملية.
+   - هذه أفكار قوية لإدارة العمليات طويلة العمر، والتعامل مع النتائج المتأخرة، وعدم إعلان النجاح عند غياب callback.
+
+6. **سياسة إعادة المحاولة والخيارات**
+   - `PackageInstallerRetryPolicy` يميز بعض حالات فشل MIUI/HyperOS المحددة، ويقيد عدد المحاولات، ولا يعيد المحاولة لكل خطأ عشوائياً.
+   - توجد خيارات لتعديل سلوك verifier وinstaller flags، وبعض المسارات تستخدم امتيازات/واجهات Android داخلية.
+   - لا ننقل bypass verification أو downgrade/test/privileged flags إلى مشروعنا. نقتبس فقط مبدأ retry policy المحددة برمز خطأ وسبب معروف وحد أقصى، مع تسجيل المحاولات.
+
+7. **الاختبارات**
+   - توجد اختبارات Robolectric لـPackageInstallerCompat تشمل operation/session callback identity، منع إكمال العملية مرتين، bounded wait، وتنسيق verifier override.
+   - هذا دليل على اختبار state machine، لكنه لا يثبت تغطية كل APKM/APKS/XAPK schemas أو OBB integrity أو hardware install.
+   - لم نجد في الملفات التي تمت مراجعتها مجموعة fixtures شاملة لكل producers/variants؛ يجب إنشاء corpus مستقل عند تنفيذ parser لدينا.
+
+**القيود بالنسبة إلى برنامجنا:**
+- Android-side implementation يعتمد Android PackageManager/PackageInstaller وواجهات نظام داخلية؛ لا يقدم Windows ADB host integration جاهزاً.
+- قراءة الملفات والـmanifest تتم باستخدام Android APIs؛ نحتاج Host-side parsers مستقلة أو CLI/SDK يمكن تشغيله على Windows.
+- دعم الصيغ لا يساوي دعم جميع نسخ producer schemas؛ APKM encryption وAPKS metadata يجب أن يمر كل منهما بمسار مميز.
+- OBB handling الحالي ليس transactional بما يكفي ليكون مرجعاً كاملاً.
+
+**الحكم الهندسي:**
+- **مرجع عالي القيمة لتصميم parser/model:** تصنيف split types، required/isolated/feature relationships، وSAI metadata وOBB entries.
+- **مرجع عالي القيمة لإدارة install state:** streaming إلى session، progress، pending user action، watchdog، orphan cleanup، وretry محدد.
+- **ليس Windows integration جاهزاً:** لا ندمج التطبيق كله ولا نعتمد Android APIs الخاصة به على Host.
+- لا نعتمد APKM/APKS/XAPK support دون التحقق من producer/schema، ولا نستخدم metadata كبديل عن فحص التوقيع وتطابق المجموعة.
+- نحتفظ بمسارات AppManager كمرجع إضافي لمقارنة parser behavior مع SAI وVInstall وbundletool، ونضع OBB transaction/recovery كمتطلب إلزامي في تصميمنا.
+
+**اختبارات قبول مستخلصة:**
+- APKM encrypted/decrypted، وAPKM ZIP بدون تشفير؛ تحقق من أن كل حالة توجه إلى parser الصحيح.
+- APKS مع SAI metadata versions مختلفة، وAPKS Google مع TOC؛ لا تخلط metadata formats.
+- XAPK مع base/splits وOBB متعددة، وملفات OBB مفقودة/مكررة/بأحجام غير متوقعة.
+- split manifest يحتوي package/version/signing mismatch، أو duplicate split name، أو requiredSplitTypes/configForSplit غير محلولة؛ يجب الرفض قبل install.
+- feature split مع config splits: اختيار feature يضم المتطلبات التابعة، وإلغاء feature يزيل splits التابعة فقط.
+- OBB transfer failure: لا يتم حذف النسخة السابقة قبل التحقق من النسخة الجديدة، ولا يُعلن اكتمال العملية ككل إذا بقي OBB مطلوباً غير منقول.
+- interruption/timeout بعد فتح session: تتبع session ID، ثم query/abandon/reconcile قبل بدء محاولة جديدة.
+- callbacks مكررة أو متأخرة أو تخص session أخرى: لا تغير نتيجة operation الحالية.
+- vendor-specific retry: لا إعادة محاولة إلا لرمز خطأ محدد وبحد أقصى معروف.
+- لا تتجاوز فحوص التوقيع أو تسمح downgrade/test-only تلقائياً في أي adapter.
+
+**حالة التحقق:** Source/Docs Review عند commit محدد، مع مراجعة وجود اختبارات Robolectric في المستودع. لم يتم build أو تشغيل التطبيق أو تثبيت حزمة على جهاز فعلي في هذه الجولة.
+
+**قرار الجولة:** نعتمد App Manager كمرجع معماري/parser-model وinstall lifecycle، لا كحل Windows جاهز. أهم ما نضيفه إلى تصميمنا هو نموذج split غني، وOBB كمرحلة مستقلة ذات rollback/verification، وsession state reconciliation.
