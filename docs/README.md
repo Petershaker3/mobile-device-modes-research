@@ -43,3 +43,5 @@
 - **APKM/XAPK schema variants, OBB transfer, and apkfile candidate audit:** موثق في القسم 20.45 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2045-تدقيق-عميق-لتنوع-apkmxapk-وملفات-obb-وإعادة-استخدام-apkfile-12-نوفمبر-2026). يتضمن مقارنة Host-side/Android-side، حدود streaming، واختبارات variants وOBB.
 
 - **AAB/APKV and Android-side installer references:** موثق في القسم 20.46 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2046-aab-apkv-ومراجع-android-side-إضافية-لتوسيع-صيغ-التثبيت-12-نوفمبر-2026). يشمل مسار AAB عبر bundletool، وتدقيق VInstall/APKV وBrokk، وتصنيف الأولويات واختبارات القبول.
+
+- **Windows multi-format installer candidate (xapkInstaller):** تدقيق APK/APKM/APKS/XAPK/AAB، إدارة Serial، أمان الاستخراج، flags، OBB، وقيود CI موثق في القسم 20.47 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2047-تدقيق-xapkInstaller-مرشح-windows-متعدد-الصيغ-apkapkmapksxapkaab).
