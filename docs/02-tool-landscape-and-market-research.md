@@ -3222,3 +3222,170 @@ AOSP يوثق `--streaming` و`--no-streaming`، ويشرح أن الثاني ي
 **القرار:** محرك التثبيت لن يقبل مجموعة split لمجرد أن امتداد الملف صحيح. قبول المجموعة مشروط بسلامة الأرشيف، واتساق package/version/signature/base/split metadata، واختيار مكونات متوافقة مع الجهاز. الحالات غير القابلة للحسم تنتهي برفض واضح، لا بتجربة تثبيت عشوائية.
 
 **حالة التحقق:** القواعد المرجعية مبنية على Android PackageInstaller وbundletool docs/source. مصفوفة الاختبار مواصفة مستقبلية؛ لم تُنشأ fixtures ولم يتم تنفيذ الاختبارات أو تثبيت تطبيقات في هذه الجولة.
+
+
+### 20.45 تدقيق عميق لتنوع APKM/XAPK وملفات OBB وإعادة استخدام apkfile (12 نوفمبر 2026)
+
+#### 20.45.1 اكتشاف مهم: لا يوجد Schema موحد مضمون لـ APKM/XAPK
+
+هذه الحاويات ليست صيغة Android قياسية مثل APK، ولا يجوز تحديد محتواها اعتماداً على الامتداد وحده. مراجعة المشاريع والعينات المرجعية أظهرت اختلافات فعلية:
+
+| الصيغة/المصدر | Manifest / Base | ملاحظات |
+|---|---|---|
+| APKMirror APKM | `info.json` + `base.apk` | مفاتيح شائعة: `apkm_version`, `pname`, `versioncode`, `min_api`; الإصدار 5 ظاهر في عينات موثقة |
+| APKPure XAPK | `manifest.json` + `<package_name>.apk` | `xapk_version`، وحقول package/version/minSdk، و`expansions` لملفات OBB |
+| APKCombo XAPK | قد يستخدم `manifest.json` وأسماء APK مختلفة | لا نفترض تطابقه مع APKPure لمجرد الامتداد |
+| XAPK قديم/أبسط | قد يكون Base باسم `base.apk` أو بنية أقل اكتمالاً | يلزم اكتشاف base من manifest ومحتوى APK، لا من الاسم وحده |
+| SAI APKS | `meta.sai_v1.json` أو `meta.sai_v2.json` | حاوية SAI؛ ليست بديلاً عن APKS القياسي الذي ينتجه bundletool ويحتوي `toc.pb` |
+
+**نتيجة عملية:** يجب أن يكون لدينا Format Detector ثم parser منفصل لكل variant معروف، مع تسجيل `format_family` و`format_version` و`producer_hint` وسبب الثقة. الامتداد مجرد hint. إذا لم تتطابق البنية مع variant معروف، لا نحاول تخمين أسماء الملفات أو تركيب Install Set عشوائياً.
+
+#### 20.45.2 APKM: ما الذي يجب ألا نفترضه؟
+
+- لا نثبت أن `info.json` موجود أو أن مفاتيحه كلها من النوع نفسه؛ توجد عينات يتغير فيها نوع `versioncode` و`min_api` بين نص ورقم.
+- لا نفترض أن كل APKM يحتوي `base.apk` صالحاً لمجرد وجوده؛ نقرأ Manifest الخاص بكل APK ونحدد package/version/splitName فعلياً.
+- لا نفترض أن كل ملف `.apk` داخل الحاوية split مطلوب للجهاز؛ قد توجد ملفات لواجهات ABI أو لغة أو كثافة أو features مختلفة.
+- يجب عدم إسقاط APKs مكسورة بصمت. خيار مثل `skip_broken_splits` مفيد في أدوات الاستكشاف، لكنه غير مقبول في مسار التثبيت الافتراضي؛ أي split غير قابل للقراءة يجعل المجموعة غير مكتملة إلى أن يثبت العكس.
+- عند وجود توقيع خارجي للحاوية أو ملفات metadata إضافية، نسجلها كقرائن مصدر فقط؛ لا نعاملها كبديل عن فحص توقيع كل APK ومقارنة شهادات المجموعة.
+
+#### 20.45.3 XAPK: اختلافات manifest وOBB
+
+مراجعة أمثلة XAPK توضح أن `manifest.json` قد يحتوي:
+- `xapk_version`، `package_name`، `name`، `version_code`، `version_name`، `min_sdk_version`، `target_sdk_version`.
+- `expansions[]`، وكل عنصر قد يحتوي `file` و`install_path` و`install_location`.
+- APKs قد تكون في جذر الأرشيف أو داخل مسارات فرعية، ولا يكفي البحث عن أول ملف ينتهي بـ`.apk`.
+
+**قاعدة parser المقترحة:**
+1. اقرأ manifest مع حدود حجم وعمق وعدد عناصر JSON.
+2. تحقق من package/version مقابل Base APK نفسه؛ metadata الخارجية ليست الحقيقة النهائية.
+3. استخرج قائمة APKs من manifest إن كانت موجودة، ثم تحقق من كل entry المشار إليه ومن أنه ملف ZIP member عادي وليس directory أو symlink.
+4. اكتشف Base من metadata الصريحة إن وجدت، وإلا من Manifest APK؛ لا تستخدم أول APK عشوائياً.
+5. تحقق من وجود كل الملفات المشار إليها. لا تتجاهل expansion معلناً لكنه مفقود؛ أظهر `MISSING_EXPANSION_FILE`.
+6. لا تثبت كل APKs الموجودة في الأرشيف تلقائياً. طبق split compatibility ثم install-multiple.
+7. احتفظ بالمسار الداخلي الأصلي كـmetadata فقط؛ عند الاستخراج استخدم staging filenames مولدة وآمنة، ولا تسمح للأرشيف باختيار وجهة الكتابة.
+
+#### 20.45.4 OBB: الاسم والمسار والتوقيت
+
+وثائق Android تحدد مسار ملفات التوسعة:
+`<shared-storage>/Android/obb/<package-name>/`
+
+والاسم القياسي يكون:
+- `main.<expansion-version>.<package-name>.obb`
+- `patch.<expansion-version>.<package-name>.obb`
+
+قواعد مهمة:
+- يمكن وجود ملف main واحد وملف patch واحد للتطبيق.
+- رقم expansion يرتبط بإصدار APK الذي ارتبط به ملف التوسعة أول مرة، وليس بالضرورة أن يكون هو versionCode الحالي بعد تحديثات لاحقة.
+- لا نستنتج الاسم من اسم التطبيق أو اسم ملف XAPK؛ نتحقق من الاسم والـpackage من manifest ومطابقتهما لقواعد Android.
+- لا نضع OBB داخل جلسة تثبيت APK نفسها. نثبت APK/splits أولاً، نتحقق من package/version المثبت، ثم ننفذ نقل OBB كمرحلة منفصلة قابلة لإعادة المحاولة.
+- لا نحذف OBB قديم أو نستبدله قبل حفظ نتيجة/خطة واضحة؛ تحديث ملف توسعة قد يسبب تلف بيانات اللعبة إذا كان الاسم أو الإصدار غير صحيح.
+- لا نفك ضغط محتوى OBB؛ هو opaque expansion blob بالنسبة لمحرك التثبيت، وقد يكون ZIP أو صيغة أخرى أو ملفاً مشفراً.
+
+**التحقق بعد النقل:** تحقق من وجود المسار والاسم والحجم، ثم احسب hash على المصدر والوجهة عندما تسمح أداة النقل بذلك. نجاح `adb push` وحده لا يثبت أن التطبيق يستطيع فتح الملف. لا نعلن `OBB_READY` إلا بعد read-back verification؛ ولا نعلن `APP_DATA_READY` إلا إذا تحقق التطبيق نفسه من المحتوى عند التشغيل، وهذا خارج إثبات النقل.
+
+#### 20.45.5 نقل الملفات الكبيرة: Streaming وليس read-all
+
+ظهر نمط خطر في بعض المشاريع: قراءة ملف OBB أو APK كاملاً إلى `ByteArray/bytes` ثم كتابته إلى ملف مؤقت. هذا يضاعف الضغط على الذاكرة وقد يسبب OOM مع ملفات الألعاب الكبيرة.
+
+المسار المطلوب:
+- استخدم stream بذاكرة محدودة (مثلاً buffer ثابت)، واحسب actual bytes أثناء القراءة والكتابة.
+- ضع حدوداً مستقلة لحجم كل entry وإجمالي uncompressed bytes وعدد entries والوقت والمساحة المؤقتة.
+- افحص free space قبل بدء staging والنقل، مع هامش احتياطي.
+- لا تستخدم `ZipFile.read(entry)` أو `read_bytes()` للملفات الكبيرة في مسار التثبيت؛ يمكن استخدامها فقط لملفات metadata الصغيرة بعد وضع حد لها.
+- عند نقل OBB، استخدم ملفاً مرحلياً محلياً ثم ADB push مع progress محسوب من bytes المنقولة؛ لا تجمع OBB في الذاكرة.
+- عند الانقطاع، سجل حالة النقل كـ`TRANSFER_INTERRUPTED`، ولا تعتبر وجود ملف جزئي نجاحاً. أعد التحقق من الحجم/hash قبل الاستكمال أو أعد النقل بأمان.
+- لا تعتبر انتهاء مهلة واجهة المستخدم دليلاً على أن عملية ADB توقفت؛ يجب امتلاك process handle، وإدارة الإلغاء، ثم فحص حالة الجهاز قبل retry.
+- لا تستخدم shell command مركباً من نصوص manifest. مرر arguments منفصلة، واسم package/path مولداً بعد validation.
+
+#### 20.45.6 تدقيق مشروع david-lev/apkfile — مرشح Host-side قوي، لا يعتمد كما هو
+
+المستودع: [david-lev/apkfile](https://github.com/david-lev/apkfile)  
+الملف الذي تمت مراجعته: `apkfile/_bundle.py` و`apkfile/_obb.py` و`apkfile/install.py` و`tests/test_install.py` وREADME.  
+Commit code reference: `4b910abae705106cde80a44d607917d038f0c36e`.
+
+**ما يقدمه فعلياً بحسب README والكود:**
+- Python library/CLI لقراءة APK وAPKM وXAPK وAPKS وAPKV.
+- قراءة metadata من manifest وAPK، مع lazy parsing لبعض المكونات.
+- قراءة XAPK `expansions` وربط OBB entries بالاسم والحجم.
+- install/uninstall عبر ADB، وفحص minSdk وABI وبعض locale/density splits.
+- يملك اختبارات unit/mock تغطي حالات ADB والتوافق وOBB، وهذا أفضل من الاكتفاء بوصف README.
+
+**نقاط مفيدة لإعادة الاستخدام أو الاقتباس المباشر:**
+- نموذج typed لكل من `ApkmFile` و`XapkFile` و`ApksFile` و`ObbFile`.
+- فصل parsing عن install transport.
+- قراءة OBB metadata من `manifest.json` دون فك محتوى OBB.
+- نموذج اختبارات fake ADB لتأكيد arguments وترتيب العمليات.
+- قواعد ABI/locale matching وبعض regressions المفيدة، مع إعادة تدقيقها مقابل bundletool والوثائق الرسمية.
+
+**موانع الاعتماد المباشر التي ظهرت في الكود:**
+1. `install_apks()` إذا لم يستلم `device_id` يستهدف كل الأجهزة المتصلة بالتوازي. هذا مخالف لقرارنا: Serial واحد محدد ومؤكد لكل عملية؛ لا نسمح بسلوك broadcast ضمن واجهة البرنامج أو MCP.
+2. `_run()` يستخدم `subprocess.run` دون timeout ظاهر. نحتاج timeout/cancellation حقيقيين وإدارة عملية ADB.
+3. `_BaseBundle.extract()` يستدعي `ZipFile.extractall()` كواجهة عامة؛ لا نستخدمها في مسارنا الأمني. يجب staging آمن بأسماء مولدة وحدود موارد.
+4. قراءة base/splits عبر `ZipFile.read()` وOBB عبر `read_bytes()` ثم `write_bytes()` تعني تحميل entry كاملاً في الذاكرة. لا يصلح هذا كمسار OBB كبير أو ملف APK ضخم دون تعديل streaming.
+5. OBB يُدفع بعد نجاح أمر install-commit، لكن الكود الظاهر لا يثبت hash للوجهة ولا يثبت أن التطبيق استطاع قراءة ملف التوسعة.
+6. أسماء OBB تُختزل إلى basename من المسار داخل الأرشيف؛ يجب رفض التصادمات والـduplicate names والتحقق من mapping قبل النقل.
+7. parser يتوقع حقولاً محددة في APKM/XAPK؛ وجود schema variant أو metadata غير متوقعة يحتاج اختباراً مستقلاً، ولا يجوز افتراض تغطيته لكل ملفات المنتجين.
+8. `ApksFile` في الكود يعتمد `meta.sai_v1/v2.json` و`base.apk`. لا نخلطه مع Google bundletool APKS القياسي ذي `toc.pb`؛ لهذا نحتفظ بـbundletool كالمسار الرسمي لصيغة APKS القياسية.
+
+**الحكم:** أقوى مرشح Host-side ظهر حتى الآن لخفض وقت بناء قارئ متعدد الصيغ، ومفيد جداً كمرجع parsing/tests. لا ندمجه كما هو. إذا قررنا اعتماده لاحقاً، نحتاج fork/adapter محدود يعالج device pinning، streaming، safe extraction، process timeout/cancel، وpost-transfer verification أولاً.
+
+#### 20.45.7 تدقيق APKMInstaller — مرجع Android-side فقط
+
+المستودع: [utzcoz/APKMInstaller](https://github.com/utzcoz/APKMInstaller)  
+Commit code reference: `0368961aa8824521681ce9dfff93d6e50a27605d`.  
+الملفات: `ApkmParser.kt` و`SplitApkInstaller.kt` وREADME.
+
+**ما يفيدنا:**
+- يوضح مسار Android-native مستقل: فتح APKM عبر URI، استخراج APKs إلى cache خاص، ثم تثبيت المجموعة عبر PackageInstaller Session.
+- يكتب كل APK إلى session stream ويستدعي `fsync` قبل commit.
+- يدير `STATUS_PENDING_USER_ACTION` ونتيجة PackageInstaller عبر BroadcastReceiver.
+- يضع سقفاً إجمالياً معلناً للاستخراج (2 GiB).
+
+**القيود المكتشفة:**
+- Android app وليس Windows host installer؛ لا يوفر لنا ADB orchestration أو اختيار Serial أو دعم XAPK/OBB.
+- parser يستخرج كل entries التي تنتهي بـ`.apk`، ويختار `base.apk` أولاً بالاسم، وإلا قد يتعامل مع أول APK كـbase؛ لا يظهر في parser فحص كامل لاتساق package/version/signature بين جميع splits.
+- إزالة المسارات إلى basename تمنع بعض traversal، لكنها قد تسبب overwrite عند وجود entries مختلفة بالاسم نفسه؛ لا يظهر رفض duplicate/case-collision.
+- حد 2 GiB يطبق بعد نسخ entry إلى الملف، وليس قبل الكتابة؛ كما لا تظهر حدود واضحة لعدد entries أو زمن الاستخراج أو الحجم المضغوط.
+- timeout في انتظار callback لا يثبت وحده أن جلسة PackageInstaller أُلغيت أو أن حالة التثبيت لم تتغير؛ يلزم reconciliation قبل retry.
+- لا يظهر post-install read-back للتحقق من package/version بعد STATUS_SUCCESS.
+
+**الحكم:** مرجع مفيد لتدفق PackageInstaller على Android فقط، وليس مكوناً ندمجه في Windows V1. لا نحتاج helper app على الهاتف لمجرد تثبيت APKM ما دام ADB/Package Manager قادرين على تنفيذ العملية.
+
+#### 20.45.8 قرار Windows Host مقابل Android-side
+
+| المهمة | Windows Host (المسار الأساسي) | Android-side |
+|---|---|---|
+| اختيار الملف وقراءة الحاوية | نعم | ممكن عبر URI |
+| APKM/XAPK parsing | Host parser متخصص | ليس مطلوباً في V1 |
+| فحص Manifest والتوقيع | أدوات Android SDK/Build Tools على Windows | Android PackageManager |
+| Device matching | قراءة ADB properties + parser/selector | PackageInstaller يقرر بعض القيود عند commit |
+| تثبيت APK/splits | ADB install/install-multiple أو bundletool | PackageInstaller Session |
+| OBB transfer | ADB push لمسار expansion بعد نجاح التثبيت | يتطلب كتابة إلى shared storage وصلاحيات/قيود النظام |
+| MCP | مباشر عبر Service Layer المحلية | لا حاجة لخادم MCP داخل الهاتف |
+
+**القرار:** نبدأ Windows Host-only، ولا نفرض تثبيت تطبيق مرافق على الهاتف. نستخدم ADB الرسمي كناقل، وbundletool لـAPKS القياسي، وparsers متخصصة لـAPKM/XAPK، وOBB كمرحلة منفصلة. نضيف Android helper فقط إذا أثبتت اختبارات أجهزة فعلية أن مسار ADB لا يغطي حالة ضرورية، وبعد موافقة مستقلة.
+
+#### 20.45.9 Acceptance cases جديدة تضاف للمصفوفة السابقة
+
+1. APKM version 5 مع قيم metadata رقمية.
+2. APKM version 5 مع `versioncode/min_api` كنصوص.
+3. APKM مع metadata غير معروفة أو حقول اختيارية ناقصة.
+4. APKM بلا `base.apk` أو مع أكثر من candidate base.
+5. XAPK version 1 وversion 2.
+6. XAPK بقاعدة `base.apk` مقابل `<package>.apk`.
+7. XAPK بملفات APK في مجلدات فرعية.
+8. XAPK manifest يشير إلى APK أو OBB غير موجود.
+9. XAPK يحتوي duplicate basenames في مسارات مختلفة.
+10. XAPK يحتوي OBB main وpatch مع expansion versions مختلفة.
+11. OBB كبير جداً مع قياس peak memory للتأكد من streaming.
+12. انقطاع USB/Wireless ADB أثناء OBB push.
+13. نجاح install وفشل OBB push؛ يجب عرض حالة جزئية وإتاحة retry للـOBB فقط.
+14. نجاح push مع اختلاف hash في read-back.
+15. Android 10/11/12/13/14/15 أو نسخ OEM مختلفة عند الوصول إلى `Android/obb`; لا نعمم نتيجة جهاز على الجميع.
+16. وجود أكثر من جهاز ADB؛ يجب رفض العملية حتى يختار المستخدم Serial، وعدم تثبيت أي شيء على بقية الأجهزة.
+17. bundletool APKS `toc.pb` مقابل SAI APKS `meta.sai_v1/v2.json`؛ يجب اكتشاف كل واحد بمسار مختلف.
+18. ملف APKM/XAPK مشفر أو غير معروف؛ رفض واضح بلا محاولة استخراج غير آمنة.
+
+**حالة التحقق:** تمت مراجعة الملفات المصدرية المشار إليها في GitHub، ووثائق Android الرسمية، ومراجع OWASP وبنية XAPK المنشورة. لم يتم تنزيل أو بناء أو تشغيل هذه المشاريع، ولم يتم توصيل هاتف أو تنفيذ تثبيت/نقل OBB فعلي. هذه مراجعة source/docs وليست hardware validation.
+
+**القرار النهائي لهذه الجولة:** `apkfile` مرشح parsing/host integration أول، لكن ليس اعتماداً نهائياً؛ `bundletool` يظل المرجع لصيغة APKS القياسية؛ `APKMInstaller` مرجع Android-side لا نحتاج دمجه في Windows V1؛ وOBB يجب أن يبقى مرحلة منفصلة ذات streaming وverification. 
