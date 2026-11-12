@@ -1601,3 +1601,117 @@ tauri-adapter / mcp-adapter / cli-adapter
 - اختبار rollback وإثبات عدم تعطيل MTP أو ADB أو واجهات composite المجاورة.
 
 **الحالة:** مراجعة توثيق Microsoft وRust bindings ومشاريع RAPR/libwdi؛ لم يتم تثبيت crate أو كتابة PoC أو تشغيل أداة تعريفات. التوصية `windows-sys` مبدئية فقط.
+
+
+### 20.26 تدقيق UAD-ng: جرد التطبيقات وإدارة حالة الحزم (12 نوفمبر 2026)
+
+المستودع: [Universal-Debloater-Alliance/universal-android-debloater-next-generation](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation)
+
+**نطاق التدقيق:** مراجعة README ومصدر Rust في commit الظاهر في روابط المصدر أدناه؛ لم يتم بناء التطبيق أو تشغيله أو توصيل هاتف. هذا مشروع Debloater موجه أساساً لتصنيف حزم النظام وتغيير حالتها، وليس مدير تطبيقات شامل لكل عمليات APK.
+
+#### 20.26.1 جرد الحزم والحالة
+
+الملفات التي تمت مراجعتها:
+- `crates/uad-core/src/utils.rs` — blob SHA `3569162d7ffa96cfa38ae57354c4eb8b9bc28a07`.
+- `crates/uad-core/src/adb.rs` — blob SHA `319974dd11cd388d734135358c8019af604bddc8`.
+- `crates/uad-core/src/sync.rs` — blob SHA `f90b6eeb575fd3c31541706ed5b738572c94710b`.
+- `crates/uad-gui/src/views/list.rs` — blob SHA `a9792dd7cd2ae26e596b66898860c4e95451b9cb`.
+
+ما يفعله المصدر:
+- `fetch_packages` يستعلم عن الحزم باستخدام `pm list packages` مع قوائم منفصلة تشمل غير المثبتة، والمفعلة فقط، والمعطلة فقط، مع دعم Android user.
+- يبني حالة الحزمة Enabled / Disabled / Uninstalled، ويربط الحزمة بوصف وتصنيف UAD إن وجد.
+- واجهة القائمة فيها بحث، تحديد متعدد، وتصفية حسب حالة الحزمة وتصنيف/قائمة التوصيات.
+- `CorePackage` يحتوي الاسم والوصف والتصنيف والحالة؛ لا يحتوي firstInstallTime أو lastUpdateTime أو installer أو APK path أو UID.
+- أوامر CLI تشمل devices/list/info/disable/enable/uninstall، مع تحديد device serial وAndroid user وdry-run لتغيير الحالة.
+- `Phone` يحتفظ بـADB serial وmodel وAndroid SDK وusers.
+
+#### 20.26.2 مخاطر لا تسمح بإعادة استخدام الأوامر كما هي
+
+1. **اختيار الجهاز الافتراضي:** `crates/uad-cli/src/device.rs` يسمح باستخدام أول جهاز عند عدم تحديد serial، ويكتفي بتحذير عند وجود أكثر من جهاز. هذا غير مناسب لبرنامجنا؛ كل عملية يجب أن ترتبط بـDeviceTarget/serial صريح، ويرفض التنفيذ عند تعدد الأجهزة دون اختيار.
+2. **أثر مسح البيانات:** `apply_pkg_state_commands` في `sync.rs` قد يضيف `pm clear` ضمن بعض مسارات Disable/Uninstall القديمة/المتوافقة. لا يجوز نقل هذه السلوكيات إلى مدير التطبيقات العام؛ Disable يجب ألا يمسح بيانات المستخدم تلقائياً.
+3. **أوامر shell كنص:** `run_adb_shell_action` يمرر action string إلى remote shell. توجد حماية PackageId في request builder، لكن لا نعتبر واجهة raw shell مناسبة كـAPI عامة أو MCP tool. نحتاج typed commands وvalidation عند حدود التنفيذ.
+4. **جرد غير ذري:** `fetch_packages` ينفذ استعلامات منفصلة للحزم الكلية والمفعلة والمعطلة؛ قد تتغير حالة حزمة بين الاستعلامات. نحتاج reconcile + verification أو inventory snapshot واضح المصدر/الوقت، لا الادعاء بأنه atomic.
+5. **فقد معلومات التطبيقات:** الجرد لا يحقق متطلباتنا المتعلقة بتاريخ التثبيت/آخر تحديث ومصدر التثبيت ونسخة التطبيق وABI وAPK export. هذه تحتاج خدمات إثراء منفصلة.
+
+#### 20.26.3 ما يمكن اقتباسه كمرجع تصميم
+
+- تمثيل حالة الحزمة بصورة مستقلة عن تصنيفها في قائمة توصيات.
+- فلاتر مستقلة للحالة، وقائمة التصنيف، ومستوى التوصية.
+- دعم Android multi-user وعدم افتراض user 0 في كل الحالات.
+- قائمة توصيات الحزم مع توضيح مستوى المخاطرة؛ لكن لا نعرض التوصية على أنها ضمان أمان، ويجب أن تكون قابلة للتحديث ومؤرخة ومفسرة.
+- نمط CLI يوضح أوامر الجهاز والجرد وتغيير الحالة، ويمكن الاستفادة منه عند تصميم واجهة التشغيل الآلي، لا نسخ سياسة اختيار أول جهاز أو shell executor.
+
+**القرار:** UAD-ng مرجع مفيد لجرد حالة الحزم وتصنيف debloat، لكنه ليس أساساً كافياً لمدير التطبيقات. نعيد تصميم Package Inventory/State Service مستقلاً، ونستفيد من نماذج البيانات والفلاتر فقط. لا ننسخ أوامر إزالة/تعطيل UAD كما هي، ولا نسمح بمسح بيانات التطبيق كأثر جانبي.
+
+روابط المصدر عند commit `9fcad87bf78c52c4270504bc8880139d95a27a29`: [utils.rs](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/blob/9fcad87bf78c52c4270504bc8880139d95a27a29/crates/uad-core/src/utils.rs) · [adb.rs](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/blob/9fcad87bf78c52c4270504bc8880139d95a27a29/crates/uad-core/src/adb.rs) · [sync.rs](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/blob/9fcad87bf78c52c4270504bc8880139d95a27a29/crates/uad-core/src/sync.rs) · [CLI main.rs](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/blob/9fcad87bf78c52c4270504bc8880139d95a27a29/crates/uad-cli/src/main.rs) · [device.rs](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation/blob/9fcad87bf78c52c4270504bc8880139d95a27a29/crates/uad-cli/src/device.rs)
+
+### 20.27 تدقيق ADB Explorer من Alex4SSB: طبقة ADB وWireless والعمليات (12 نوفمبر 2026)
+
+المستودع: [Alex4SSB/ADB-Explorer](https://github.com/Alex4SSB/ADB-Explorer) — تطبيق Windows مبني بـWPF. تمت مراجعة README وملفات ADB service في commit `ce9331b4a3fa3f76b8d43c47d4a514d0099adb56`. لم يتم build/run أو اختبار جهاز.
+
+#### 20.27.1 ما يقدمه فعلياً
+
+- واجهة Windows لإدارة ملفات Android ونقلها وتحريرها عبر ADB.
+- يعتمد على AdvancedSharpAdbClient إلى جانب تشغيل ADB CLI في مسارات أخرى.
+- اكتشاف الأجهزة وحالاتها، مع polling لقائمة الأجهزة.
+- يميز اتصالات Remote ويحل serial الفعلي من transport ID عند الحاجة.
+- يدعم Pair/Connect/Disconnect لأجهزة الشبكة، ويستخدم CancellationToken في عمليات ADB.
+- يتتبع عمليات ADB النشطة ويمكنه إلغاء العمليات وقتل العملية التابعة.
+- README يوفر قائمة بإصدارات Android Platform Tools الرسمية وروابط تنزيلها وchecksums.
+
+#### 20.27.2 مراجعة تنفيذ العمليات
+
+الملفات:
+- `ADB Explorer/Services/ADB/ADBService.cs` — blob SHA `8dbda136fbdfd49ef6539a45b9820d6611ba3d10`.
+- `ADB Explorer/Services/ADB/AdbService.Devices.cs` — blob SHA `84d9a386485e89670ce3b626784d020eea4dc733`.
+
+ملاحظات:
+- `ExecuteCommand` يشغل stdout/stderr بالتوازي، وينتظر العملية مع CancellationToken، ويسجل العمليات النشطة ويقتل العملية عند الإلغاء.
+- `ExecuteDeviceAdbCommand` يربط الأمر بـdevice/transport محدد.
+- دعم wireless يشمل pair/connect/disconnect، ويستخدم transport routing حتى لا يرسل الأمر إلى transport مختلف عن الاتصال المقصود.
+- يوجد دعم Root/Unroot ومسارات Magisk؛ هذه وظائف متقدمة وخطيرة وليست جزءاً من متطلبات V1. لا نعرضها ولا نعيد استخدامها افتراضياً.
+- `StartCommandProcess` يبني `ProcessStartInfo.Arguments` من تجميع النصوص عبر `string.Join`، وليس من `ArgumentList` المنفصل. هذا يستلزم تدقيق escaping لكل arguments ومسارات Windows قبل إعادة استخدامه؛ الأفضل في مشروعنا تمرير arguments كقائمة منفصلة حيثما أمكن.
+- وجود CancellationToken لا يكفي وحده لإثبات أن كل عمليات النقل/الأوامر آمنة عند الإلغاء؛ نحتاج contract tests للتأكد من إيقاف process tree وتنظيف الملفات الجزئية.
+
+#### 20.27.3 حدود الملاءمة
+
+- المشروع ليس مدير تطبيقات مخصصاً: البحث المصدرّي لم يظهر خدمة جرد تطبيقات شاملة أو timestamps أو install/uninstall workflow متكاملاً.
+- لا نستخدمه كبديل عن UAD-ng في تصنيف الحزم أو عن REA في parsing تواريخ التثبيت.
+- لا ندمج WPF UI في تطبيقنا إن كان الاختيار المعماري النهائي Tauri/Rust؛ يمكن إعادة استخدام التصميم كسلوك مرجعي، أو اقتباس خوارزمية مستقلة بعد فصلها عن WPF/AdvancedSharpAdbClient.
+- نحتاج تدقيقاً مستقلاً لتعامل المشروع مع مسارات الملفات، صلاحيات root، أوامر shell، وتزامن عمليات ADB قبل أخذ أي كود تنفيذي.
+
+**القرار:** ADB Explorer مرجع مفيد لطبقة إدارة جلسات ADB، اختيار/توجيه الجهاز، Wireless Pair/Connect/Disconnect، وإلغاء العمليات. لا نعتمده كمدير تطبيقات أو ننسخ ADBService بالكامل؛ نستخرج متطلبات وعقود سلوكية وننفذ Service Layer مستقلة مع process runner موحد وآمن.
+
+روابط المصدر: [ADBService.cs](https://github.com/Alex4SSB/ADB-Explorer/blob/ce9331b4a3fa3f76b8d43c47d4a514d0099adb56/ADB%20Explorer/Services/ADB/ADBService.cs) · [AdbService.Devices.cs](https://github.com/Alex4SSB/ADB-Explorer/blob/ce9331b4a3fa3f76b8d43c47d4a514d0099adb56/ADB%20Explorer/Services/ADB/AdbService.Devices.cs) · [README](https://github.com/Alex4SSB/ADB-Explorer)
+
+### 20.28 التمييز بين مشاريع ADB Explorer وADB AppControl (12 نوفمبر 2026)
+
+#### 20.28.1 أسماء متشابهة ومشاريع مختلفة
+
+وجدنا أكثر من مشروع باسم ADB Explorer:
+- [Alex4SSB/ADB-Explorer](https://github.com/Alex4SSB/ADB-Explorer): Windows/WPF، مشروع أكبر، ومرجع لـADB process/device/wireless.
+- [gregko/AdbExplorer](https://github.com/gregko/AdbExplorer): مشروع Windows/.NET 8 صغير يركز على dual-pane file manager ونقل الملفات وفتح أكثر من نافذة. README يذكر USB debugging كمسار الإعداد؛ لا نخلط ذلك مع إثبات دعم wireless أو إدارة التطبيقات.
+- [JSleim/adb-file-explorer](https://github.com/JSleim/adb-file-explorer): وصف المشروع يعلن دعم USB/Wi-Fi، تعدد الأجهزة، نقل الملفات، تثبيت APK وتشغيل مهام خلفية قابلة للإلغاء. تعذر جلب README من GitHub connector في هذه الجولة؛ لذلك لا نسجل مراجعة source-level أو اعتماداً قبل إعادة التحقق من المستودع والملفات.
+
+#### 20.28.2 ADB AppControl — مرجع وظيفي وليس مصدراً قابلاً للدمج حالياً
+
+- موقع المنتج يعلن إدارة التطبيقات، تعطيل/إزالة التطبيقات، تثبيت APK/APKS، إدارة بعض الأذونات، batch operations، وأدوات إضافية.
+- مستودع [CyberCatDev/ADBAppControl-PC-releases](https://github.com/CyberCatDev/ADBAppControl-PC-releases) يصف نفسه صراحة بأنه مستودع توزيع الإصدارات فقط.
+- لم يظهر في المستودع الذي تمت مراجعته مصدر تطبيق Windows نفسه؛ لذلك لا يمكن اعتباره مصدراً جاهزاً لاقتباس الكود.
+- نستخدم المنتج كمرجع لتجربة المستخدم وتغطية الوظائف فقط، ونبحث عن تنفيذ كل وظيفة في مشاريع مصدرية منفصلة.
+
+المراجع: [ADB AppControl PC](https://adbappcontrol.com/en/pc/) · [Get Started](https://adb.cybercatsoft.com/en/docs/pc/) · [PC releases repository](https://github.com/CyberCatDev/ADBAppControl-PC-releases)
+
+#### 20.28.3 خلاصة إعادة الاستخدام الحالية
+
+| الوظيفة | أفضل مرجع تمت مراجعته حتى الآن | القرار |
+|---|---|---|
+| جرد حالة الحزم وتصنيف Debloat | UAD-ng | اقتباس نماذج/فلاتر بعد إزالة آثار UAD الجانبية |
+| Device selection وADB process lifecycle | ADB Explorer (Alex4SSB) | مرجع معماري، لا نسخ WPF service مباشرة |
+| Wireless Pair/Connect/Disconnect | ADB Explorer (Alex4SSB) + Droidsmith | توحيدها في خدمة Wireless مستقلة مع pairing code سري |
+| Install/Uninstall/Enable/Disable عام | Droidsmith + UAD-ng + تدقيق مستقل | لا يوجد مرشح واحد يحقق كل متطلباتنا بأمان |
+| تواريخ التثبيت والتحديث | REA parser (20.21) | إثراء lazy per package؛ لا نستنتج التواريخ من ملفات APK |
+| Export APK/Split APK | Droidsmith (20.18/20.20) | المرجع الأقوى حالياً |
+| تجربة إدارة التطبيقات التجارية | ADB AppControl | مرجع UX/feature set فقط؛ لا source code متاح في repo المراجع |
+
+**القرار العام:** لا نختار مشروعاً واحداً وننسخه كاملاً. الأفضل بناء Service Layer مشتركة مع adapters صغيرة، واقتباس مكونات محددة فقط بعد اختبارها وعزلها. الأولوية التالية: مراجعة AppManager (MuntashirAkon) لمعرفة ما إذا كانت هناك مكونات PackageManager/metadata قابلة للفصل، ثم تدقيق مشاريع تثبيت APK/APKS وbundletool end-to-end. لا يوجد أي اختبار runtime أو جهاز فعلي في هذه الجولة.
