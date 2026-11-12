@@ -8,8 +8,9 @@
 
 1. **[خط الأساس ومتطلبات المنتج](docs/00-PRODUCT-BASELINE.md)** — المرجع الموحد لهدف البرنامج، القرارات، الأولويات، المعمارية، رحلة تثبيت التطبيقات، الأمان، وحالة التنفيذ.
 2. **[مصفوفة تغطية البحث والوظائف](docs/05-RESEARCH-COVERAGE-MATRIX.md)** — حالة تغطية كل محور، الأدلة الحالية، المرشحين الجاهزين، والفجوات التي يجب استكمالها.
-3. [فهرس الوثائق](docs/README.md) — خريطة القراءة حسب المجال.
-4. [منهجية البحث وضبط الأدلة](docs/RESEARCH-METHODOLOGY.md) — كيف نراجع المشاريع ونفرق بين الادعاء والكود والاختبار.
+3. **[خطة إعادة الاستخدام والتنفيذ](docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md)** — Source SHAs، المعمارية الموحدة، قرارات Stack المفتوحة، PoC وخطة البناء.
+4. [فهرس الوثائق](docs/README.md) — خريطة القراءة حسب المجال.
+5. [منهجية البحث وضبط الأدلة](docs/RESEARCH-METHODOLOGY.md) — كيف نراجع المشاريع ونفرق بين الادعاء والكود والاختبار.
 
 ## خريطة الملفات
 
@@ -27,6 +28,8 @@
 | [09 — Device File Management](docs/09-device-file-management.md) | ADB وMTP/WPD وvirtual drive، dual-pane، نقل الملفات، Unicode، الإلغاء والتحقق، ومراجعة المشاريع الجاهزة |
 | [10 — Android Diagnostics & Logs](docs/10-android-diagnostics-and-logs.md) | Logcat والتسجيل وBugreport وdumpsys وDropbox وPerfetto وتحليل السجلات ومراجعة المشاريع الجاهزة |
 | [11 — Backup & Restore Boundaries](docs/11-backup-restore-boundaries.md) | أنواع النسخ، حدود adb backup وAuto Backup، incremental snapshots، APK export، واستعادة الملفات دون ادعاء نسخة كاملة |
+| [12 — Reuse & Implementation Plan](docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md) | خطة إعادة الاستخدام، source revisions، المعمارية، قرارات Stack، PoC ومراحل البناء |
+| [12 — Reuse & Implementation Plan](docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md) | خطة موحدة لإعادة استخدام المشاريع، Source SHAs، المعمارية والعقود المشتركة، قرارات Stack، وPoC وترتيب التنفيذ |
 | [Research Methodology](docs/RESEARCH-METHODOLOGY.md) | الأدلة، الاختبارات، إعادة الاستخدام، أمان MCP وصيانة الوثائق |
 
 ## بيئة التشغيل المعتمدة
@@ -82,4 +85,5 @@
 | MCP/Codex | معمارية ومراجعات أولية | بناء الخادم واختباره بعد استقرار Service Layer |
 
 **المرجع الحاكم للأولويات والقرارات:** [docs/00-PRODUCT-BASELINE.md](docs/00-PRODUCT-BASELINE.md).  
-**المرجع الحاكم لحالة التغطية والفجوات:** [docs/05-RESEARCH-COVERAGE-MATRIX.md](docs/05-RESEARCH-COVERAGE-MATRIX.md).
+**المرجع الحاكم لحالة التغطية والفجوات:** [docs/05-RESEARCH-COVERAGE-MATRIX.md](docs/05-RESEARCH-COVERAGE-MATRIX.md).  
+**المرجع الحاكم لإعادة الاستخدام وخطة PoC:** [docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md](docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md).
