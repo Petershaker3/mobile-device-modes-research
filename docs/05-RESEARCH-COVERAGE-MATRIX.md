@@ -25,7 +25,7 @@
 | اكتشاف أجهزة Windows وواجهات USB | [01](01-connectivity-protocols.md)؛ [04](04-windows-driver-diagnostics.md)؛ مراجعات Windows/PnP في [02 §20.23–20.25](02-tool-landscape-and-market-research.md) | بحث جيد — غير مختبر | بناء مصفوفة VID/PID وHardware IDs للأجهزة المستهدفة وربطها بالواجهات والأوضاع؛ اختبار التوصيل والفصل وتعدد الأجهزة لاحقاً | لا؛ وسّع 01 و04 |
 | ADB USB وWireless ADB وإدارة الجلسات | [01](01-connectivity-protocols.md)؛ [02 §20.16–20.18 و20.27](02-tool-landscape-and-market-research.md)؛ [03 §16](03-app-management-and-network.md) | بحث جيد — غير مختبر | توحيد اكتشاف الأجهزة والاقتران والاتصال والانقطاع والمهلات وتحديد Serial؛ إعداد مصفوفة توافق حسب Android/Platform Tools | لا؛ استكمال الموجود |
 | Fastboot/Fastbootd وMTP/WPD والأوضاع الموثقة | [01](01-connectivity-protocols.md) | بحث جيد جزئياً — غير مختبر | فصل ما يمكن قراءته في كل وضع عن الانتقالات الممكنة؛ وضع مصفوفة دعم حسب الموديل، وعدم اعتبار الانتقال المدعوم عاماً | لا؛ استكمال 01 |
-| قراءة هوية الجهاز ومعلوماته الأساسية | [01 §2 و§5](01-connectivity-protocols.md)؛ getprop وFastboot getvar في [02](02-tool-landscape-and-market-research.md) | بحث جيد جزئياً | تصميم Device Information Schema: الحقل، المصدر، طريقة الجمع، صلاحية الوصول، API range، الثقة، وحالات Unsupported/PermissionDenied/NotReported | نعم، ضمن وثيقة معلومات النظام المقترحة |
+| قراءة هوية الجهاز ومعلوماته الأساسية | [01 §2 و§5](01-connectivity-protocols.md)؛ getprop وFastboot getvar في [02](02-tool-landscape-and-market-research.md) | بحث جيد جزئياً | تصميم Device Information Schema: الحقل، المصدر، طريقة الجمع، صلاحية الوصول، API range، الثقة، وحالات Unsupported/PermissionDenied/NotReported | موجودة الآن في [06](06-android-system-information.md)؛ البحث الأولي موثق |
 | معلومات النظام والبناء والحماية والعتاد | [00](00-PRODUCT-BASELINE.md)؛ [01](01-connectivity-protocols.md)؛ مراجع getprop/ABI متفرقة في [02](02-tool-landscape-and-market-research.md) | جزئي | بحث مستقل في Android properties وBuild fields وSDK/API وsecurity patch وABI وdensity وfeatures وkernel/runtime، مع توثيق اختلاف OEM وإخفاء البيانات الحساسة | نعم: 06 |
 | معلومات السوفتوير والفريموير وملفات التحديث | إشارات إلى firmware/build/CSC في [01](01-connectivity-protocols.md) وأدوات السوق في [02](02-tool-landscape-and-market-research.md) | جزئي إلى إشارة فقط | فصل معلومات النسخة المثبتة عن ملفات التحديث الخارجية؛ جرد صيغ الملفات وmetadata ومصادرها وقابلية القراءة والتحقق والتوافق. لا تفليش ولا كتابة أقسام ضمن هذا البحث | نعم: 07 |
 | الأقسام ومعلومات التخزين | إشارات محدودة في أدوات السوق وبعض مسارات الصيانة في [02](02-tool-landscape-and-market-research.md)؛ OBB والتخزين المشترك في [02 §20.45](02-tool-landscape-and-market-research.md) | جزئي / إشارة فقط | دراسة قراءة معلومات التخزين والمساحات وأنظمة الملفات والأقسام الظاهرة عبر واجهات مسموحة؛ تمييز read-only inventory عن dump/backup/write، وعدم استنتاج خريطة أقسام كاملة من جهاز واحد | نعم: 08 |
@@ -60,12 +60,11 @@
 
 الأولوية هنا هي سد فجوات البحث لا بدء التنفيذ:
 
-1. **06 — Android System Information:** نموذج موحد لقراءة خصائص النظام والبناء والعتاد والأمان والقدرات ومصادر كل حقل.
-2. **07 — Firmware & Software Inventory:** جرد البرمجيات والفريموير وملفات التحديث وmetadata والتوافق، مع فصل القراءة عن التفليش.
-3. **08 — Storage & Partition Information:** معلومات التخزين والأقسام وما يمكن قراءته بأمان، وحدود الصلاحيات والموديلات.
-4. **09 — Device File Management:** استعراض الملفات ونقلها عبر ADB/MTP/WPD، مع أدوات جاهزة وتدقيق أمان النقل.
-5. **10 — Android Diagnostics & Logs:** Logcat وBugreport وdumpsys وdumpstate والعمليات والخدمات والتقارير.
-6. **11 — Backup & Restore Boundaries:** أنواع النسخ الاحتياطي المختلفة، ما يمكن تصديره فعلاً، قيود Android، والاستعادة والتحقق.
+1. **07 — Firmware & Software Inventory:** جرد البرمجيات والفريموير وملفات التحديث وmetadata والتوافق، مع فصل القراءة عن التفليش.
+2. **08 — Storage & Partition Information:** معلومات التخزين والأقسام وما يمكن قراءته بأمان، وحدود الصلاحيات والموديلات.
+3. **09 — Device File Management:** استعراض الملفات ونقلها عبر ADB/MTP/WPD، مع أدوات جاهزة وتدقيق أمان النقل.
+4. **10 — Android Diagnostics & Logs:** Logcat وBugreport وdumpsys وdumpstate والعمليات والخدمات والتقارير.
+5. **11 — Backup & Restore Boundaries:** أنواع النسخ الاحتياطي المختلفة، ما يمكن تصديره فعلاً، قيود Android، والاستعادة والتحقق.
 
 لا ننشئ وثائق مستقلة جديدة للاتصال أو التطبيقات أو DNS أو تعريفات Windows أو MCP؛ هذه المجالات لديها وثائق حالية ينبغي استكمالها بدلاً من تشتيت المعلومات.
 
@@ -73,7 +72,7 @@
 
 | الترتيب | الجولة | ناتج البحث المطلوب |
 |---:|---|---|
-| 1 | Android System Information | جرد حقول الجهاز والنظام ومصادرها وأوامرها وتوافق API 24+، ثم تدقيق مشاريع جاهزة |
+| 1 | تم إنجاز 06 — Android System Information | بحث أولي ومراجعة مصدر Host-side وAndroid-side؛ لا اختبار Hardware ولا اعتماد دمج |
 | 2 | Android Diagnostics & Logs | أدوات Logcat وBugreport وdumpsys وتحليل التقارير، مع حدود الخصوصية والصلاحيات |
 | 3 | Device File Management | مقارنة مشاريع إدارة الملفات ونقل الملفات USB/Wireless/MTP/WPD |
 | 4 | Firmware & Software Inventory | جرد البرمجيات وملفات التحديث وmetadata ومصادر البيانات، دون تفليش |
@@ -100,4 +99,4 @@
 - [Capture and read bug reports — Android Studio](https://developer.android.com/studio/debug/bug-report): إنشاء تقرير bugreport وقراءة ملف ZIP.
 - [Logcat command-line tool — Android Developers](https://developer.android.com/tools/logcat): buffers وfilters وصيغ السجلات وحدود بعض الخيارات والصلاحيات.
 
-**حالة المصفوفة:** مراجعة وثائق المستودع الحالية تمت؛ استكمال الوثائق الست المستقلة لم يبدأ بعد. لا يوجد ادعاء باختبار Hardware أو اعتماد مشروع للدمج.
+**حالة المصفوفة:** مراجعة الوثائق تمت؛ الوثيقة 06 أُنشئت في هذه الجولة. الوثائق 07–11 لم تُنشأ بعد. لا يوجد ادعاء باختبار Hardware أو اعتماد مشروع للدمج.
