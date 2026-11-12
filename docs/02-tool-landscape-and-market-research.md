@@ -940,3 +940,108 @@ default_tools_approval_mode = "writes"
 | Windows | cross-build موجود؛ Windows runtime test غير مثبت |
 
 **حالة الجولة:** [x] مراجعة إدارة التطبيقات والصلاحيات. [x] مراجعة parser واختبار تواريخ التثبيت والتحديث. [x] مراجعة حدود تصدير APK. [x] مراجعة Wireless Pair/Connect. [x] مراجعة Codex plugin. [x] مراجعة Windows release workflow. [ ] Windows-native tests. [ ] اختبار Codex على Windows. [ ] اختبار USB/Wireless فعلي. [ ] اعتماد أي كود مقتبس.
+
+ 
+### 20.18 تدقيق Droidsmith لإدارة التطبيقات وتصدير Split APK (12 نوفمبر 2026)
+
+المستودع: https://github.com/SysAdminDoc/Droidsmith  
+الفرع: main — آخر commit ظاهر: `c46341525239adb887cf65322fae905cbc189757` بتاريخ 30 يوليو 2026.  
+README يصفه كتطبيق Desktop مبني على Tauri لـWindows/macOS/Linux، ونسخة المصدر المعلنة 0.9.12. الملاحظة في README عن آخر binary منشور أقدم من المصدر؛ لذلك لا نخلط بين حالة Source وRelease artifacts.
+
+هذه مراجعة للكود والـCI فقط؛ لم يتم بناء التطبيق أو تشغيله أو اختباره مع هاتف.
+
+#### 20.18.1 جرد التطبيقات
+
+الملف `src-tauri/src/adb/packages.rs` — SHA `634437ff3a5cf7bef6457d64cfb252a5a71136cb`.
+
+Droidsmith يجمع:
+- `pm list packages -e` و`-d` لتمييز Enabled/Disabled ودمج النتيجة.
+- `-f` لمسار APK، و`-U` لـUID، و`-i` لمصدر التثبيت.
+- `--user N` لتحديد Android user.
+- `-u` لاكتشاف archived/retained packages.
+- fallback عند رفض بعض نسخ Android/OEM للخيارات الإضافية.
+- فلاتر All/User/System/Enabled/Disabled/Archived/Retained.
+
+بنية AppPackage تضم package وenabled وsystem وapk_path وuid وinstaller وarchived وretained. وتوجد اختبارات parsing ودمج القوائم وfallback والفلاتر.
+
+**ملاحظة دقة:** حقل system في parser يستند إلى مسار APK. تحديث تطبيق نظام قد يجعل مساره الحالي في `/data/app`، وبالتالي قد يخطئ هذا الـheuristic في تصنيفه. الكود يستخدم في مسار آخر `pm list packages -s` لتقييم قابلية الاستعادة. لمنتجنا يجب فصل المسار عن System classification واستخدام دليل PackageManager الأقوى أو إظهار الحالة غير محسومة عند تعارض الإشارات.
+
+**الفجوة:** AppPackage لا يحتوي firstInstallTime أو lastUpdateTime، ولا توجد فلاتر تاريخ في نموذج الجرد الذي تمت مراجعته. نحتاج enrichment مستقل لهذه الحقول ثم date filters محلية.
+
+#### 20.18.2 أسماء التطبيقات والأيقونات
+
+- `src-tauri/src/apk_metadata.rs` — SHA `b0c9ccb2deba5bbbd873f5b607727e05cc34c2ca`
+- `src-tauri/src/commands/packages.rs` — SHA `47a5fab70785a5ecb807f487d0bef6068a9a7e54`
+
+النمط المستخدم: جلب package inventory أولاً، ثم طلب label/icon بشكل lazy عند اقتراب صف التطبيق من الشاشة. يقرأ `pm path`، ويتحقق من حجم/وقت APK، ويسحب ملفاً مؤقتاً بحد حجم وحد للتوازي، ويستخدم Cache مربوطاً بالجهاز والـtransport generation وAndroid user والحزمة وهوية APK. الملف المؤقت يُحذف بعد الاستخدام.
+
+هذا نمط جيد لتسريع الجرد وتقليل عمليات السحب، لكنه لا يوفر install/update dates.
+
+#### 20.18.3 تصدير APK وSplit APKs
+
+الملف `src-tauri/src/backup.rs` — SHA `02e932240fd7fd64ea79c3c581d52c68ca429ff4`.
+
+يوجد workflow متخصص:
+1. Preflight يقرأ `pm path --user N <package>` ويجمع كل المسارات.
+2. يتحقق من سلامة المسارات، ويرفض القائمة الفارغة أو أكثر من 64 جزءاً.
+3. يسحب كل base/split APK على حدة باستخدام ADB arguments منفصلة.
+4. ينشئ ZIP يحتوي كل الأجزاء و`manifest.json`.
+5. يسجل لكل artifact الاسم والدور والحجم وSHA-256.
+6. يضيف device/build identity hashes بدلاً من serial أو fingerprint الخام.
+7. يستخدم staging وcommit ذري للملف النهائي، ويحذف مجلد العمل المؤقت.
+8. يدعم تقدم العملية وإلغاءها عبر Operations.
+
+**النتيجة:** هذا أقوى مرجع مباشر وجدناه لوظيفة Export Installed App/Split APK. وهو APK export فقط، وليس نسخة كاملة من بيانات التطبيق الخاصة. مسار Android backup القديم منفصل ومقيد بأدلة الأهلية، ولا يضمن الاستعادة.
+
+#### 20.18.4 Wireless ADB
+
+- `src-tauri/src/adb/wireless.rs` — SHA `5fec47cc2c4ea235a83ec899ac5cc925c28e0789`
+- `src-tauri/src/commands/wireless.rs` — SHA `0fdabb3f7fd291c5d7e79ed593f7787b06e3487e`
+
+يدعم mDNS service discovery والتمييز بين Pairing وConnect، و`adb pair` و`adb connect`، والتحقق من endpoint والـport وpairing code، وتصنيف TLS wireless مقابل legacy TCP، وتشخيص بعض مشاكل VPN/mDNS. لا يمنح TLS provenance لمجرد إدخال IP يدوياً.
+
+مرجع قوي لتصميم الاتصال اللاسلكي، مع ضرورة حماية pairing code من السجلات وإضافة Disconnect وإدارة واضحة للاتصالات.
+
+#### 20.18.5 حدود الأمان والمعمارية
+
+- `AdbTransport` يفصل النقل عن الخدمات، مع MockTransport للاختبارات دون جهاز.
+- DeviceTarget يربط Serial وtransport identity/generation لتقليل خطر استمرار عملية على اتصال تغيّر.
+- package actions تمر عبر planned actions وjournal intent/outcome.
+- عمليات install/export تستخدم native one-shot path grants بدلاً من قبول أي مسار من الواجهة.
+- توجد عمليات طويلة مع تقدم وإلغاء وحدود للوقت/المخرجات.
+
+هذا قريب من المعمارية المطلوبة، لكن لا نعتبره بديلاً تلقائياً عن Permission Service موحدة عند إضافة MCP. يجب تدقيق كل action والـpath grant قبل اقتباس أي كود.
+
+#### 20.18.6 Windows CI
+
+الملف `.github/workflows/ci.yml` — SHA `757832dbd7ff4e33dc14a559eb86d5a753ba2175`.
+
+يوجد native matrix على Ubuntu وWindows وmacOS. على Windows runner ينفذ workflow `cargo check` و`cargo clippy` و`cargo test` لكل targets/features. هذا دليل أقوى من cross-compilation من Linux فقط، لكنه لا يثبت اختباراً مع هاتف USB/Wireless ولا تكامل Codex/MCP.
+
+لا توجد ملفات MCP في شجرة Droidsmith التي راجعتها؛ بالتالي سيكون MCP adapter إضافة مستقلة فوق Service Layer، وليس جزءاً جاهزاً منه.
+
+#### 20.18.7 مقارنة ADB-Root-Toolbox
+
+المستودع `Bingblop/ADB-Root-Toolbox` هو تطبيق يعمل على هاتف Android نفسه، وليس Windows desktop host manager. لذلك يصلح مرجعاً لبعض أفكار UX وإدارة التطبيقات فقط.
+
+- `SdmPackagesAndroid.java` — SHA `fdd505155347cac200ef3b4724b654b65e0eeb06`: يستعمل Android PackageManager لجرد التطبيقات وقراءة label/system/enabled/UID/version مع caching.
+- `ApkScan.java` — SHA `8c37dbefc9cf0c64500c8a3c3a26e58752b98f9`: يبحث عن ملفات APK/APKS/APKM/XAPK الموجودة على تخزين الهاتف بحدود للعمق والوقت والعدد.
+- README يوضح أنه يعمل على الهاتف نفسه؛ اكتشاف ملفات APK المخزنة ليس هو استخراج APK مثبت من PackageManager.
+
+#### 20.18.8 قرار إعادة الاستخدام
+
+| الوظيفة | النتيجة | القرار |
+|---|---|---|
+| Windows desktop + ADB | Droidsmith/Tauri | مرشح مرجعي أول لطبقة الخدمات |
+| App inventory | enabled/system heuristic/path/UID/installer/user/archive | أقوى نموذج مرشح؛ نراجع دقة System classification |
+| App labels/icons | lazy metadata pull/cache | اعتماد النمط |
+| Install/update dates | غير موجودة في AppPackage | إضافة مستقلة |
+| Export installed APK | base + splits + manifest + hashes | أفضل مرجع مباشر؛ Adapter أو اقتباس محدود بعد تدقيق الأمان |
+| Wireless ADB | mDNS + Pair/Connect + TLS/legacy provenance | مرجع قوي |
+| Windows CI | native Windows runner + Rust tests | دليل جيد على CI، وليس hardware testing |
+| MCP/Codex | غير موجود في المستودع | بناء MCP adapter منفصل فوق Service Layer |
+| ADB-Root-Toolbox | تطبيق Android-side | مرجع UX فقط، ليس مكون Windows |
+
+**التوصية المؤقتة:** Droidsmith هو المرشح المرجعي الأول حالياً لإدارة ADB والتطبيقات وتصدير Split APKs على Windows. لا أوصي بنسخ المستودع كاملاً. نراجع security boundary وpath grants وpackage export تفصيلياً، ثم نحدد وحدات يمكن اقتباسها أو تغليفها خلف Adapter. آخر commit ظاهر يعود إلى يوليو 2026، لذا نحتاج إعادة تقييم نشاط الصيانة قبل اعتماد طويل الأجل.
+
+**حالة الجولة:** [x] package inventory والفلاتر. [x] lazy APK metadata. [x] تصدير base/split APK وmanifest/hashes. [x] Wireless ADB/mDNS. [x] Windows native CI matrix. [x] تصنيف ADB-Root-Toolbox كتطبيق Android-side. [ ] تدقيق كامل لـauthorization/path grants. [ ] تشغيل Windows build/tests محلياً. [ ] اختبار USB/Wireless فعلي. [ ] تصميم MCP adapter. [ ] اعتماد اقتباس كود.
