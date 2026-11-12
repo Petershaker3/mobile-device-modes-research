@@ -18,10 +18,11 @@
 9. [08 — معلومات التخزين والأقسام](08-storage-partition-information.md) — filesystem usage، physical/logical/dynamic partitions، super metadata، A/B وVirtual A/B، وأدوات AOSP للقراءة فقط.
 10. [09 — إدارة ملفات Android والنقل](09-device-file-management.md) — ADB وMTP/WPD وvirtual drive، dual-pane، نقل الملفات، Unicode، الإلغاء والتحقق، ومراجعة مشاريع GitHub.
 11. [10 — تشخيص Android والسجلات](10-android-diagnostics-and-logs.md) — Live Logcat، التسجيل، Bugreport، dumpsys، Dropbox، Perfetto، تحليل الملفات الكبيرة، ومراجعة مشاريع GitHub.
+12. [11 — حدود النسخ الاحتياطي والاستعادة](11-backup-restore-boundaries.md) — تصنيف أنواع النسخ وحدود adb backup وAuto Backup، وتدقيق incremental backup وملفات .ab واستعادة الملفات بأمان.
 
 ## 3. سجل الأدوات والأبحاث التفصيلية
 
-12. [02 — دراسة الأدوات الجاهزة والسوق وتجارب المستخدمين](02-tool-landscape-and-market-research.md) — سجل الأدلة والمراجعات التفصيلية. هذا الملف تراكمي وكبير؛ استخدم الخريطة التالية للوصول إلى المحور المطلوب.
+13. [02 — دراسة الأدوات الجاهزة والسوق وتجارب المستخدمين](02-tool-landscape-and-market-research.md) — سجل الأدلة والمراجعات التفصيلية. هذا الملف تراكمي وكبير؛ استخدم الخريطة التالية للوصول إلى المحور المطلوب.
 
 ### خريطة محاور الملف 02
 
