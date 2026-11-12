@@ -1189,7 +1189,7 @@ Droidsmith يظل أقوى مرجع وظيفي وجدناه حتى الآن في
 الملفات:
 - `src-tauri/src/adb/transport.rs` — SHA `c8d4e055d3eca3a529f59307ee6b97968c2cd8a5`
 - `src-tauri/src/adb/packages.rs` — SHA `c326da55f257e6ee6ffe96fca64d266320fcbb3d`
-- `src-tauri/src/adb/device.rs` — SHA `231d3b642e5966914e78ae0d52f96765d8cda21d` (راجع أيضاً محتوى الملف قبل تثبيت أي اقتباس)
+- `src-tauri/src/adb/device.rs` — SHA `14e2503a5e527b5fe28099ce93ec355ac1bc2468`
 - `src-tauri/src/adb/wireless.rs` — SHA `5fec47cc2c4ea235a83ec899ac5cc925c28e0789`
 
 نقاط تستحق إعادة الاستخدام:
