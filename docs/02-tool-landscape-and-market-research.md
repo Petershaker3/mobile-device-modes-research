@@ -2291,3 +2291,144 @@ DeviceAnalyzer يجمع أكثر من ABI، وليس قيمة ABI واحدة ف�
 - [androguard/axml-parser source](https://github.com/androguard/axml-parser/tree/93d008a7ce337fb9bafb708bc8ce93ecdc25f80b)
 - [androguard/apk-parser source](https://github.com/androguard/apk-parser/tree/95ec9b00b4e2e30d16ac98c09868e5d6b58d3fdb)
 - [androguard/androguard source](https://github.com/androguard/androguard/tree/581f7a3251545a97f66ee92b674dd810ee380a00)
+
+
+### 20.35 فحص ABI وELF وNative Libraries داخل APK (12 نوفمبر 2026)
+
+**نوع المراجعة:** توثيق Android ABI الرسمي + source-level review لمكتبات Rust ELF. لم يتم بناء أو تشغيل أي parser، ولم يتم فحص APK فعلي أو الاتصال بهاتف في هذه الجولة.
+
+#### 20.35.1 ما الذي يجب أن يكتشفه البرنامج؟
+
+نحتاج فصل ثلاث طبقات وعدم دمجها في نتيجة واحدة:
+
+1. **Device ABI capability:** قائمة ABI التي يعلنها Android للجهاز، بالترتيب الذي يعيده النظام، مع ABI أساسية وثانوية إن توفرت.
+2. **APK native payload:** مجلدات lib/<abi>/ وملفات .so الموجودة فعلياً داخل كل APK أو split APK.
+3. **ELF identity:** معمارية كل ملف .so الفعلية من ELF header، لا من اسم المجلد فقط.
+
+Android NDK يوضح أن ABI تشمل instruction set وendianness وcalling conventions وformat للملفات التنفيذية والمكتبات، وأن Android يستخدم ELF. ABI المعروفة حالياً في NDK تشمل armeabi-v7a وarm64-v8a وx86 وx86_64. مدير الحزم يختار أكثر machine code ملاءمة من المعماريات التي يدعمها الجهاز، وقد يعرض الجهاز primary وsecondary ABIs.
+
+المسار المعتاد للمكتبات داخل APK:
+- lib/armeabi-v7a/libname.so
+- lib/arm64-v8a/libname.so
+- lib/x86/libname.so
+- lib/x86_64/libname.so
+
+لا نستنتج أن مجلد lib/arm64-v8a يحتوي ملف AArch64 صحيحاً قبل فحص ELF. ولا نفترض أن غياب مجلد ABI يعني فشل التطبيق كله؛ قد لا يحتوي التطبيق على Native code أصلاً، أو قد ينزل split آخر أو يستخدم طريقة تحميل مختلفة.
+
+#### 20.35.2 جمع ABI من الجهاز عبر ADB
+
+لـ read-only inventory:
+- adb -s <serial> shell getprop ro.product.cpu.abilist
+- adb -s <serial> shell getprop ro.product.cpu.abi
+- adb -s <serial> shell getprop ro.product.cpu.abilist32
+- adb -s <serial> shell getprop ro.product.cpu.abilist64
+
+يجب اعتبار ro.product.cpu.abilist قائمة القدرات التي يعرضها build للجهاز، مع حفظ القيم الخام وترتيبها. الخصائص المفردة أو القديمة قد لا تكون متاحة أو قد تختلف حسب Android/OEM؛ لا نستخدم قيمة واحدة كحقيقة كاملة.
+
+لا نضيف قواعد تخمينية مثل: «الجهاز ARM64 إذن يقبل كل ARM32». نعتمد على قائمة ABI التي يعلنها Android، ونترك Package Manager صاحب القرار النهائي. لا نستنتج دعم ترجمة ARM على x86 إلا إذا ظهر في قائمة ABI التي يعرضها النظام أو في دليل موثوق خاص بالمنصة.
+
+#### 20.35.3 مرشح Rust الأول: m4b/goblin
+
+المستودع: [m4b/goblin](https://github.com/m4b/goblin) — آخر commit تمت مراجعته: cc6beec889d74680d8f77626f508cb9d949dfc23 بتاريخ 2026-10-26.
+
+ملفات تمت مراجعتها:
+- README.md — blob SHA 4205fa1107189daa62dc81b00fcbfd5f8561bcdd.
+- Cargo.toml — blob SHA 9088bb5ce233b4ca95ea8443952400c4ef94304e.
+- src/elf/header.rs — blob SHA 2c05e8ffc6fc98f117c427a27c1737bb521b5eea.
+- src/elf/dynamic.rs — blob SHA 67e960b5df3d8a7d9d58811016aaed59303e3a02.
+- fuzz/fuzz_targets/parse_elf.rs — blob SHA fc7228d2991893a01f303898112d3675991b5708.
+
+ما يقدمه:
+- ELF32 وELF64، parsing endian-aware، وواجهة موحدة Elf::parse.
+- Header exposes e_machine وe_ident ومنها class/endianness، وحقول ELF الأخرى.
+- constants للمعماريات، ويمكن بناء mapping بين EM_ARM وEM_AARCH64 وEM_386 وEM_X86_64 وغيرها وبين ABI المعروفة.
+- Dynamic table يتضمن DT_NEEDED وDT_SONAME وغيرهما، وهو مفيد لإظهار shared-library dependencies كبيانات تشخيصية.
+- README يذكر fuzzing targets لـELF، وملف parse_elf.rs يمر على section headers وdynamic relocations وnote iterators.
+- commit المراجع يتضمن تغييراً حديثاً يتحقق من حدود PT_DYNAMIC قبل التخصيص في dynamic::from_fd، وهو مؤشر مفيد على صيانة parser لهذه الفئة من المدخلات.
+
+**تحفظات وحدود:**
+- وجود fuzz target أو إصلاح bounds لا يثبت خلو المكتبة من كل parser bugs؛ نحتاج fuzzing خاصاً بنا على corpus من APK native libraries.
+- لا نسمح بتحميل أو تنفيذ .so؛ نقرأ metadata فقط.
+- لا نقرأ كل sections/symbols/dependencies إلا عند طلب التفاصيل، لتقليل تكلفة تحليل ملفات كثيرة.
+- لا نعطي ثقة في ELF لمجرد نجاح parse؛ نتحقق من magic/class/endianness/e_machine/type وbounds وfile size، ونتعامل مع malformed أو unsupported بوضوح.
+- DT_NEEDED لا يثبت أن المكتبات التابعة موجودة على الجهاز أو متوافقة معه؛ هو مؤشر تشخيصي فقط.
+
+**القرار:** goblin هو المرشح الأول لمكتبة ELF داخل Rust PoC. لا يوجد اعتماد production أو تشغيل Windows حتى الآن.
+
+#### 20.35.4 مرشح بديل: gimli-rs/object
+
+المستودع: [gimli-rs/object](https://github.com/gimli-rs/object) — default branch source تمت مراجعته عند commit 119f48ace38d1cab8e5653489acde1452da8384b.
+
+الملفات:
+- README.md — blob SHA 2054d608916a1291c782a5fe6bc5f0ee8f2571c6.
+- src/read/elf/file.rs — blob SHA aa75f22bac75af093602e74a151a60bc87409414.
+- Cargo.toml — blob SHA 610646eecc37fde9ebcc4b4c52410975d7354afc.
+
+المكتبة توفر unified read API لملفات ELF وPE وMach-O وغيرها، وتعرض architecture() لتحديد المعمارية. لكن README يصرح أن المكتبة موجهة إلى trusted inputs، وأنها لا تركز على تخفيف DoS الناتج عن هياكل متداخلة أو متداخلة بشكل مكثف.
+
+**القرار:** ليست الخيار الأول لتحليل APKs غير موثوقة. يمكن إعادة تقييمها لأدوات developer/trusted artifact inspection أو كمرجع API، لكن لا ندخلها في مسار فحص ملفات المستخدم قبل إثبات حدود الموارد.
+
+#### 20.35.5 mapping مبدئي من ELF إلى Android ABI
+
+نستخدم e_machine + ELF class، مع فحوص إضافية حسب ABI:
+
+| Android ABI | ELF class | e_machine المتوقع |
+|---|---:|---:|
+| armeabi-v7a | ELF32 | EM_ARM (40) |
+| arm64-v8a | ELF64 | EM_AARCH64 (183) |
+| x86 | ELF32 | EM_386 (3) |
+| x86_64 | ELF64 | EM_X86_64 (62) |
+
+هذا mapping للتحقق من المعمارية الأساسية وليس تحققاً كاملاً من ABI. في ARM نحتاج لاحقاً فحص e_flags وخصائص ABI ذات الصلة عند الحاجة، لأن تطابق EM_ARM وحده لا يثبت كل خصائص تعليمات/Calling convention المطلوبة. Android little-endian؛ الملف الذي يعلن big-endian لا ينبغي اعتباره Android ABI صالحاً لهذه الحالات القياسية.
+
+#### 20.35.6 تحليل التوافق دون ادعاء ضمان التثبيت
+
+لكل APK أو split:
+1. اكتشاف entries lib/<abi>/*.so دون استخراج عام للأرشيف.
+2. تمرير entry إلى ZIP streaming reader محدود وآمن.
+3. تحليل ELF header بواسطة Goblin.
+4. مقارنة اسم ABI directory مع e_machine وELF class وendianness.
+5. تسجيل mismatch كتحذير/خطأ حسب سياسة التحقق، وعدم إعادة تسمية الملف أو إصلاحه تلقائياً.
+6. تجميع ABI المتوفرة فعلياً في كل APK/split.
+7. مقارنة ABI package مع ro.product.cpu.abilist للجهاز المحدد.
+8. إظهار أفضل ABI match وفق ترتيب الجهاز، مع ذكر إن كانت النتيجة مستندة إلى ABI list أو إلى مجرد تطابق معماري.
+9. إذا كانت الحزمة split set، نستخدم DeviceSpec وbundletool لتحديد splits المناسبة؛ لا نعامل كل split على أنه APK مستقل مكتمل.
+10. النتيجة النهائية: Compatible / No matching ABI / No native libraries detected / Invalid ELF / ABI-folder mismatch / Incomplete split set / Unknown. ونوضح أن Android Package Manager هو الاختبار النهائي.
+
+لا نستخدم adb install --abi كخيار تلقائي. يمكن عرضه في أدوات التشخيص المتقدمة فقط، بعد أن يختار المستخدم ABI مدعومة فعلياً من الجهاز، مع Preview وموافقة منفصلة.
+
+#### 20.35.7 نموذج البيانات المقترح
+
+- DeviceAbiProfile: serial, raw_abilist, primary_abi, abi32_list, abi64_list, captured_at, source.
+- NativeLibraryEntry: apk_id, split_name, archive_path, declared_abi_dir, file_size, sha256.
+- ElfMetadata: class, endianness, e_type, e_machine, machine_name, soname, needed_libraries, parse_status.
+- AbiValidation: folder_abi, elf_abi, folder_matches_elf, device_supports_abi, selected_candidate, warnings.
+- ApkCompatibilityReport: package_id, version, apk_set_id, native_abi_candidates, device_abi_profile_id, outcome, evidence, limitations.
+
+يجب أن تكون الحقول Unknown أو NotPresent عند غيابها، لا نستبدلها باستنتاجات. ولا نحتفظ بملفات .so بعد انتهاء الفحص إلا إذا طلب المستخدم تصديرها صراحة.
+
+#### 20.35.8 خطة PoC والاختبارات
+
+- Fixtures ELF32 ARM, ELF64 AArch64, ELF32 x86, ELF64 x86_64.
+- ملف ELF صحيح في مجلد ABI خاطئ.
+- ELF header truncated، bad magic، unknown class، unknown endianness، unknown machine.
+- big-endian ELF، wrong ELF type، oversized program/section table offsets/counts.
+- native libraries مفقودة أو موجودة في split منفصل.
+- APK بدون مجلد lib.
+- APK يحتوي عدة ABIs، وAPK يحتوي ABI واحدة فقط.
+- ملفات .so غير ELF رغم امتدادها.
+- archive entry كبيرة أو compressed bomb؛ يجب أن تطبق حدود ZIP السابقة قبل تسليم bytes إلى Goblin.
+- اختلاف بين device ABI list وملفات الحزمة.
+- اختبارات Windows CI، fuzzing لـELF headers/program headers/dynamic table، قياس وقت وذاكرة تحليل دفعات APK.
+
+**حالة الجولة:** [x] مراجعة Android NDK ABI documentation. [x] مراجعة Goblin README/Cargo/ELF header/dynamic parser/fuzz target. [x] مراجعة object crate API والتحذير الأمني. [ ] PoC Rust. [ ] Windows build/test. [ ] ELF fuzzing خاص بالمشروع. [ ] APK corpus cross-check. [ ] device ABI capture على أجهزة فعلية. [ ] اعتماد production.
+
+**الخلاصة:** نوصي بـgoblin كأول مرشح ELF parser، مع ZIP streaming reader الآمن الموجود في قرار 20.33، وجمع ABI من الجهاز عبر ADB read-only. object ليس الخيار الأول لملفات APK غير موثوقة بسبب تحذير upstream من DoS. لا نكتب ELF parser جديداً.
+
+المراجع:
+- [Android NDK ABI guide](https://developer.android.com/ndk/guides/abis)
+- [Goblin repository at reviewed commit](https://github.com/m4b/goblin/tree/cc6beec889d74680d8f77626f508cb9d949dfc23)
+- [Goblin ELF parser source](https://github.com/m4b/goblin/blob/cc6beec889d74680d8f77626f508cb9d949dfc23/src/elf/header.rs)
+- [Goblin ELF fuzz target](https://github.com/m4b/goblin/blob/cc6beec889d74680d8f77626f508cb9d949dfc23/fuzz/fuzz_targets/parse_elf.rs)
+- [object repository](https://github.com/gimli-rs/object)
+- [Android ELF machine identifiers](https://chromium.googlesource.com/android_ndk/+/refs/heads/unmodified/sysroot/usr/include/linux/elf-em.h)
