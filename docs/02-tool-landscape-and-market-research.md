@@ -1299,3 +1299,162 @@ Droidsmith يظل أقوى مرجع وظيفي وجدناه حتى الآن في
 8. بناء Windows CI واختبارات fake ADB/contract tests، ثم اختبار فعلي على أجهزة Android محددة قبل إعلان الدعم.
 
 **الحالة:** [x] مراجعة Rust crate boundaries. [x] مراجعة ADB transport وpackage inventory. [x] مراجعة split APK export وpath grants. [x] مراجعة operation cancellation tests. [x] مقارنة MCP/CLI boundaries. [ ] إثبات build محلي أو CI على Windows الحالي. [ ] اختبارات على أجهزة حقيقية. [ ] استخراج core تجريبي في مستودعنا (لم يبدأ). [ ] اعتماد مكونات نهائياً.
+
+
+### 20.21 مراجعة مشاريع إضافية لتواريخ التطبيقات وجرد الحزم (12 نوفمبر 2026)
+
+هذه الجولة ركزت على كود يقرأ حقول Package Manager، لا على أسماء الأدوات أو صور واجهاتها. لم يتم بناء أي مشروع أو تشغيله أو توصيل هاتف.
+
+#### 20.21.1 REA — مرجع parsing لتفاصيل حزمة واحدة، وليس مدير هاتف
+
+المستودع: [morluto/rea](https://github.com/morluto/rea)
+
+الملفات التي تمت مراجعتها:
+- `src/adb/AdbShellOutput.ts` — blob SHA `bca37332b21b0cb8f4ef42a929ec8a260787a72a`
+- `src/adb/AdbProvider.ts` — blob SHA `50677b3e1ab417544c1cf9ae66bd2c4473241eb4`
+
+**المثبت في المصدر:**
+- يوجد parser مخصص لـ`dumpsys package PACKAGE` باسم `parseDumpsysPackageOutput`.
+- يستخرج `versionName`, `versionCode`, `firstInstallTime`, `lastUpdateTime`, `installerPackageName`, `userId`, `pkgFlags` وعدد requested permissions.
+- التنفيذ يمرر arguments منفصلة إلى shell runner: `["dumpsys", "package", package]`، ويحدد timeout قدره 60 ثانية وحداً أقصى للمخرجات 8 MiB.
+- parser يحتفظ بقيمة التاريخ كاملة بعد trim، بما فيها التاريخ والوقت، ويتجاهل الحقول غير المعروفة بدلاً من تخمينها.
+- يوجد اختبار parser يتضمن firstInstallTime وlastUpdateTime وinstallerPackageName.
+- العملية هي `inspect_adb_package` لحزمة واحدة يحددها الطلب، وليست bulk enrichment لكل نتائج الجرد.
+
+**الحدود:**
+- لا يقدم هذا الجزء وحده جرداً شاملاً مع فرز/فلترة كل التطبيقات حسب تاريخ التثبيت.
+- صيغة `dumpsys` تختلف بين إصدارات Android وواجهات OEM؛ وجود parser واختبار fixture لا يثبت توافقه مع كل الأجهزة.
+- لم نثبت هنا أن جميع الحقول متاحة لكل Android user أو لكل package state.
+
+**القرار:** REA مرجع جيد لكتابة parser محدود ذي حقول معروفة واختبارات fixtures، لكنه ليس أساساً لمدير تطبيقات Windows. نقتبس الفكرة ونبني طبقة enrichment مستقلة: inventory أولاً، ثم تفاصيل timestamps بشكل محدود/متوازٍ مع cache وtimeouts، مع حالة لكل حقل (Available / Unsupported / ParseFailed / NotInstalledForUser) وعدم إخفاء النقص.
+
+#### 20.21.2 WSA Suite — نموذج جرد وتفاصيل، لكن نطاقه Windows Subsystem for Android
+
+المستودع: [mjcr-dev/wsa-suite](https://github.com/mjcr-dev/wsa-suite)
+
+الملف:
+- `src-tauri/src/adb/packages.rs` — blob SHA `40d88ba4584b22b2afffcf1e70ef7a69f2744c7c`
+
+**المثبت في المصدر:**
+- جرد التطبيقات يستخدم `pm list packages -f` ويجمع disabled packages وlaunchable apps.
+- يؤجل label/version details إلى اختيار التطبيق بدلاً من تشغيل `dumpsys` لكل package في الجرد.
+- `PackageDetail` يتضمن `first_install` و`last_update`، وتُقرأ التفاصيل من `dumpsys package PACKAGE`.
+- توجد اختبارات parsing لحقول dumpsys، لكن الاختبار الظاهر لتاريخ التثبيت يثبت استخراج الحقل إلى حد محدود ولا يغطي النص الكامل للتاريخ والوقت.
+
+**ملاحظة تدقيق مهمة:** helper المسمى `field()` يقف عند أول whitespace. وتاريخ Android المعتاد يأتي مثل `2026-01-02 03:04:05`؛ لذلك helper الحالي يعيد جزء التاريخ فقط ولا يحفظ الوقت. لا ننسخ هذا parser كما هو لتخزين timestamp كامل.
+
+**حدود الملاءمة:**
+- WSA Suite مخصص لإدارة Android subsystem على Windows 11، وليس مديراً عاماً لهواتف Android عبر USB/Wireless.
+- أسلوب lazy details مفيد لتقليل عدد أوامر ADB وزمن الجرد.
+- تصنيف system/user اعتماداً على مسار APK وحده قد يخطئ في حالات OEM أو تحديثات التطبيقات؛ لا نجعله حقيقة وحيدة دون مصدر تصنيف أقوى.
+
+**القرار:** نقتبس نمط lazy enrichment، لا المشروع كقاعدة تشغيل لهواتف حقيقية. ويجب أن يختبر parser التاريخ الكامل، timezone assumptions، اختلافات dumpsys، والحزم متعددة المستخدمين.
+
+#### 20.21.3 خلاصة المقارنة لتواريخ التطبيقات
+
+| المصدر | جرد شامل | تاريخ التثبيت/التحديث | ملاحظات |
+|---|---|---|---|
+| Droidsmith 0.9.19 | نعم | غير موجود في AppPackage | يحتاج enrichment مستقل |
+| REA | ليس في مسار الفحص الذي راجعناه | موجود لتفاصيل package مفردة | parser يحافظ على النص الكامل؛ لا يثبت bulk support |
+| WSA Suite | نعم | موجود في PackageDetail | helper الحالي يقطع الوقت عند whitespace؛ نطاق WSA فقط |
+| Android App Manager | مدير تطبيقات يعمل على Android نفسه | لم نثبت من هذا البحث تكاملاً مع ADB host أو bulk export للتواريخ | مرجع UX/وظائف على الجهاز، وليس Windows host core |
+
+**قرار التصميم المبدئي:** نموذج التطبيق يجب أن يفصل بين:
+- حقول inventory السريعة: package, user/profile, enabled, system classification + evidence, installer, path, UID.
+- حقول التفاصيل المؤجلة: label/icon, version, firstInstallTime, lastUpdateTime, permissions, APK paths.
+- provenance لكل حقل: command/API، Android user، وقت القراءة، parser version، وحالة التوفر.
+- الفلترة بالتاريخ تتم محلياً على قيم parsed موحدة، ولا نطلب `dumpsys` لكل التطبيقات دفعة واحدة دون قياس.
+
+---
+
+### 20.22 تصميم DNS مخصص للأجهزة عبر ADB (12 نوفمبر 2026)
+
+#### 20.22.1 التمييز بين Private DNS وDNS IP وLocal VPN
+
+هذه ثلاثة مسارات مختلفة ولا يجوز تقديمها للمستخدم كأنها إعداد واحد:
+
+1. **Android Private DNS / DNS-over-TLS:** إعداد عالمي على مستوى الجهاز، يستخدم hostname لمزود DNS يدعم DoT، وليس عنوان IP عادي. Android يدعم Private DNS ابتداءً من Android 9. توثيق Google يوضح إعداد hostname، ومصدر AOSP يعرّف القيم `off`, `opportunistic`, `hostname` ومفتاح `private_dns_specifier`. [Google Public DNS Android setup](https://developers.google.com/speed/public-dns/docs/using) · [AOSP ConnectivitySettingsUtils](https://android.googlesource.com/platform/frameworks/libs/net/+/8ef52686483cdff0040d22753bb516e99a96a88d/common/framework/com/android/net/module/util/ConnectivitySettingsUtils.java)
+2. **DNS IP لكل Wi-Fi network:** ليس هو نفسه Private DNS hostname؛ ولا يوجد في هذا التدقيق إثبات لأمر ADB موحد يضبط DNS لكل شبكة Wi-Fi على كل إصدارات Android/OEM. يجب أن يبقى خارج وعود الدعم العامة حتى يتم اختبار طريقة خاصة بكل نطاق/جهاز.
+3. **Ad-blocking عبر Local VPN:** تطبيق blocker ينشئ VPN محلياً ويعترض DNS/traffic وفق قدراته؛ يحتاج تثبيت التطبيق وموافقة المستخدم على VPN، وقد يتعارض مع VPN آخر. هذا مسار مختلف عن Private DNS ولا يمكن تشغيله سراً من ADB.
+
+#### 20.22.2 ما يمكن بناؤه في الإصدار الأول
+
+- قراءة الحالة الحالية عبر ADB، بما في ذلك `private_dns_mode` و`private_dns_specifier`، مع حفظ القيم الخام وعدم افتراض أن غياب المفتاح يعني دائماً وضعاً معيناً على كل build.
+- عرض خيارات Private DNS المدعومة: Off، Automatic/Opportunistic، Provider hostname.
+- إدخال hostname فقط عند اختيار Provider hostname؛ التحقق من صيغة hostname وعدم قبول URL أو IP في هذا الحقل.
+- Preview قبل التغيير يوضح الجهاز المحدد، القيم الحالية، القيم المقترحة، واحتمال فقدان حل أسماء النطاقات إذا كان المزود غير متاح.
+- حفظ snapshot للقيم السابقة قبل أي كتابة، ثم Apply بعد موافقة صريحة، ثم قراءة الإعداد مجدداً وVerify.
+- Restore يعيد القيم السابقة بدقة، ولا يفترض أن الوضع السابق كان Off.
+- بعد التغيير، إجراء تحقق اتصال/حل أسماء مستقل قدر الإمكان؛ نجاح أمر الكتابة وحده لا يثبت أن DNS يعمل.
+- عند وجود VPN أو ملف إدارة جهاز أو قيود OEM، إظهار أن النتيجة قد تختلف وعدم الادعاء بأن الإعداد يسيطر على كل مسارات الشبكة.
+
+**ملاحظة صلاحيات:** توثيق Android `DevicePolicyManager` يبين أن واجهات إدارة Private DNS هذه مقيدة بامتياز Device Owner/حالات إدارة مؤسسية، وليست API عامة لأي تطبيق عادي. لذلك لا نبني GUI على افتراض توفر DPM control. ADB shell settings طريق منفصل يحتاج تحققاً فعلياً على إصدارات وأجهزة محددة. [Android DevicePolicyManager Private DNS](https://developer.android.com/reference/android/app/admin/DevicePolicyManager)
+
+#### 20.22.3 DNS Ad-blocking: اختيار المزود والتحقق
+
+- يمكن للمستخدم إدخال hostname لمزود DNS filtering يدعم DoT، أو اختيار preset بعد توثيق مزود الخدمة وhostname من مصدره الرسمي.
+- لا نضع عنوان IP في خانة Private DNS hostname.
+- لا نعد بأن Private DNS يمنع كل الإعلانات داخل التطبيقات؛ الحجب يعتمد على قوائم المزود ونوع الطلبات، وبعض الإعلانات/المحتوى تأتي من نفس نطاقات الخدمة.
+- لا ننشئ قائمة DNS عشوائية ولا نضيف مزوداً دون مصدر رسمي واختبار.
+- لا نغير إعداد DNS تلقائياً عند توصيل الجهاز؛ كل تغيير يمر Preview → Approval → Apply → Verify، مع Restore.
+
+**قرار:** Private DNS hostname هو المسار الأول المرشح لأنه إعداد نظامي ولا يتطلب تثبيت Local VPN app، لكنه يظل feature مشروطة بالتوافق والتحقق. DNS لكل Wi-Fi وLocal VPN يظلان مسارين منفصلين لاحقاً، لا جزءاً من ادعاء V1.
+
+---
+
+### 20.23 Windows Driver Diagnostics: الاعتماد على SetupAPI وConfiguration Manager (12 نوفمبر 2026)
+
+#### 20.23.1 واجهات Windows الرسمية المقترحة
+
+بدلاً من تحليل Registry عشوائياً أو الاعتماد على أسماء الأجهزة الظاهرة فقط، توثيق Microsoft يوصي بتعداد أجهزة Plug and Play عبر SetupAPI أو Configuration Manager:
+
+- `SetupDiGetClassDevs` لإنشاء Device Information Set، ثم `SetupDiEnumDeviceInfo` لتعداد الأجهزة.
+- `SetupDiGetDeviceInstanceId` للحصول على Device Instance ID.
+- `SetupDiGetDeviceRegistryProperty(SPDRP_HARDWAREID / SPDRP_COMPATIBLEIDS)` لقراءة Hardware IDs وCompatible IDs.
+- `SetupDiGetDeviceProperty` أو `CM_Get_DevNode_Property` لقراءة Unified Device Properties.
+- `CM_Get_DevNode_Status` أو `DEVPKEY_Device_ProblemCode` لمعرفة حالة الجهاز ورقم المشكلة.
+
+Microsoft تحذر من تعداد الأجهزة بقراءة Registry مباشرة؛ لأن PnP manager يحتفظ بمعلومات الحضور/الأجهزة الوهمية والفلترة. [Enumerating Installed Devices](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/enumerating-installed-devices) · [Device Information Sets](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/device-information-sets)
+
+#### 20.23.2 حقول التشخيص التي يمكن جمعها
+
+| الحقل | مصدر Windows المقترح | لماذا نحتاجه |
+|---|---|---|
+| Device Instance ID | SetupDiGetDeviceInstanceId | تمييز نسخة الجهاز على هذا الكمبيوتر |
+| Hardware IDs / Compatible IDs | SPDRP_HARDWAREID / SPDRP_COMPATIBLEIDS | مطابقة driver package مع الجهاز |
+| Present / Phantom | DIGCF_PRESENT أو CM_GETIDLIST_FILTER_PRESENT | التفريق بين جهاز موصول وآثار جهاز قديم |
+| Problem Code | DEVPKEY_Device_ProblemCode أو CM_Get_DevNode_Status | تشخيص حالة Device Manager |
+| Problem Status | DEVPKEY_Device_ProblemStatus | NTSTATUS إضافي عند توفره |
+| Driver INF | DEVPKEY_Device_DriverInfPath | معرفة INF المنشور الذي ربط الجهاز |
+| Driver Provider | DEVPKEY_Device_DriverProvider | الشركة المعلنة في INF |
+| Driver Version / Date | DEVPKEY_Device_DriverVersion / DriverDate | مقارنة النسخة والتاريخ |
+| Driver Description | DEVPKEY_Device_DriverDesc | وصف تعريف الجهاز |
+| Device Install Date | DEVPKEY_Device_InstallDate | آخر وقت تثبيت/تحديث instance، وليس تاريخ إصدار التعريف |
+| First Install Date | DEVPKEY_Device_FirstInstallDate | أول تثبيت للـdevice instance، لا يتغير مع كل تحديث |
+
+المراجع الرسمية: [SetupDiGetDeviceProperty](https://learn.microsoft.com/en-us/windows/win32/api/setupapi/nf-setupapi-setupdigetdevicepropertyw) · [Driver INF path](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/devpkey-device-driverinfpath) · [Driver version](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/devpkey-device-driverversion) · [Driver provider](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/devpkey-device-driverprovider) · [Driver date](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/devpkey-device-driverdate) · [Problem code](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/devpkey-device-problemcode) · [Problem status](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/devpkey-device-problemstatus) · [Install date](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/devpkey-device-installdate) · [First install date](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/devpkey-device-firstinstalldate)
+
+**فرق مهم في التواريخ:** DriverDate هي تاريخ التعريف وفق INF DriverVer؛ InstallDate هو آخر تثبيت للـdevice instance وقد يتغير مع تحديث التعريف؛ FirstInstallDate هو أول تثبيت للـinstance. لا نعرض أحدها تحت اسم الآخر.
+
+#### 20.23.3 حدود الإصلاح الآمن
+
+- مرحلة Scan تبقى Read-only وتجمع الأدلة فقط.
+- التشخيص يصنف: لا يوجد driver binding، Problem Code، driver موجود لكن الجهاز غير حاضر، Hardware ID غير معروف، أو حالة لا يمكن تفسيرها.
+- البحث عن تعريف يطابق Hardware ID يجب أن يقتصر على Windows Update أو صفحة الشركة المصنّعة/المصدر الرسمي؛ لا نوصي بمواقع تجميع التعريفات.
+- تثبيت/تحديث/rollback/reinstall عملية منفصلة تحتاج Preview وموافقة صريحة، وتوضح INF والـProvider والنسخة والـHardware IDs المستهدفة.
+- لا نحذف Driver Store package على نطاق واسع ولا ننفذ `pnputil /delete-driver` تلقائياً.
+- `SetupDiInstallDevice` عملية تثبيت فعلية وتتطلب Administrators؛ توثيق Microsoft يوضح أن تثبيت driver node قد يسجل الخدمات والملفات وواجهات الجهاز، ولذلك لا تعامل كإجراء تشخيص بسيط. [SetupDiInstallDevice](https://learn.microsoft.com/en-us/windows/win32/api/setupapi/nf-setupapi-setupdiinstalldevice)
+- لا نعتبر أن ظهور ADB Interface أو MTP وحده يعني أن Android authorization أو ADB protocol يعمل؛ هذه طبقات مستقلة كما أوضح القسم 18.
+
+#### 20.23.4 القرار المعماري
+
+نضيف طبقة Windows مستقلة:
+- `windows-device-enumerator`: SetupAPI/Configuration Manager enumeration.
+- `windows-driver-inspector`: properties وproblem codes وINF metadata.
+- `driver-source-resolver`: ربط Hardware IDs بمصادر رسمية فقط.
+- `driver-repair-planner`: خطة تغييرات قابلة للمراجعة، دون تنفيذ تلقائي.
+- `driver-repair-executor`: privileged boundary منفصل، يعمل فقط بعد approval token، ويسجل before/after وreboot requirement.
+
+يمكن تنفيذ wrapper Rust حول Windows APIs أو استخدام crate موثوق بعد تدقيق واجهاته؛ لا نعتمد الآن على crate بعينه قبل مراجعة صيانته وتغطيته واختباراته. لا نستخدم Registry scraping كبديل أساسي للواجهات الرسمية.
+
+**الحالة:** تصميم مبني على Microsoft API documentation ومراجعة مصدرية للأدوات السابقة؛ لم يتم كتابة Windows API code أو تثبيت/إزالة أي تعريف أو إجراء اختبار على Windows في هذه الجولة.
