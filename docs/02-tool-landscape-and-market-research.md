@@ -553,3 +553,93 @@ Connected Android Device / Windows APIs
 - [ ] اعتماد دعم HTTP فقط إذا ظهرت حاجة عملية ومراجعة أمنية مستقلة.
 
 **الحالة:** متطلبات ومعمارية بحثية أولية؛ لم يتم بناء MCP Server أو ربط Codex أو تنفيذ أي عملية على هاتف فعلي بعد.
+
+
+### 20.9 تدقيق المرشحين بناءً على README والمصادر الحالية (12 نوفمبر 2026)
+
+تمت مراجعة صفحات README الحالية للمشاريع التالية. هذه مراجعة وثائق/مصدر علني وليست مراجعة أمنية للكود كاملاً أو اختبار تشغيل.
+
+| المشروع | ما يظهر من README الحالي | الملاءمة لهذا البرنامج | القرار البحثي |
+|---|---|---|---|
+| [us-all/android-mcp-server](https://github.com/us-all/android-mcp-server) | يعلن 76 أداة تقريباً في القراءة والتشخيص وإدارة التطبيقات وواجهة المستخدم، ويدعم STDIO وStreamable HTTP. وضع القراءة فقط هو الافتراضي؛ الكتابة وShell لهما بوابتان منفصلتان عبر متغيرات بيئة. | أقرب مرشح لفحص تصميم الصلاحيات وأدوات Package Manager والتشخيص. يحتاج تدقيق Windows، تفاصيل تثبيت/إزالة التطبيقات، سلوك DNS، وحماية أدوات الكتابة قبل أي اعتماد. | **الأولوية الأولى للتدقيق الأمني والوظيفي**، وليس الدمج التلقائي. |
+| [iksnerd/adb-mcp](https://github.com/iksnerd/adb-mcp) | يعلن 81 أداة، ويذكر دعم Codex عبر Plugin، وبناء Go، وإصدارات Windows amd64/arm64، وأدوات ADB للأجهزة والتفاعل والملفات والتطبيقات والسجلات. | تكامل Codex وWindows مذكوران صراحة، ويحتوي على خبرة تنفيذية جيدة في ADB. لكنه واسع جداً ويتضمن أدوات تفاعلية وتغييرات جهاز لا نحتاج إتاحتها كلها. | **الأولوية الثانية**؛ انتقاء أدوات القراءة/التشخيص أو الاستفادة من تصميمه بعد مراجعة الكود والأدوات الحساسة. |
+| [qalvinahmad/android-mcp](https://github.com/qalvinahmad/android-mcp) | يعلن 26 أداة تقريباً عبر TypeScript/Node، USB وWireless ADB، إدارة تطبيقات، لقطات شاشة، UI automation وLogcat. اختيار الجهاز الافتراضي قد يعتمد على أول جهاز فعلي متصل عند عدم تحديده. | بسيط نسبياً ويدعم Windows وفق مسار اكتشاف Android SDK، لكنه يضم أوامر تغيير مباشرة، ويحتاج فحص سياسة اختيار الجهاز والموافقات. | **مرشح للمقارنة المعمارية**، وليس خياراً افتراضياً بسبب مخاطر الاختيار التلقائي وعمليات الكتابة. |
+| [modelcontextprotocol/typescript-sdk](https://github.com/modelcontextprotocol/typescript-sdk) | SDK الرسمي لـMCP في TypeScript؛ يوفر Server/Client وTools/Resources/Prompts وSTDIO وStreamable HTTP. README الحالي يوضح خط v2 وحزم `@modelcontextprotocol/server` و`@modelcontextprotocol/client`. | أساس مناسب لبناء MCP Server خاص بالبرنامج إذا كان TypeScript/Node هو اختيار التنفيذ. لا يوفر منطق ADB أو إدارة الهاتف؛ هو بروتوكول وSDK فقط. | **مرشح أساس تقني** إذا استقر قرار TypeScript؛ تثبيت نسخة محددة ومراجعة دليل الترقية قبل التنفيذ. |
+| [modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk) | SDK الرسمي لـMCP في Python، ويدعم الخوادم والعملاء وSTDIO وStreamable HTTP. | بديل تقني إذا كان جزء الخدمة أو التكامل مبنياً على Python؛ لا يبرر إدخال Runtime إضافي وحده. | **بديل للمقارنة** وليس قراراً بالتعدد اللغوي. |
+
+**ملاحظة تدقيق مهمة:** أرقام الأدوات وأوصاف الخصائص أعلاه هي ما يعلنه README وقت المراجعة وقد تتغير. لا نعتبر عدد الأدوات مقياس جودة. كما أن وجود خيار Read-only افتراضي في مشروع خارجي لا يغني عن بناء سياسة صلاحيات داخل برنامجنا نفسه.
+
+**مراجع هذه المراجعة:**
+- [us-all README](https://github.com/us-all/android-mcp-server/blob/main/README.md)
+- [adb-mcp README](https://github.com/iksnerd/adb-mcp/blob/main/README.md)
+- [android-mcp README](https://github.com/qalvinahmad/android-mcp/blob/main/README.md)
+- [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
+- [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
+
+### 20.10 توصيل Codex بخادم البرنامج المحلي
+
+Codex يدعم خوادم MCP عبر STDIO أو Streamable HTTP. وتوضح وثائقه أن إعدادات MCP مشتركة بين Codex CLI وإضافة IDE وتطبيق ChatGPT desktop/Codex بحسب طريقة الاستخدام والإصدار. في الاستخدام المحلي على جهاز Windows الذي يتصل بالهاتف، يكون STDIO هو نقطة البداية الأبسط: يشغّل Codex عملية MCP المحلية ويتواصل معها عبر stdin/stdout.
+
+#### مثال إعداد عبر Codex CLI
+
+بعد تثبيت البرنامج وخادم MCP محلياً، يكون شكل التسجيل المقترح:
+
+```powershell
+codex mcp add kemet-device -- C:\Program Files\Kemet Device Manager\mcp-server.exe
+codex mcp list
+```
+
+المثال يوضح الشكل فقط؛ المسار التنفيذي واسم الخادم النهائيان لم يتم تحديدهما بعد. يجب استخدام مسار فعلي موجود على جهاز المستخدم.
+
+#### مثال إعداد مباشر في config.toml
+
+المسار الافتراضي المذكور في وثائق Codex هو `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.kemet_device]
+command = "C:\\Program Files\\Kemet Device Manager\\mcp-server.exe"
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+default_tools_approval_mode = "writes"
+```
+
+يجب التحقق من صياغة المسارات في TOML ومن خيارات النسخة المستخدمة وقت التنفيذ. يمكن استخدام `enabled_tools` لتقليل الأدوات المعروضة، و`disabled_tools` لاستبعاد أدوات بعينها، و`tools.<tool>.approval_mode` لتحديد موافقة أداة محددة.
+
+**قرار الصلاحيات المقترح في Codex:**
+- اجعل أدوات القراءة فقط متاحة دون موافقة متكررة، بعد اختبار أنها لا تغير حالة الجهاز.
+- اجعل أدوات الكتابة تتطلب موافقة، باستخدام وضع `writes` أو موافقة خاصة لكل أداة.
+- لا تعتمد على إعداد Codex وحده؛ يجب أن يرفض MCP Server نفسه عمليات الكتابة غير المصرح بها.
+- لا تستخدم Shell عام أو أداة تنفيذ أوامر حرة في الخادم الأساسي.
+- لا تضع أسراراً أو Tokens داخل ملف إعدادات المشروع أو مستودع Git.
+
+**مراجع Codex الرسمية:**
+- [Codex MCP setup and transports](https://developers.openai.com/codex/mcp)
+- [Codex MCP configuration reference](https://developers.openai.com/codex/config-reference)
+- [OpenAI MCP connections guide](https://developers.openai.com/api/docs/guides/agents-api/tools/mcp)
+
+### 20.11 اعتبارات أمن MCP التي يجب أن تدخل في التصميم
+
+- STDIO: لا تطبع أي رسائل تشغيل أو Debug إلى stdout؛ فهو قناة JSON-RPC. استخدم stderr للسجلات.
+- Streamable HTTP: إذا أضيف لاحقاً، اربط الخادم محلياً على `127.0.0.1` افتراضياً، وتحقق من Origin، وفعّل المصادقة المناسبة. لا تستخدم `0.0.0.0` كقيمة افتراضية.
+- لا تفترض أن المصادقة وحدها تمنع إساءة الاستخدام؛ يجب تطبيق صلاحيات على مستوى الأداة والعملية والجهاز.
+- لا تسمح بتمرير اسم حزمة أو مسار ملف أو وسيطة Shell دون تحقق وتقييد.
+- يجب أن تكون كل أداة ذات أثر جانبي واضحة في وصفها ومخططها، وأن تُرجع حالة العملية والنتيجة الفعلية لا مجرد نجاح إرسال الأمر.
+- لا تسمح للوكيل باختيار أول جهاز تلقائياً عند تعدد الأجهزة؛ اطلب تحديد Serial أو استخدم جلسة جهاز مثبتة بوضوح.
+- ضع حدوداً للوقت وحجم المخرجات وعدد العمليات المتزامنة، مع دعم الإلغاء والتعامل مع انقطاع USB/Wireless.
+- لا تعرض IMEI أو أرقاماً تسلسلية أو بيانات شخصية للوكيل إلا عند الحاجة الصريحة للمهمة.
+- افصل عمليات التشخيص عن عمليات التغيير، وسجل من استدعى الأداة وعلى أي جهاز وهل تمت الموافقة وما النتيجة.
+- اعتبر محتوى الهاتف وسجلاته وبيانات التطبيقات مدخلات غير موثوقة؛ لا تنفذ تعليمات تظهر داخل أسماء التطبيقات أو Logcat أو ملفات الجهاز كأنها تعليمات للمساعد.
+
+**ملاحظة أمنية:** ظهرت تقارير أمنية منشورة عن ثغرات في أدوات تحكم Android عبر MCP بسبب تمرير مدخلات المستخدم إلى أوامر ADB shell دون escaping كافٍ. لذلك يجب مراجعة بناء الأوامر والتحقق من المدخلات واستخدام واجهات محددة بدلاً من تجميع shell strings. مثال مرجعي: [Microsoft UFO security advisory GHSA-5cjx-4375-4877](https://github.com/microsoft/UFO/security/advisories/GHSA-5cjx-4375-4877).
+
+### 20.12 قرار التنفيذ المرحلي المقترح
+
+1. لا ندمج خادم Android MCP جاهزاً بالكامل كواجهة البرنامج الرسمية قبل تدقيق الكود والصلاحيات.
+2. نعيد استخدام SDK الرسمي لـMCP، ونستفيد من المشاريع المرشحة في الوظائف والأفكار التي اجتازت التدقيق.
+3. نبني MCP Server رفيعاً حول Service Layer الخاصة بالبرنامج، بحيث تستدعي GUI وMCP الخدمات نفسها.
+4. نبدأ بأدوات قراءة قليلة: `list_devices`, `get_device_info`, `list_installed_apps`, `get_app_details`, `get_dns_config`, `scan_windows_drivers`.
+5. نختبر Codex على Windows مع جهاز اختبار واحد ثم جهازين، ونثبت أن اختيار الجهاز صريح.
+6. نضيف الكتابة بعد إكمال نموذج Preview/Approval/Apply/Verify واختبارات الأمان.
+7. لا نضيف HTTP إلا إذا احتجنا عميلاً بعيداً أو أكثر من عميل محلي، وبعد مراجعة تهديدات مستقلة.
+
+**الحالة بعد التدقيق:** أصبح لدينا مرشح أول لفحص الحماية والتشخيص (us-all)، ومرشح قوي لتكامل Codex/Windows (iksnerd)، وSDK رسمي للبناء. لم يتم بعد تشغيل أي خادم MCP أو ربط Codex أو اختبار جهاز فعلي.
