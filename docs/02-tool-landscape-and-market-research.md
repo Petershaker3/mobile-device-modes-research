@@ -643,3 +643,63 @@ default_tools_approval_mode = "writes"
 7. لا نضيف HTTP إلا إذا احتجنا عميلاً بعيداً أو أكثر من عميل محلي، وبعد مراجعة تهديدات مستقلة.
 
 **الحالة بعد التدقيق:** أصبح لدينا مرشح أول لفحص الحماية والتشخيص (us-all)، ومرشح قوي لتكامل Codex/Windows (iksnerd)، وSDK رسمي للبناء. لم يتم بعد تشغيل أي خادم MCP أو ربط Codex أو اختبار جهاز فعلي.
+
+
+### 20.13 تدقيق أولي للكود الفعلي للمشروعات الثلاثة (12 نوفمبر 2026)
+
+**نطاق هذه الجولة:** قراءة ملفات المصدر والاختبارات وملفات CI من الفرع `main` لكل مشروع. لم يتم تنزيل المشاريع أو تثبيتها أو تشغيل اختبارات CI محلياً، ولم يتم الاتصال بأي هاتف. لذلك فالنتائج أدناه **Code-inspected** وليست Runtime-verified أو Security-audit كاملة.
+
+#### ملخص النتائج
+
+| المشروع | دليل من الكود | ملاحظة أمن/سلوك | التقييم بعد قراءة المصدر |
+|---|---|---|---|
+| [us-all/android-mcp-server](https://github.com/us-all/android-mcp-server) | يستخدم `child_process.execFile` مع مصفوفة arguments وtimeout افتراضي 30 ثانية؛ أدوات التطبيقات تفصل القراءة عن الكتابة عبر `assertWriteAllowed()`؛ أداة Shell الحرة لها بوابة منفصلة `assertShellAllowed()`. | بوابات الكتابة وShell مفروضة داخل handlers وليست مجرد annotations. لكن تفعيل `ANDROID_MCP_ALLOW_SHELL=true` يفتح تنفيذ أمر Shell حر؛ يجب ألا يكون ذلك جزءاً من الإعداد الافتراضي للبرنامج. دوال `adbShell` تستقبل command string واحدة، وبالتالي يجب تدقيق كل موضع يبنيها لضمان escaping/validation؛ بعض مواضع Package Manager تتحقق من package name وبعضها يستخدم shell escaping. | **أفضل مرجع مبدئي لفصل الصلاحيات**. لا يُدمج كما هو قبل مراجعة جميع handlers، واختبار Windows، وتحديد مجموعة الأدوات التي نحتاجها فقط. |
+| [iksnerd/adb-mcp](https://github.com/iksnerd/adb-mcp) | يستخدم `exec.CommandContext` وتمرير arguments كقائمة منفصلة؛ لديه طبقة ADB مستقلة عن MCP، وطبقة Tools رفيعة تستدعي Client. `ResolveSerial` يختار تلقائياً فقط عند وجود جهاز جاهز واحد؛ عند تعدد الأجهزة يطلب Serial صراحة. | هذا أقوى سلوك من ناحية منع اختيار جهاز عشوائي. توجد اختبارات مخصصة لـshell quoting ومدخلات عدائية. لكن الأدوات التي تنفذ Install/Uninstall وعمليات تفاعلية تحتاج مراجعة سياسة موافقة مركزية قبل إعادة استخدامها؛ وجود MCP annotations أو موافقات العميل وحدها لا يساوي حارس صلاحيات داخل الخدمة. | **أقوى مرجع معماري ومرشح لإعادة استخدام منطق ADB**، خصوصاً فصل Client عن MCP واختيار الجهاز. لا ننقل كل الأدوات الواسعة. |
+| [qalvinahmad/android-mcp](https://github.com/qalvinahmad/android-mcp) | يستخدم `execFileSync` و`spawn` مع arguments منفصلة، ويدعم اكتشاف adb على Windows عبر `ANDROID_HOME` و`LOCALAPPDATA`. | عند عدم تحديد الجهاز: يستخدم `ANDROID_MCP_DEVICE`، ثم الجهاز الوحيد، ثم أول جهاز فعلي متصل، ثم أول جهاز متاح. هذا قد يوجه المهمة إلى هاتف غير مقصود عند وجود أكثر من جهاز. أدوات Install/Uninstall لا يظهر في handlers التي تمت مراجعتها حارس كتابة server-side؛ وannotations مثل `destructiveHint` هي metadata وليست enforcement. | **مفيد كمرجع صغير لاكتشاف ADB وعمليات UI**، لكنه غير مناسب كأساس آمن دون تغيير اختيار الجهاز وإضافة authorization داخل الخادم. |
+
+#### تفاصيل تقنية مثبتة من الملفات المقروءة
+
+**أولاً: us-all/android-mcp-server**
+- `src/adb.ts`: يستخدم `execFile` لا `exec`، ويمرر ADB arguments كمصفوفة؛ هذا يقلل خطر تفسير مدخلات المضيف كأمر shell على Windows، لكنه لا يلغي مخاطر Android shell عند استخدام `adb shell`.
+- `src/config.ts`: قيم السماح للكتابة وShell تكون false ما لم تضبط متغيرات البيئة صراحة.
+- `src/tools/utils.ts`: يحتوي `assertWriteAllowed` و`assertShellAllowed`، إلى جانب validators و`shellEscape`.
+- `src/tools/apps.ts`: يعرض قراءة Package list وPackage details، ويستخرج `firstInstallTime` و`lastUpdateTime` من `dumpsys package`. Install/Uninstall وLaunch/Stop تمر عبر write gate.
+- `src/tools/shell.ts`: ينفذ الأمر المرسل كما هو بعد write-independent Shell gate؛ يجب إبقاء هذا النوع من الأدوات معطلاً في منتجنا.
+- `src/tools/device.ts`: يدعم تمرير Serial في استدعاءات معلومات الجهاز، لكن بعض أوامر الاتصال/الفصل تستهدف ADB server دون Serial لأنها عمليات اتصال.
+- `tests/apps.test.ts` و`tests/adb.test.ts` و`tests/shell.test.ts` موجودة. اختبار Shell الظاهر يختبر schema وقبول/رفض مدخلات، وليس إثباتاً شاملاً لمقاومة command injection.
+- `.github/workflows/ci.yml`: CI الحالي يستخدم Ubuntu وNode 22 ويشغل build/tests، مع تثبيت ADB لبعض فحوص CI. هذا لا يثبت توافق Windows.
+
+**ثانياً: iksnerd/adb-mcp**
+- `internal/adb/adb.go`: ينفذ ADB عبر `exec.CommandContext` مع `CommandEnv` ويدعم Context للإلغاء والمهلة عبر السياق.
+- `internal/adb/devices.go`: `ResolveSerial` يرفض حالة عدم وجود جهاز جاهز، ويرفض تعدد الأجهزة دون Serial صريح.
+- `internal/tools/helpers.go`: كل Handler يحصل على Client مرتبط بجهاز محدد قبل تنفيذ الوظيفة؛ هذا فصل جيد بين اختيار الجهاز والتنفيذ.
+- `internal/tools/register.go`: كتالوج MCP يسجل handlers رفيعة تصف متى تستخدم الأداة ومحاذيرها؛ منطق ADB يبقى في `internal/adb`.
+- `internal/adb/packages.go`: يدعم ListPackages وInstallApp وUninstallApp وقراءة تفاصيل التطبيق/حالة التطبيق. بعض معلومات install/update time تستخرج من dumpsys ضمن AppState، لكن هذا لا يعني أن جميع بيانات الفرز المطلوبة متاحة في أداة قائمة التطبيقات الحالية.
+- `internal/adb/shellquote_test.go`: توجد اختبارات لقيم تحتوي مسافات و& و; وapostrophes و$، وتتحقق من escaping في أوامر Shell الخاصة بالتطبيقات والروابط والقفل. هذا دليل اختبار وحدات على بناء الوسائط، لا اختبار اختراق شامل.
+- وجود ملفات اختبارات كثيرة في `internal/adb` و`internal/tools` مؤشر على تغطية وحدات واسعة؛ لم يتم تشغيلها في هذه المراجعة.
+- `go.mod` يثبت استخدام Go 1.26 وMCP Go SDK v1.6.1. ملفات Windows-specific وملفات Release workflow موجودة في الشجرة؛ يجب مراجعة الـworkflow ومخرجات الإصدار فعلياً قبل اعتماد حزمة Windows.
+
+**ثالثاً: qalvinahmad/android-mcp**
+- `src/adb.ts`: يستعمل `execFileSync` و`spawn` بوسائط منفصلة، ويدعم Windows paths. لديه auto-connect عبر mDNS عند عدم ظهور أجهزة في القائمة.
+- `resolveDevice()`: الاختيار التلقائي يفضل أول جهاز فعلي على المحاكي عندما يوجد أكثر من جهاز؛ هذا قرار غير آمن لتطبيق إدارة أجهزة، لأن «أول جهاز» لا يعني الجهاز الذي قصده المستخدم.
+- `src/server.ts`: يضع MCP annotations مثل `readOnlyHint` و`destructiveHint`، لكن الأدوات التي فحصناها Install/Uninstall لا تستدعي حارس موافقة أو policy gate داخل handler. لا ينبغي اعتبار metadata بديلاً عن enforcement.
+- `android_list_apps` يعرض التطبيقات التي لها Launcher activity، وليس جرداً شاملاً لكل الحزم المثبتة؛ لذلك لا يفي وحده بمتطلب System/User package inventory.
+- Install/Uninstall يستعملان arguments منفصلة، وUninstall يتحقق من صيغة Package name. لم يظهر في الملفات التي راجعناها مساراً عاماً لاستخراج install time/update time أو فلاتر تاريخ التثبيت.
+- لم يظهر في شجرة الملفات المعروضة مجلد اختبارات أو CI workflow؛ لا نستنتج من ذلك عدم وجود اختبارات خارج الشجرة، لكن لا يوجد دليل اختبارات ظاهر في هذه المراجعة.
+
+#### ما الذي نعيد استخدامه فعلياً؟
+
+1. **من iksnerd:** تصميم طبقة ADB Client المستقلة عن MCP، وآلية Context/cancellation، وسياسة `ResolveSerial` التي ترفض الاختيار التلقائي عند تعدد الأجهزة، واختبارات shell-argument quoting كمرجع.
+2. **من us-all:** نموذج server-side write gate وShell gate، وفصل إعدادات السماح، وطرق استخراج package metadata ووقت التثبيت/التحديث، مع تجنب فتح arbitrary shell.
+3. **من qalvinahmad:** أفكار اكتشاف مسار ADB على Windows وmDNS wireless discovery، بعد تعديل اختيار الجهاز ليكون صريحاً وعدم السماح باختيار أول هاتف تلقائياً.
+4. **لا ننسخ أي MCP Server بالكامل الآن.** الأفضل بناء خدمة ADB داخل برنامجنا، ثم إضافة MCP Adapter رفيع يستدعي نفس Service Layer التي تستخدمها الواجهة الرسومية.
+
+#### فجوات لم تُحسم بعد
+- مراجعة كل عمليات الكتابة في iksnerd والتحقق هل يوجد authorization موحد داخل الخادم أم اعتماد على MCP client/annotations/تكوين المستخدم.
+- مراجعة بقية handlers في us-all، خصوصاً الملفات والـsystem settings وUI interaction، بحثاً عن shell interpolation أو أدوات ذات آثار جانبية لا تمر عبر write gate.
+- فحص ملفات Release workflow وWindows packaging للمشروعين الأول والثاني، لا الاكتفاء بوجود ملفات Windows في المستودع.
+- التحقق من إمكان جرد جميع الحزم مع system/user/disabled/installer/install time/update time، وليس Launcher apps فقط.
+- مقارنة التغطية الفعلية لفلاتر التطبيقات، Split APK/APKS، تصدير APK، enable/disable، وWireless Pairing.
+- لا يوجد حتى الآن تشغيل محلي أو تحقق على Windows أو هاتف حقيقي.
+
+**حالة هذه الجولة:** [x] قراءة ملفات مصدر أساسية للمشروعات الثلاثة. [x] فحص مبدئي لاختيار الجهاز وبناء أوامر ADB. [x] تحديد أدلة الاختبارات الموجودة. [ ] تدقيق كامل لكل الأدوات الحساسة. [ ] تشغيل اختبارات أو بناء Windows. [ ] اعتماد أي كود لإعادة الاستخدام.
