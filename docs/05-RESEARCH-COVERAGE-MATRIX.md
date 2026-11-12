@@ -27,7 +27,7 @@
 | Fastboot/Fastbootd وMTP/WPD والأوضاع الموثقة | [01](01-connectivity-protocols.md) | بحث جيد جزئياً — غير مختبر | فصل ما يمكن قراءته في كل وضع عن الانتقالات الممكنة؛ وضع مصفوفة دعم حسب الموديل، وعدم اعتبار الانتقال المدعوم عاماً | لا؛ استكمال 01 |
 | قراءة هوية الجهاز ومعلوماته الأساسية | [01 §2 و§5](01-connectivity-protocols.md)؛ getprop وFastboot getvar في [02](02-tool-landscape-and-market-research.md) | بحث جيد جزئياً | تصميم Device Information Schema: الحقل، المصدر، طريقة الجمع، صلاحية الوصول، API range، الثقة، وحالات Unsupported/PermissionDenied/NotReported | موجودة الآن في [06](06-android-system-information.md)؛ البحث الأولي موثق |
 | معلومات النظام والبناء والحماية والعتاد | [00](00-PRODUCT-BASELINE.md)؛ [01](01-connectivity-protocols.md)؛ مراجع getprop/ABI متفرقة في [02](02-tool-landscape-and-market-research.md) | جزئي | بحث مستقل في Android properties وBuild fields وSDK/API وsecurity patch وABI وdensity وfeatures وkernel/runtime، مع توثيق اختلاف OEM وإخفاء البيانات الحساسة | نعم: 06 |
-| معلومات السوفتوير والفريموير وملفات التحديث | إشارات إلى firmware/build/CSC في [01](01-connectivity-protocols.md) وأدوات السوق في [02](02-tool-landscape-and-market-research.md) | جزئي إلى إشارة فقط | فصل معلومات النسخة المثبتة عن ملفات التحديث الخارجية؛ جرد صيغ الملفات وmetadata ومصادرها وقابلية القراءة والتحقق والتوافق. لا تفليش ولا كتابة أقسام ضمن هذا البحث | نعم: 07 |
+| معلومات السوفتوير والفريموير وملفات التحديث | [06](06-android-system-information.md) لمعلومات build المثبتة؛ [07](07-firmware-software-inventory.md) لـOTA metadata وpayload manifest وAVB؛ [01](01-connectivity-protocols.md) و[02](02-tool-landscape-and-market-research.md) لمراجع إضافية | بحث جيد جزئياً — غير مختبر | توسيع صيغ OTA legacy وfactory archives خارج payload.bin، وبناء corpus حزم متعددة؛ لا تفليش ولا كتابة أقسام | الوثيقة المستقلة موجودة |
 | الأقسام ومعلومات التخزين | إشارات محدودة في أدوات السوق وبعض مسارات الصيانة في [02](02-tool-landscape-and-market-research.md)؛ OBB والتخزين المشترك في [02 §20.45](02-tool-landscape-and-market-research.md) | جزئي / إشارة فقط | دراسة قراءة معلومات التخزين والمساحات وأنظمة الملفات والأقسام الظاهرة عبر واجهات مسموحة؛ تمييز read-only inventory عن dump/backup/write، وعدم استنتاج خريطة أقسام كاملة من جهاز واحد | نعم: 08 |
 | إدارة التطبيقات والجرد والفلاتر | [03 §16–17](03-app-management-and-network.md)؛ تدقيق Droidsmith وAppManager وUAD-ng في [02 §20.17–20.21 و20.26 و20.29](02-tool-landscape-and-market-research.md) | بحث جيد — غير مختبر | حسم نموذج بيانات موحد للتطبيقات، المستخدمين، تواريخ التثبيت/التحديث، installer source، الحالة، ABI، الصلاحيات، ومسارات التصدير؛ اختبار الفروقات بين Android/OEM | لا؛ الوثيقة الحالية مناسبة |
 | تثبيت APK وSplit APK وAPKS وAPKM وXAPK وOBB وAAB | [03 §18](03-app-management-and-network.md)؛ [02 §20.30–20.54](02-tool-landscape-and-market-research.md) | بحث موسع جيد — غير مختبر | إعداد corpus حقيقي للملفات المتنوعة، وتثبيت/تحقق على أجهزة مستهدفة؛ لا تُعتبر مراجعة parser أو CI دليلاً على نجاح التثبيت الفعلي | لا؛ استكمال الاختبارات في 02/03 |
@@ -60,7 +60,6 @@
 
 الأولوية هنا هي سد فجوات البحث لا بدء التنفيذ:
 
-1. **07 — Firmware & Software Inventory:** جرد البرمجيات والفريموير وملفات التحديث وmetadata والتوافق، مع فصل القراءة عن التفليش.
 2. **08 — Storage & Partition Information:** معلومات التخزين والأقسام وما يمكن قراءته بأمان، وحدود الصلاحيات والموديلات.
 5. **11 — Backup & Restore Boundaries:** أنواع النسخ الاحتياطي المختلفة، ما يمكن تصديره فعلاً، قيود Android، والاستعادة والتحقق.
 
@@ -73,7 +72,7 @@
 | 1 | تم إنجاز 06 — Android System Information | بحث أولي ومراجعة مصدر Host-side وAndroid-side؛ لا اختبار Hardware ولا اعتماد دمج |
 | 2 | تم إنجاز 10 — Android Diagnostics & Logs | بحث ومراجعة مصدر لمرشحي Logcat وBugreport وDropbox وPerfetto؛ لا تشغيل أو اختبار Hardware |
 | 3 | تم إنجاز 09 — Device File Management | تدقيق مشاريع ADB-Explorer وAdbFileManager وWinDroidFS وJSleim ومراجع WPD؛ لا اختبار Hardware |
-| 4 | Firmware & Software Inventory | جرد البرمجيات وملفات التحديث وmetadata ومصادر البيانات، دون تفليش |
+| 4 | تم إنجاز 07 — Firmware & Software Inventory | مراجعة AOSP OTA metadata وupdate_metadata.proto وpayload-dumper-go وAVB؛ لا extraction أو flash |
 | 5 | Storage & Partition Information | قدرات القراءة والتخزين والأقسام وحدود كل واجهة |
 | 6 | Backup & Restore Boundaries | تصنيف النسخ الاحتياطي والاستعادة حسب نوع البيانات وإصدار Android |
 | 7 | تحديث مصفوفة التغطية | ربط كل نتيجة بمشروع ومصدر وملف/قسم ودليل وحالة تحقق، ثم تحديث 00 وREADME |
@@ -97,4 +96,4 @@
 - [Capture and read bug reports — Android Studio](https://developer.android.com/studio/debug/bug-report): إنشاء تقرير bugreport وقراءة ملف ZIP.
 - [Logcat command-line tool — Android Developers](https://developer.android.com/tools/logcat): buffers وfilters وصيغ السجلات وحدود بعض الخيارات والصلاحيات.
 
-**حالة المصفوفة:** الوثائق 06 و09 و10 أُنشئت بعد مراجعة المصدر. الوثائق 07 و08 و11 لم تُنشأ بعد. لا يوجد ادعاء باختبار Hardware أو اعتماد مشروع للدمج.
+**حالة المصفوفة:** الوثائق 06 و07 و09 و10 أُنشئت بعد مراجعة المصدر. الوثيقتان 08 و11 لم تُنشأ بعد. لا يوجد ادعاء باختبار Hardware أو اعتماد مشروع للدمج.
