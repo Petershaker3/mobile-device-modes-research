@@ -748,3 +748,76 @@ default_tools_approval_mode = "writes"
 8. تبقى annotations وصفاً للعميل وواجهةً مساعدة، لا حدّاً أمنياً.
 
 **حالة هذه الجولة:** [x] مراجعة نظام hints واختباراته في iksnerd. [x] مراجعة مسارات Shell الإضافية في us-all. [x] تحديد نقاط interpolation تستحق الإصلاح/اختبار injection. [ ] تنفيذ اختبارات استغلال معزولة. [ ] مراجعة بقية ملفات system/UI/resources. [ ] اعتماد أي كود خارجي.
+
+
+### 20.15 تدقيق إضافي: أدوات النظام والملفات وواجهة الجهاز وتوزيعات Windows (12 نوفمبر 2026)
+
+#### 20.15.1 us-all/android-mcp-server — تغطية الوظائف
+
+**الوظائف المقروءة في المصدر:**
+- System: قراءة البطارية والشبكة والإعدادات، تغيير Settings، تغيير حجم/كثافة الشاشة، إبقاء الشاشة مضاءة، Wi-Fi/mobile data، الاتجاه، قفل/محاولة فتح الشاشة، ADB forward/reverse.
+- Files: list/pull/push/delete، مع مسارات ADB مباشرة لبعض العمليات ومسارات Android shell للبعض الآخر.
+- UI: screenshot وUI hierarchy وtap/long press/swipe/drag/type/key events وتسجيل الشاشة.
+- عمليات تغيير الإعدادات وWi-Fi وmobile data وعمليات UI التي راجعتها تستدعي `assertWriteAllowed()`. وعمليات push/delete تستدعيه أيضاً. هذا أقوى من مجرد MCP annotations، لكنه ما زال Boolean global gate وليس موافقة دقيقة مرتبطة بجهاز/عملية/مدخلات.
+
+**ملاحظات أمنية محددة من الكود:**
+
+1. **Key event — validator مستورد لكنه غير مستعمل في handler:**
+   - `src/tools/ui.ts` يستورد `validateKeycode`، لكن `pressKey()` يبني `input keyevent ${keycode}` مباشرة دون استدعاء validator.
+   - `pressKeySchema` يقبل أي string.
+   - النتيجة: مدخل key غير موثوق يصل إلى Android shell command string. هذه ثغرة محتملة لبناء أمر غير مقصود/حقن shell، وليست استغلالاً تم تنفيذه.
+   - لا يظهر اختبار مباشر لـ`pressKey` ضمن مقطع `tests/ui.test.ts` الذي تمت مراجعته.
+   - **الإجراء المقترح:** استدعاء `validateKeycode(keycode)` بعد التطبيع، وتقييد schema، وإضافة اختبارات رفض لمحارف shell والـnewline والـwhitespace.
+
+2. **Screen recording — اسم الملف وحجم الفيديو:**
+   - `screenRecordStart()` يركب `fileName` و`size` في command string مثل `screenrecord --size ... /sdcard/...`.
+   - schema يقبل `fileName` و`size` كسلاسل دون نمط تحقق ظاهر في الجزء المقروء.
+   - **الإجراء المقترح:** السماح باسم ملف بسيط فقط دون slash أو shell metacharacters، والتحقق من `size` بصيغة رقمية صارمة مثل WIDTHxHEIGHT، وبناء مسار آمن.
+
+3. **أوامر Shell أخرى:**
+   - `inputText` يستخدم `shellEscape`، و`unlockDevice` يهرب PIN، و`changeSetting` يتحقق من key/value ثم يهرب القيمة.
+   - tap/swipe/longPress تستخدم قيماً محولة إلى أرقام من Zod، ما يقلل مساحة حقن النص، لكن يلزم تحديد حدود منطقية للأحداث.
+   - `getNetworkInfo` يعتمد على `head` و`grep` داخل Android shell؛ يلزم التحقق من توافق هذه الأدوات مع إصدارات Android المستهدفة، أو استخدام parsing في المضيف لتجنب الاعتماد على shell utilities.
+
+4. **Files:**
+   - `listFiles` و`deleteFile` يستعملان `validateDevicePath` و`shellEscape`.
+   - `pullFile` و`pushFile` يمران المسارات كوسائط منفصلة إلى ADB، وهو أفضل من إدخالها داخل shell command.
+   - `pushFile` و`deleteFile` محميتان بـwrite gate؛ `pullFile` قراءة/نسخ إلى المضيف ولا يظهر لها gate، لكنها تحتاج موافقة/سياسة خصوصية منفصلة في برنامجنا لأن سحب ملفات الهاتف قد يكشف بيانات شخصية.
+   - يجب أن نفرق في منتجنا بين «قراءة بيانات تشخيصية» و«تصدير ملفات من الهاتف»؛ كلاهما قراءة من منظور الجهاز لكن أثر الخصوصية مختلف.
+
+5. **Settings / Forwarding:**
+   - عمليات تغيير Settings وForward/Reverse/Remove forwarding محمية بـwrite gate.
+   - مخطط المنافذ يستخدم coercion إلى number، لكن لا يظهر في الجزء المقروء حد 1–65535 أو شرط integer لكل المنافذ؛ ينبغي فرض حدود رقمية صريحة قبل التنفيذ.
+   - `removeForward` دون hostPort يحذف كل forward وreverse mappings؛ هذا سلوك واسع الأثر ويجب أن يتحول في برنامجنا إلى Preview واضح مع موافقة مستقلة، لا زر حذف عادي.
+
+**قرار us-all بعد هذه الجولة:** لا نقتبس UI أو system handlers كما هي. نحتفظ بفكرة التقسيم الوظيفي، ونستفيد من validators وwrite gate بعد تدقيقها، لكن نضيف authorization أدق، device binding، validation لكل مدخل، واختبارات hostile-input تغطي كل handler يبني Android shell command.
+
+#### 20.15.2 Windows packaging وبيئة التشغيل
+
+| المشروع | ما يظهر في ملفات البناء/التوزيع | النتيجة |
+|---|---|---|
+| us-all/android-mcp-server | مشروع Node/TypeScript ينشر npm package وDocker image. CI والبناء والنشر في الملفات التي راجعناها يعمل على Ubuntu؛ يوجد اختبار إضافي لـAlpine/musl، ولا يظهر Windows runner أو Windows-specific release binary في workflow المقروء. | يمكن أن يعمل نظرياً على Windows عبر Node.js وADB إذا كانت dependencies متوافقة، لكن **Windows runtime غير مثبت في CI الذي تمت مراجعته**. لا يوجد دليل كافٍ على حزمة Windows جاهزة مستقلة. |
+| iksnerd/adb-mcp | Release workflow يبني Go binaries لـWindows amd64 وarm64، ويضعها في ZIP، كما يبني Linux/macOS؛ يرفق checksums. الاختبارات `go test -race ./...` و`go vet ./...` تظهر في release gate على Ubuntu، ثم يتم cross-compile لـWindows. | **أفضل توزيع Windows جاهز بين المرشحين الثلاثة**. الـcross-compile دليل بناء موجه لـWindows في CI، لكنه ليس اختبار تشغيل فعلي على Windows؛ نحتاج Windows-native smoke test قبل الاعتماد النهائي. |
+| qalvinahmad/android-mcp | حزمة npm تعتمد Node.js >=18، وتحتاج platform-tools/ADB. README يذكر مسار Android SDK على Windows، وطريقة تشغيل Node على ملف dist. لم يظهر في شجرة الملفات التي تمت مراجعتها Windows binary أو Release workflow أو CI workflow. | تشغيل محتمل على Windows بتثبيت Node وADB، لكن لا يوجد دليل CI/Release ظاهر يثبت Windows runtime. |
+
+**ملاحظة مهمة:** وجود ملف `detach_windows.go` أو إعداد Windows path أو cross-compilation لا يعادل اختباراً على Windows حقيقي. وكذلك نجاح Go cross-build لا يثبت أن ADB path discovery أو process lifecycle أو STDIO transport تعمل سليماً على Windows.
+
+#### 20.15.3 ترتيب المرشحين بعد مراجعة هذه الجولة
+
+1. **iksnerd/adb-mcp — مرجع أول لطبقة ADB وتوزيع Windows:** أفضل دليل على Windows amd64/arm64 artifacts، وفصل طبقة ADB، واختيار جهاز صريح عند التعدد. لكن نحتاج طبقة موافقات خاصة بنا واختبار Windows فعلي.
+2. **us-all/android-mcp-server — مرجع تقسيم أدوات وصلاحيات:** وظائف System/Files/UI غنية، لكن ظهرت نقاط إدخال غير محققة في `pressKey` و`screenRecordStart` تستلزم إصلاحاً واختبارات قبل اقتباسها. Windows غير مثبت في CI الذي تمت مراجعته.
+3. **qalvinahmad/android-mcp — مرجع خفيف لاكتشاف ADB/Wi-Fi:** مناسب للمقارنة المعمارية، لكن الاختيار التلقائي للجهاز وغياب دليل CI/Release ظاهر يجعلان اعتماده أقل أولوية.
+
+#### 20.15.4 بوابة قبول أي كود مقتبس
+
+قبل نسخ أي مكون إلى مشروعنا، يجب أن ينجح في:
+- اختبار Windows-native على Windows 10/11 (amd64)؛ arm64 إذا قررنا دعمه.
+- اختبار اتصال جهاز واحد وجهازين مع رفض الاستهداف الضمني عند تعدد الأجهزة.
+- اختبارات hostile-input لكل حقل يصل إلى Android shell، بما فيها keycode وfilename وscreen size وpackage/path.
+- اختبارات تثبت رفض كل عملية كتابة دون Approval Grant داخلي.
+- فصل عمليات سحب الملفات عن القراءة التشخيصية في الأذونات.
+- timeout/cancellation وسلوك انقطاع USB/Wireless ADB.
+- اختبار STDIO يثبت أن stdout لا يحتوي إلا رسائل MCP وأن السجلات تذهب إلى stderr.
+- توثيق إصدار/Commit SHA للمكون المقتبس وإمكانية استبداله دون ربط بقية النظام به.
+
+**حالة الجولة:** [x] مراجعة إضافية لملفات System/Files/UI في us-all. [x] تحديد مسارات إدخال تحتاج اختبارات/إصلاح. [x] مراجعة workflow التوزيع والنشر للمشروعات الثلاثة. [ ] Windows-native execution. [ ] اختبارات injection معزولة. [ ] اعتماد كود خارجي.
