@@ -1807,3 +1807,97 @@ tauri-adapter / mcp-adapter / cli-adapter
 روابط المصدر عند commit `dc4154f4c04399602895f31f9390bb66b25ea8a0`: [PackageUtils.java](https://github.com/MuntashirAkon/AppManager/blob/dc4154f4c04399602895f31f9390bb66b25ea8a0/app/src/main/java/io/github/muntashirakon/AppManager/utils/PackageUtils.java) · [PackageManagerCompat.java](https://github.com/MuntashirAkon/AppManager/blob/dc4154f4c04399602895f31f9390bb66b25ea8a0/app/src/main/java/io/github/muntashirakon/AppManager/compat/PackageManagerCompat.java) · [FilterableAppInfo.java](https://github.com/MuntashirAkon/AppManager/blob/dc4154f4c04399602895f31f9390bb66b25ea8a0/app/src/main/java/io/github/muntashirakon/AppManager/filters/FilterableAppInfo.java) · [ListExporter.java](https://github.com/MuntashirAkon/AppManager/blob/dc4154f4c04399602895f31f9390bb66b25ea8a0/app/src/main/java/io/github/muntashirakon/AppManager/apk/list/ListExporter.java) · [PackageInstallerCompat.java](https://github.com/MuntashirAkon/AppManager/blob/dc4154f4c04399602895f31f9390bb66b25ea8a0/app/src/main/java/io/github/muntashirakon/AppManager/apk/installer/PackageInstallerCompat.java) · [PackageInstallerViewModel.java](https://github.com/MuntashirAkon/AppManager/blob/dc4154f4c04399602895f31f9390bb66b25ea8a0/app/src/main/java/io/github/muntashirakon/AppManager/apk/installer/PackageInstallerViewModel.java)
 
 **الحالة:** مراجعة مصدرية لحقول الجرد والتصفية والتصدير والتثبيت؛ لم يتم بناء App Manager أو تشغيله أو تثبيته على هاتف، ولم يتم تنفيذ تثبيت APK/APKS أو تغيير أذونات/حالة أي تطبيق.
+
+
+### 20.30 تدقيق Google bundletool: اختيار Split APK المتوافق وتثبيت APKS (12 نوفمبر 2026)
+
+المستودع: [google/bundletool](https://github.com/google/bundletool)
+
+**الهدف:** التحقق من أفضل طريقة جاهزة للتعامل مع Android App Bundle وملفات APK Set بصيغة `.apks`، واختيار splits الصحيحة حسب خصائص الهاتف بدلاً من تثبيت كل APK داخل الأرشيف عشوائياً.
+
+المراجعة المصدرية تمت على commit `586a43a450712a1067f3d92cf7574dee68226302`. لم يتم تنزيل الأداة أو تشغيلها أو تثبيت حزمة على جهاز.
+
+#### 20.30.1 الوظائف المثبتة من المصدر
+
+الملفات:
+- `src/main/java/com/android/tools/build/bundletool/commands/InstallApksCommand.java` — blob SHA `506f941095802f170a10f7b23f6c27f0e88cb54b`.
+- `src/main/java/com/android/tools/build/bundletool/commands/ExtractApksCommand.java` — blob SHA `d7e45e06ae39e73887e2bec1b10a37e6a972e4c3`.
+- `src/main/java/com/android/tools/build/bundletool/commands/GetDeviceSpecCommand.java` — blob SHA `5f7b7ecfcc58569d11ce8966c3b045e73b22810c`.
+- `src/main/java/com/android/tools/build/bundletool/device/DeviceAnalyzer.java` — blob SHA `fea52526c6bd6beae2fc6c9d316ec71758f65fbc`.
+- `src/main/java/com/android/tools/build/bundletool/device/Device.java` — blob SHA `06e0248e7b3c646a38663ca153280d2d4a0fd283`.
+- `src/main/java/com/android/tools/build/bundletool/device/AdbRunner.java` — blob SHA `3c33d2b0b3d8b8d467c25b91d9db3cafeb8bd3f3`.
+
+ما يقدمه:
+- استخراج APKs المناسبة من APK Set اعتماداً على DeviceSpec.
+- قراءة مواصفات الجهاز عبر ADB: SDK/feature level، ABI list، density، locales، features، GL extensions، وبعض خصائص الجهاز.
+- إخراج Device Spec إلى JSON وإعادة استخدامه لاحقاً.
+- تثبيت APKS على الجهاز المتصل، واختيار ملفات APK المطلوبة قبل إرسالها.
+- دعم اختيار device serial، modules، وبعض خيارات التثبيت.
+- دعم local testing modules وملفات إضافية مرتبطة بها.
+
+#### 20.30.2 اختيار الجهاز ومنع الالتباس
+
+- `DeviceAnalyzer` يرفض الجهاز غير الموجود، ويفصل حالة UNAUTHORIZED عن حالة غير ONLINE.
+- عند عدم تمرير device ID، يسمح باختيار الجهاز الوحيد فقط، ويرفض تعدد الأجهزة برسالة تطلب `--device-id`.
+- `AdbRunner` يعيد التحقق من عدد الأجهزة المطابقة ويرفض عدم وجود جهاز أو وجود أكثر من جهاز.
+- `InstallApksCommand` يأخذ `--device-id` ويمرر التثبيت إلى الجهاز المحدد.
+- يوجد timeout قابل للتخصيص، والافتراضي في Device هو عشر دقائق.
+
+**قرارنا الأكثر تشدداً:** واجهتنا لا تعتمد على implicit single-device selection حتى لو كانت أداة bundletool تسمح بذلك؛ كل عملية تغيير يجب أن تحمل serial صريحاً من DeviceTarget، مع إعادة التحقق من هوية الاتصال قبل التنفيذ.
+
+#### 20.30.3 Device Spec وABI
+
+DeviceAnalyzer يجمع أكثر من ABI، وليس قيمة ABI واحدة فقط، ويستخدم fallback بين ActivityManager query وخصائص الجهاز عند عدم توفر القائمة الأولى. كما يقرأ density وSDK وlocales، ويتحقق من وجود القيم الأساسية قبل إنشاء المواصفات.
+
+هذا يعالج مباشرة حاجة البرنامج لمعرفة:
+- ABI الأولوية وقائمة ABIs المدعومة.
+- SDK/API level.
+- Screen density.
+- Locales.
+- خصائص أخرى قد تؤثر على targeting.
+
+**تنبيه:** هذه معلومات توافق حزمة وليست إثباتاً أن كل native library داخل APK سليمة أو أن التطبيق سيعمل فعلياً. نعرض توافقاً متوقعاً مع أسباب واضحة، ونفصل ABI المعلن عن اختبار runtime.
+
+#### 20.30.4 اختيار APKs من APKS
+
+- `ExtractApksCommand` يقرأ metadata/TOC من أرشيف APK Set، ويستخدم ApkMatcher لاختيار ملفات APK المتوافقة مع DeviceSpec.
+- يمكن تحديد modules، مع حساب dependencies؛ ويختلف اختيار install-time عن on-demand modules.
+- يكتب metadata اختيارية عن الملفات المستخرجة، مثل module name وdelivery type.
+- لا يتعامل مع الأرشيف على أنه مجموعة ملفات APK عشوائية؛ الاختيار مبني على targeting الموصوف في metadata.
+
+**القرار:** لا ننفذ APKS extractor خاصاً بنا قبل تجربة bundletool. نستخدمه كأداة خارجية رسمية/مرجعية لعملية APKS، ونبني adapter يتحقق من:
+1. ملف الإدخال وصيغته.
+2. DeviceTarget والـserial.
+3. مواصفات الجهاز ووقت جمعها.
+4. قائمة APKs الناتجة وأحجامها وhashes.
+5. package/version/signing consistency قبل التثبيت.
+6. ملخص Preview يوضح ما سيتم تثبيته.
+7. نتيجة التثبيت والتحقق اللاحق من PackageManager/ADB.
+
+#### 20.30.5 حدود الصيغة
+
+- bundletool يتعامل مع Android App Bundle وAPK Set `.apks` الذي تنتجه أدواته/صيغة Bundletool.
+- لا نفترض أنه parser عام لصيغ `.apkm` أو `.xapk`؛ هذه تحتاج format-specific adapters ومراجعة metadata وOBB والـsplits.
+- لا نعيد تسمية APKM/XAPK إلى APKS أو نمررها إلى bundletool لمجرد أنها ZIP.
+- لا نستخدم `build-apks` لبناء APK Set من ملف APK مفرد؛ هذا مسار مختلف عن تثبيت تطبيق موجود.
+
+#### 20.30.6 خيارات التثبيت والآثار الجانبية
+
+في InstallApksCommand:
+- `allow-downgrade` الافتراضي false.
+- `allow-test-only` الافتراضي false.
+- `grant-runtime-permissions` الافتراضي false.
+- timeout الافتراضي عشر دقائق.
+- يمكن تحديد modules وdevice targeting إضافي.
+
+نحافظ على هذه القيم المحافظة في واجهتنا. أي خيار يسبب downgrade أو grant permissions أو test-only يجب ألا يظهر كخيار افتراضي، ويحتاج تفسيراً وموافقة مستقلة إذا أضيف لاحقاً.
+
+#### 20.30.7 الاختبارات وحدود الدليل
+
+المصدر يحتوي `InstallApksCommandTest` — blob SHA `4d689326a55b21ecacda31ecfaa6c73a7384381d` — ويستخدم FakeAdbServer/FakeDevice وأرشيفات APKS اختبارية، ويغطي إعدادات device ID وخيارات install ومطابقة APK sets. هذا دليل على وجود contract/unit tests للمنطق، وليس اختباراً على هاتف حقيقي أو Windows runtime لدينا.
+
+**القرار النهائي:** bundletool مرشح أساسي للاستخدام المباشر كأداة خارجية في APKS، وليس لإعادة كتابة منطق split selection. نغلفه بـ`apks-service` مع version pinning، process runner موحد، timeouts/cancellation، serial إلزامي، artifact staging، Preview، ثم Verify. نحتاج لاحقاً اختبار Windows فعلي على أجهزة مختلفة تشمل ABI متعددة، لكن لا نعلن نجاح ذلك قبل التنفيذ.
+
+المراجع: [bundletool README](https://github.com/google/bundletool) · [InstallApksCommand.java](https://github.com/google/bundletool/blob/586a43a450712a1067f3d92cf7574dee68226302/src/main/java/com/android/tools/build/bundletool/commands/InstallApksCommand.java) · [ExtractApksCommand.java](https://github.com/google/bundletool/blob/586a43a450712a1067f3d92cf7574dee68226302/src/main/java/com/android/tools/build/bundletool/commands/ExtractApksCommand.java) · [GetDeviceSpecCommand.java](https://github.com/google/bundletool/blob/586a43a450712a1067f3d92cf7574dee68226302/src/main/java/com/android/tools/build/bundletool/commands/GetDeviceSpecCommand.java) · [DeviceAnalyzer.java](https://github.com/google/bundletool/blob/586a43a450712a1067f3d92cf7574dee68226302/src/main/java/com/android/tools/build/bundletool/device/DeviceAnalyzer.java) · [Android Developers bundletool guide](https://developer.android.com/tools/bundletool)
+
+**الحالة:** مراجعة README ومصدر الأوامر والجهاز والاختبارات؛ لم يتم تشغيل bundletool أو تثبيت APKS أو اختبار اتصال Android فعلي.
