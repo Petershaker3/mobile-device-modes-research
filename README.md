@@ -11,7 +11,8 @@
 3. **[خطة إعادة الاستخدام والتنفيذ](docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md)** — Source SHAs، المعمارية الموحدة، قرارات Stack المفتوحة، PoC وخطة البناء.
 4. **[إعادة التحقق من مصدر ADB والملفات وLogcat](docs/13-source-revalidation-adb-file-core.md)** — مراجعة المصدر المحددة للمرشحين الأساسيين وفجواتهم.
 5. **[إعادة التحقق من مثبتات APK والحزم](docs/14-source-revalidation-app-installers.md)** — مراجعة parser/install candidates لكل الصيغ.
-6. [فهرس الوثائق](docs/README.md) — خريطة القراءة حسب المجال.
+6. **[إعادة التحقق من MCP وCodex](docs/15-source-revalidation-mcp-codex.md)** — مراجعة خوادم MCP وتثبيت سياسة آمنة للربط المحلي.
+7. [فهرس الوثائق](docs/README.md) — خريطة القراءة حسب المجال.
 5. [منهجية البحث وضبط الأدلة](docs/RESEARCH-METHODOLOGY.md) — كيف نراجع المشاريع ونفرق بين الادعاء والكود والاختبار.
 
 ## خريطة الملفات
@@ -33,6 +34,7 @@
 | [12 — Reuse & Implementation Plan](docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md) | خطة إعادة الاستخدام، source revisions، المعمارية، قرارات Stack، PoC ومراحل البناء |
 | [13 — ADB Source Revalidation](docs/13-source-revalidation-adb-file-core.md) | مراجعة كود AdvancedSharpAdbClient وADB-Explorer وAdbGui عند SHAs مثبتة، وتوثيق فجوات التثبيت والنقل وLogcat |
 | [14 — App Installer Source Revalidation](docs/14-source-revalidation-app-installers.md) | مراجعة bundletool وapkfile وPacMan-APK وxapkInstaller، وفصل صيغ APKS/APKM/XAPK وسياسة التثبيت وأمان الأرشيف |
+| [15 — MCP & Codex Source Revalidation](docs/15-source-revalidation-mcp-codex.md) | مراجعة adb-mcp وus-all/android-mcp-server، وتصميم MCP محلي read-only مع explicit targeting وapproval protocol |
 | [Research Methodology](docs/RESEARCH-METHODOLOGY.md) | الأدلة، الاختبارات، إعادة الاستخدام، أمان MCP وصيانة الوثائق |
 
 ## بيئة التشغيل المعتمدة
