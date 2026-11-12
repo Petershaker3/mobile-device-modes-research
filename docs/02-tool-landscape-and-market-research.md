@@ -3678,3 +3678,76 @@ Commit تمت مراجعته: `11acb70c5a8886a1f0e985217a635321d681bc49`.
 **حالة التحقق:** Source/Docs Review عند commit محدد. لم يتم build أو تشغيل البرنامج أو تثبيت APK/AAB على جهاز فعلي في هذه الجولة. نتائج CI workflow قُرئت من المصدر ولم ننفذ workflow بأنفسنا.
 
 **قرار الجولة:** نعتمد هذا المستودع مرجعاً معمارياً قوياً لطبقة Windows/Tauri/Rust/ADB، لا مرجعاً لتغطية الصيغ. نواصل البحث عن مكونات متخصصة لـAPKS/APKM/XAPK/OBB يمكن ربطها بخدمة ADB موحدة.
+
+
+### 20.49 — تدقيق Tiny APK Installer (Go): TUI لـADB وAPKM/XAPK/APKS
+
+المستودع: [audioeng89/tiny_apk_installer](https://github.com/audioeng89/tiny_apk_installer)  
+Commit تمت مراجعته: `6560b3057e653bbe68c6ebcaf145b8109754f5b6`.  
+الملفات: `README.md`، `install.go`، `apk_handler.go`، `adb_cmds.go`، `devices.go`، `pairing.go`، `build.ps1`، `go.mod`.
+
+**ما يعلنه المشروع:**
+- TUI مكتوب بـGo لتثبيت APK وsplit APKs وحزم تحتوي OBB.
+- اكتشاف أجهزة USB وWireless ADB، pairing بكود، واختيار جهاز قبل التثبيت.
+- تنزيل ADB من Google عند عدم وجود نسخة محلية، وبناء Windows executable.
+- README يذكر دعم APK/APKM/XAPK/APKS.
+
+**ما ظهر في الكود:**
+
+1. **ADB والجهاز**
+   - أوامر التثبيت تمرر `-s SERIAL` صراحةً، و`ADBConfig.Validate` يتحقق من وجود Serial في مسار APK المفرد.
+   - `DiscoverDevices` يجمع `adb devices` و`adb mdns services`، ويتيح اختيار جهاز في الواجهة.
+   - `runAdb` يستخدم `exec.Command(...).CombinedOutput()` دون timeout أو context cancellation.
+   - إزالة التكرار تتم باستخدام IP فقط، ما قد يدمج اتصالين مختلفين على نفس IP لكن بمنفذين/transport مختلفين.
+   - pairing يبحث عن mDNS connect endpoint، ثم يرجع إلى port 5555 عند عدم العثور عليه؛ لا ينبغي افتراض أن هذا هو منفذ Wireless Debugging الفعلي، لأنه قد يكون ديناميكياً.
+
+2. **كشف الحاويات وفكها**
+   - `DetectBundleType` يحدد النوع من extension فقط، ولا يفحص magic/schema لتأكيد نوع الحاوية.
+   - `extractZip` يطبّع مسار entry ويتحقق من بقائه تحت مجلد الاستخراج؛ هذه خطوة دفاعية موجودة ويجب الحفاظ على مبدأها.
+   - لكن لا تظهر حدود موحدة لعدد entries أو الحجم المضغوط/المفكوك أو actual streamed bytes أو الوقت/المساحة؛ يمكن لحزمة ضخمة استهلاك مساحة القرص.
+   - لا يوجد رفض ظاهر لتكرار المسارات أو اختلاف حالة الأحرف التي قد تتصادم على Windows، كما أن أخطاء إنشاء بعض مجلدات entries لا تُرجع للمستدعي.
+   - لا يتم التحقق من بنية APKM/APKS/XAPK أو إصدار schema قبل استخراج المحتويات.
+
+3. **فجوات دعم الصيغ**
+   - بعد الاستخراج، `scanExtractedFiles` يستخدم `filepath.Glob(tempDir/*.apk)`؛ أي أنه يلتقط APKs في جذر الحزمة فقط.
+   - Google bundletool APKS عادةً يحتوي APKs تحت مجلد `splits/` مع `toc.pb`؛ هذا المسار لا يقرأ TOC ولا يختار splits من DeviceSpec، كما أن البحث الجذري لا يلتقط الملفات المتداخلة.
+   - APKM لا يقرأ `info.json` ولا ينفذ مطابقة ABI/DPI/language؛ يثبت كل APKs التي عثر عليها في الجذر.
+   - XAPK يقرأ `manifest.json` لاستخراج `package_name` فقط، ولا يستخدم split metadata لاختيار ABI/DPI/locale أو للتحقق من package/version/signature.
+   - لذلك إعلان دعم الصيغ الثلاث لا يعني دعماً صحيحاً لكل schema أو جهاز. الكود الحالي أقرب إلى استخراج ZIP عام ثم تثبيت ملفات APK الجذرية.
+
+4. **OBB**
+   - يحدد `obbPath` عند وجود `Android/obb` داخل الاستخراج.
+   - `pushOBBFiles` يقرأ العناصر المباشرة في مجلد OBB ويتجاهل أي entry هو مجلد.
+   - بنية XAPK الشائعة تضع ملفات OBB داخل مجلد package name تحت `Android/obb/<package>/`؛ تجاهل المجلد يعني عدم الوصول إلى ملفات OBB الداخلية في هذه البنية.
+   - لا يظهر تحقق hash/read-back أو مطابقة اسم OBB مع package/expansion metadata، ولا توجد reconciliation واضحة عند فشل النقل بعد نجاح تثبيت APK.
+
+5. **نتيجة التثبيت**
+   - `InstallMultiple` يستخدم `adb -s SERIAL install-multiple -r` ويعتبر وجود كلمة `Success` في المخرجات دليلاً على نجاح الأمر.
+   - لا يظهر تحقق لاحق مستقل من وجود package/version المثبت، ولا فحص مسبق موحد لتطابق package/version/signers بين splits.
+   - الواجهة تشغل الاستخراج والتثبيت كأوامر خلفية في Bubble Tea، لكن لا يظهر cancellation حقيقي للعملية الخارجية.
+
+6. **البناء والاختبارات**
+   - يوجد PowerShell build script لـWindows، ويستخدم Go cross-compilation لبقية المنصات.
+   - `go.mod` يحدد Go `1.25.4`، بينما README يذكر Go 1.21+؛ يجب تصحيح متطلبات البناء إذا استمر المشروع.
+   - لم تظهر ملفات اختبارات `*_test.go` في قائمة الملفات التي تمت مراجعتها؛ لا نسجل وجود اختبار تلقائي لتوافق الحاويات أو تثبيت الجهاز.
+
+**الحكم الهندسي:**
+- **قيمة مرجعية محدودة:** TUI بسيطة، اختيار Serial، ADB discovery، wireless pairing، وتنزيل ADB.
+- **غير صالح كمحرك صيغ جاهز:** لا يطبق bundletool TOC/DeviceSpec، ولا parser فعلياً لـAPKM، واختيار XAPK splits محدود، ومسار OBB يتجاهل المجلدات الداخلية، مع غياب timeouts والتحقق بعد التثبيت.
+- لا نقتبس منطق الاستخراج/الاختيار كما هو، ولا نعتمد إعلان دعم APKS/APKM/XAPK كدليل توافق.
+- يمكن الاستفادة من تصور واجهة TUI وADB configuration فقط؛ أما خدمة التثبيت الأساسية فيجب أن تعتمد adapters schema-aware، وbundletool الرسمي لـGoogle APKS/AAB، والتحقق الصارم من split group.
+
+**اختبارات قبول مستخلصة:**
+- Google APKS مع `toc.pb` وAPK entries تحت `splits/`: يجب اكتشافها واختيارها حسب DeviceSpec لا تثبيت كل الملفات.
+- APKM بملفات `info.json` وvariants متعددة: package/version/signature وABI/DPI/locale مطابقة.
+- XAPK بملفات split وOBB nested تحت `Android/obb/<package>/`: يجب نقل كل OBB إلى وجهته الصحيحة والتحقق من hash.
+- ملف ZIP بامتداد خاطئ أو extension APKM/APKS مع schema غير معروف: رفض صريح بدلاً من التخمين.
+- duplicate/case-collision paths وarchive traversal وZIP bomb وentry count overflow: رفض ضمن حدود موارد واضحة.
+- جهازان على نفس IP بمنفذين مختلفين: لا يتم دمجهما في جهاز واحد.
+- Wireless ADB pairing مع connect port عشوائي: لا fallback صامت إلى 5555.
+- انقطاع/timeout أثناء install أو OBB push: إظهار حالة غير محسومة ثم reconcile والتحقق قبل إعادة المحاولة.
+- post-install package/version verification وعدم الاكتفاء بكلمة Success.
+
+**حالة التحقق:** Source/Docs Review عند commit محدد. لم يتم build أو تشغيل TUI أو تثبيت حزمة على هاتف فعلي. لم يتم تنفيذ اختبار zip-slip أو ZIP-bomb أو OBB runtime؛ المخاطر أعلاه مستنتجة من المسارات المقروءة وليست نتائج استغلال عملي.
+
+**قرار الجولة:** نحتفظ بالمشروع كمرجع UI/ADB صغير، ولا نعتمد parser أو installer الخاص به. وهو مثال إضافي على ضرورة اختبار الصيغة نفسها لا الاكتفاء بوجود extension في قائمة الدعم.
