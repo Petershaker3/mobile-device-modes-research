@@ -1,63 +1,56 @@
-# دليل الوثائق
+# فهرس الوثائق
 
-هذه الصفحة هي فهرس التفاصيل الفنية. ابدأ من [README الرئيسي](../README.md) لمعرفة هدف المستودع ونطاقه وحالة البحث.
+هذا الفهرس منظم حسب رحلة فهم المنتج، ثم تفاصيل كل مجال، ثم أدلة البحث. ابدأ دائماً بـ[خط الأساس ومتطلبات المنتج](00-PRODUCT-BASELINE.md) لتعرف ما الذي نبنيه وما الذي تم اعتماده وما الذي ما زال غير متحقق.
 
-## الوثائق
+## 1. وثائق القرار والحوكمة
 
-1. [مرجع الاتصال وقراءة المعلومات والتحويل بين الأوضاع](01-connectivity-protocols.md) — طبقات USB وADB وFastboot وMTP، أوضاع القراءة، انتقالات الأوضاع، وبنية المحولات.
-2. [دراسة الأدوات الجاهزة والسوق وتجارب المستخدمين](02-tool-landscape-and-market-research.md) — أدوات GitHub والأدوات التجارية، مراجعة الأدلة، تجارب المجتمع، ومقارنة المرشحين، بما في ذلك تحليل حاويات APK/APKS/APKM/XAPK وأمن ZIP وتوقيع APK.
-3. [إدارة التطبيقات والشبكة عبر ADB](03-app-management-and-network.md) — إدارة التطبيقات، APK/APKS، ABI، DNS، تواريخ التثبيت والتحديث، ومصدر التثبيت.
-4. [تشخيص وإصلاح تعريفات Android على Windows](04-windows-driver-diagnostics.md) — تشخيص التعريفات، المصادر الرسمية، الإصلاح الآمن، التراجع، واختبارات القبول.
-5. [منهجية البحث وضبط جودة الأدلة](RESEARCH-METHODOLOGY.md) — درجات الثقة، حالات التحقق، قواعد التوثيق، وإعادة الاستخدام الآمن للمشاريع وتكامل MCP.
+1. [00 — خط الأساس ومتطلبات المنتج](00-PRODUCT-BASELINE.md) — تعريف المنتج، القرارات المعتمدة، ترتيب الأولويات، المعمارية، رحلة التثبيت، الأمان، الحالة والخطوات التالية.
+2. [منهجية البحث وضبط جودة الأدلة](RESEARCH-METHODOLOGY.md) — درجات الأدلة، حالات التنفيذ والاختبار، بطاقات تقييم الأدوات، سجل الاختبارات، إعادة الاستخدام، سياسة MCP والأمان.
 
-## محاور هندسية مضافة
+## 2. وثائق المجالات الوظيفية
 
-- **Reuse Before Rebuild:** موثق في القسم 19 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#19-مبدأ-إعادة-استخدام-مشاريع-github-قبل-بناء-بديل-reuse-before-rebuild).
-- **AI/MCP Integration:** موثق في القسم 20 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#20-إتاحة-وظائف-البرنامج-لوكلاء-الذكاء-الاصطناعي-عبر-mcp).
-- **APK/APKS/APKM/XAPK containers:** موثق في الأقسام 20.30–20.32 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2030-تدقيق-google-bundletool-اختيار-split-apk-المتوافق-وتثبيت-apks-12-نوفمبر-2026).
-- **ZIP/APK security:** موثق في القسم 20.33 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2033-تدقيق-أمان-zipapk-zip-slip-وzip-bomb-والروابط-الرمزية-والتحقق-من-التوقيع-12-نوفمبر-2026).
-- **Android Manifest/APK parsers:** موثق في القسم 20.34 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2034-محللات-android-manifest-وapk-الجاهزة-مقارنة-axml-parser-وapk-parser-وandroid-sdk-tools-12-نوفمبر-2026).
-- **Android ABI/ELF inspection:** موثق في القسم 20.35 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2035-فحص-abi-وelf-وnative-libraries-داخل-apk-12-نوفمبر-2026).
-- **Native library dependencies (DT_NEEDED/SONAME):** القسم 20.36 محفوظ كتشخيص متقدم مؤجل، وليس شرطاً لمسار تثبيت V1.
-- **APK installation priority and unified engine:** القرار ومصفوفة الصيغ وتدقيق المشاريع موثقة في الأقسام 20.37–20.41 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2037-إعادة-ضبط-الأولوية-التثبيت-واسع-التغطية-هو-هدف-v1-12-نوفمبر-2026) و[إدارة التطبيقات والشبكة](03-app-management-and-network.md#18-محور-التثبيت-واسع-الصيغ-قرار-الأولوية-ومحرك-apk-الموحد).
+3. [01 — الاتصال وقراءة المعلومات والتحويل بين الأوضاع](01-connectivity-protocols.md) — USB، ADB، Fastboot/Fastbootd، MTP/WPD، Samsung AT/Download، Xiaomi Mi Assistant، Huawei/Honor، انتقالات الأوضاع، وحالات النتائج.
+4. [03 — إدارة تطبيقات Android والشبكة عبر ADB](03-app-management-and-network.md) — إدارة التطبيقات، USB/Wireless، البحث والفلاتر، تواريخ التثبيت والتحديث، Installer Source، DNS، وأولوية محرك التثبيت.
+5. [04 — تشخيص وإصلاح تعريفات Android على Windows](04-windows-driver-diagnostics.md) — SetupAPI/PnP، Hardware IDs، مصادر التعريفات الرسمية، الإصلاح، التراجع، واختبارات القبول.
 
-- **Windows multi-format installer candidate (pacman-apk):** تدقيق الكود ومقارنته بمرشحي التثبيت في القسم 20.42 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2042-تدقيق-pacman-apk--واجهة-windows-تدعم-apkxapk-apksapkm-12-نوفمبر-2026).
+## 3. سجل الأدوات والأبحاث التفصيلية
 
-- **ADB install command strategy:** توثيق الفرق بين install وinstall-multiple وinstall-multi-package وسياسة flags الآمنة في القسم 20.43 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2043-تثبيت-android-عبر-adb--حدود-الأوامر-والخيارات-التي-يجب-أن-يبني-عليها-المحرك-12-نوفمبر-2026).
+6. [02 — دراسة الأدوات الجاهزة والسوق وتجارب المستخدمين](02-tool-landscape-and-market-research.md) — سجل الأدلة والمراجعات التفصيلية. هذا الملف تراكمي وكبير؛ استخدم الخريطة التالية للوصول إلى المحور المطلوب.
 
-- **Split APK compatibility and failure matrix:** شروط package/version/signature/base/split، مطابقة الجهاز، رسائل الفشل، وAcceptance Test Matrix في القسم 20.44 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2044-قواعد-توافق-split-apk-والتوقيع-وإدارة-حالات-الفشل-12-نوفمبر-2026).
+### خريطة محاور الملف 02
 
-## مراجع تكامل MCP
+| المحور | مكان التفاصيل |
+|---|---|
+| أدوات Windows وGitHub والسوق وتجارب المستخدمين | الأقسام 8–15 |
+| إعادة استخدام مشاريع GitHub قبل بناء بديل | القسم 19 |
+| MCP وخوادم Android MCP وتكامل Codex وأمن الصلاحيات | القسم 20، خصوصاً 20.1–20.20 |
+| إدارة التطبيقات وتواريخ التثبيت ومصدر التطبيق | 20.17–20.21 وملف [03](03-app-management-and-network.md) |
+| DNS عبر ADB | 20.22 وملف [03](03-app-management-and-network.md) |
+| تشخيص تعريفات Windows والمكونات | 20.23–20.25 وملف [04](04-windows-driver-diagnostics.md) |
+| مراجع جرد التطبيقات وADB | 20.26–20.29 |
+| Google bundletool وAPKS وAPKM/XAPK | 20.30–20.32 |
+| ZIP security وتوقيع APK وManifest parsers وABI/ELF | 20.33–20.36 |
+| أولوية التثبيت والمعمارية الموحدة ومرشحو Windows | 20.37–20.42 |
+| أوامر ADB والتوافق والاختبارات وOBB وAAB/APKV | 20.43–20.46 |
+| مراجع installers الإضافية وADB libraries | 20.47–20.54 |
+| البحث والتنزيل من APKPure وF-Droid وAPKMirror | 20.55 |
 
-- [Codex MCP setup](https://developers.openai.com/codex/mcp) — إعداد خوادم STDIO وStreamable HTTP.
-- [MCP specification](https://modelcontextprotocol.io/specification/latest) — المعيار الأساسي ومكونات الأدوات والموارد والمطالبات.
-- [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) — SDK رسمي مرشح لخادم TypeScript.
+## 4. القرارات الحالية المختصرة
 
-## قواعد القراءة
+- الأولوية الأولى لمحور التطبيقات هي تثبيت APK وSplit APK وAPKS؛ ثم APKM وXAPK وOBB حسب التحقق.
+- F-Droid مرشح لتكامل أصلي عبر فهارس موقعة؛ APKPure وAPKMirror عبر adapters مستقلة دون افتراض API عامة أو تجاوز حماية المواقع.
+- كل الصيغ تمر عبر Format Detection وParser/Adapter وفحص أمني وتوافق، ثم Unified Install Engine.
+- لا تحليل ELF متقدم ضمن شروط تثبيت V1.
+- GUI وMCP يتشاركان Service Layer، مع Read-only افتراضياً وموافقة منفصلة للعمليات المؤثرة.
+- لا قراءة Qualcomm/MediaTek، ولا مقارنة تراخيص.
 
-- المتطلبات المقترحة ليست دليلاً على أن أداة جاهزة تدعمها.
-- وجود وظيفة في الكود أو صفحة تسويقية لا يثبت عملها على كل الأجهزة.
-- لا يُسجل الاختبار على أنه ناجح إلا مع ذكر الجهاز وإصدار Android وWindows والأداة وإصدارها وخطوات الاختبار والنتيجة.
-- راجع حالة كل محور في نهايته قبل اتخاذ قرار تنفيذ.
+## 5. قواعد القراءة والتحديث
 
-- **APKM/XAPK schema variants, OBB transfer, and apkfile candidate audit:** موثق في القسم 20.45 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2045-تدقيق-عميق-لتنوع-apkmxapk-وملفات-obb-وإعادة-استخدام-apkfile-12-نوفمبر-2026). يتضمن مقارنة Host-side/Android-side، حدود streaming، واختبارات variants وOBB.
+- خط الأساس يملك **القرار الحالي**؛ ملف المجال يملك المتطلبات التفصيلية؛ ملف 02 يملك **سجل الأدلة ومراجعات المرشحين**.
+- لا تكرر مراجعة مشروع أو نتيجة في عدة ملفات؛ أضف رابطاً إلى المصدر الأساسي.
+- عند تغير قرار، حدّث خط الأساس وسجل سبب التغيير في ملف البحث المرتبط.
+- لا تحوّل ادعاء مطور أو كود أو نجاح CI إلى ادعاء اختبار فعلي.
+- لا تعتبر خانة [x] في قائمة توثيق دليلاً على اختبار Runtime ما لم يوجد سجل اختبار مطابق.
+- كل اختبار فعلي يسجل الجهاز والموديل وإصدار Android وWindows والأداة وإصدارها والخطوات والنتيجة والأدلة بعد تنقيح البيانات الحساسة.
 
-- **AAB/APKV and Android-side installer references:** موثق في القسم 20.46 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2046-aab-apkv-ومراجع-android-side-إضافية-لتوسيع-صيغ-التثبيت-12-نوفمبر-2026). يشمل مسار AAB عبر bundletool، وتدقيق VInstall/APKV وBrokk، وتصنيف الأولويات واختبارات القبول.
-
-- **Windows multi-format installer candidate (xapkInstaller):** تدقيق APK/APKM/APKS/XAPK/AAB، إدارة Serial، أمان الاستخراج، flags، OBB، وقيود CI موثق في القسم 20.47 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2047-تدقيق-xapkInstaller-مرشح-windows-متعدد-الصيغ-apkapkmapksxapkaab).
-
-- **Tauri 2/Rust ADB installer architecture reference:** تدقيق Android Application Installer، device lifecycle، wireless ADB، APK/AAB، cancellation/progress، وأوجه النقص في multi-format وpost-install verification موثق في القسم 20.48 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2048-تدقيق-android-application-installer-مرجع-tauri-2rust-لتكامل-adb-وaab).
-
-- **Tiny APK Installer (Go) TUI/ADB reference:** تدقيق اكتشاف الأجهزة والـWireless pairing وفك APKM/APKS/XAPK وOBB، مع فجوات DeviceSpec وschema validation وtimeouts، موثق في القسم 20.49 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2049-تدقيق-tiny-apk-installer-go-tui-لـadb-وapkmxapk-apks).
-
-- **Shizuku Package Installer split-selection reference:** تدقيق ApkLite/ApksFilter/ZipParser، اختيار ABI/density/language، Google APKS TOC limitations، وPackageInstaller streaming موثق في القسم 20.50 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2050-تدقيق-shizuku-package-installer-اختيار-split-apks-وpackageinstaller-streaming).
-
-- **App Manager multi-format/parser and install lifecycle reference:** تدقيق APKM/APKS/XAPK، split metadata، OBB handling، PackageInstaller streaming، session watchdog/orphan cleanup، ونتائج الاختبارات موثق في القسم 20.51 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2051-تدقيق-app-manager-apkmapksxapk-وsplit-metadata-وobb-lifecycle).
-
-- **Legacy encrypted APKM decryptor:** تدقيق souramoo/unapkm، والتمييز بين APKM ZIP الحديث والملفات المشفرة التاريخية، ومخاطر streaming/error propagation، وقرار تأجيل decryption من V1 موثق في القسم 20.52 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2052-تدقيق-unapkm-القديم-فك-تشفير-apkm-المشفر-مقابل-apkm-zip-الحديث).
-
-- **Paving-Base/APK-Installer Windows UI/ADB reference:** تدقيق WinUI/.NET وAdvancedSharpAdbClient وAAPTForNet وWSA-specific flow وsplit install flags وغياب preflight/post-install checks موثق في القسم 20.53 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2053-تدقيق-paving-baseapk-installer-windows-ui-وadvancedsharpadbclient-وaaptfornet).
-
-- **AdvancedSharpAdbClient ADB library audit:** مراجعة DeviceData serial/transport identity وPackageManager APK/split sessions وprogress/cancellation، مع مخاطر basename collision وsession abandon وpost-install verification، موثقة في القسم 20.54 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2054-تدقيق-advancedsharpadbclient-مكتبة-net-مباشرة-لبروتوكول-adb-وتثبيت-split-apks).
-
-- **App source discovery and downloads (APKPure/F-Droid/APKMirror):** موثق في القسم 20.55 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2055-اكتشاف-التطبيقات-وتحميلها-من-apkpure-f-droid-apkmirror). يتضمن الفهرسة الموقعة لـF-Droid، وحدود التكامل المباشر مع APKPure وAPKMirror، وProvider Adapters، وسياسة التنزيل الآمن، واختبارات القبول.
+**الحالة:** الوثائق مرجع بحث وتصميم ومتطلبات؛ لا تمثل تطبيقاً منفذاً أو اعتماداً نهائياً للمكونات.
