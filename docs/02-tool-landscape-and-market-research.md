@@ -497,8 +497,7 @@ Connected Android Device / Windows APIs
 
 ### 20.4 الأمان والصلاحيات — شرط أساسي
 
-- **Read-only افتراضياً:** اكتشاف الأجهزة وقراءة المعلومات والقوائم والتقارير لا تغير حالة الهاتف.
-- **موافقة منفصلة للكتابة:** التثبيت والحذف والتعطيل والتفعيل وتغيير DNS وإصلاح التعريفات لا تنفذ لمجرد أن النموذج طلبها.
+- **Read-only افتراضياً:** اكتشاف الأجهزة وقراءة المعلومات والقوائم والتقارير لا تغير حالة الهاتف.- **موافقة منفصلة للكتابة:** التثبيت والحذف والتعطيل والتفعيل وتغيير DNS وإصلاح التعريفات لا تنفذ لمجرد أن النموذج طلبها.
 - **Preview ثم Apply:** العمليات الحساسة تعرض الجهاز المستهدف (Serial/اسم مفهوم)، والقيمة الحالية والجديدة، والأثر المتوقع، ثم تتطلب موافقة المستخدم.
 - **لا تنفيذ Shell عام افتراضياً:** لا توفر أداة مثل `execute_arbitrary_shell` كواجهة مفتوحة للنموذج. استخدم أدوات محددة ذات مدخلات متحققة وقوائم سماح.
 - **تحديد الجهاز صراحة:** كل عملية تستهدف جهازاً محدداً بمعرف جلسة/Serial؛ لا تعتمد على اختيار أول جهاز متصل عند وجود أكثر من جهاز.
@@ -997,7 +996,6 @@ Droidsmith يجمع:
 
 - `src-tauri/src/adb/wireless.rs` — SHA `5fec47cc2c4ea235a83ec899ac5cc925c28e0789`
 - `src-tauri/src/commands/wireless.rs` — SHA `0fdabb3f7fd291c5d7e79ed593f7787b06e3487e`
-
 يدعم mDNS service discovery والتمييز بين Pairing وConnect، و`adb pair` و`adb connect`، والتحقق من endpoint والـport وpairing code، وتصنيف TLS wireless مقابل legacy TCP، وتشخيص بعض مشاكل VPN/mDNS. لا يمنح TLS provenance لمجرد إدخال IP يدوياً.
 
 مرجع قوي لتصميم الاتصال اللاسلكي، مع ضرورة حماية pairing code من السجلات وإضافة Disconnect وإدارة واضحة للاتصالات.
@@ -1497,7 +1495,6 @@ Microsoft تحذر من تعداد الأجهزة بقراءة Registry مباش
 لم يتم تشغيل RAPR أو مراجعة جميع ملفات تنفيذه؛ ما سبق مراجعة README/وصف المشروع وليس إثباتاً لاختبار runtime.
 
 #### 20.24.3 libwdi / Zadig — غير مناسب كمسار Android ADB/MTP عام
-
 المستودع: [pbatard/libwdi](https://github.com/pbatard/libwdi)
 
 README يصف مكتبة لإنشاء INF/Catalog وتثبيت WinUSB أو libusb0 أو libusbK أو USB Serial أو تعريف مخصص، مع UAC elevation. دليل Zadig يوضح أن هدفها تثبيت تعريف متوافق مع libusb لجهاز USB، وأن استبدال التعريف الموجود قد يمنع النظام أو التطبيقات الأخرى من الوصول للجهاز؛ ويذكر أمثلة مثل HID mouse وUSB hubs وComposite Parent.
@@ -1901,3 +1898,165 @@ DeviceAnalyzer يجمع أكثر من ABI، وليس قيمة ABI واحدة ف�
 المراجع: [bundletool README](https://github.com/google/bundletool) · [InstallApksCommand.java](https://github.com/google/bundletool/blob/586a43a450712a1067f3d92cf7574dee68226302/src/main/java/com/android/tools/build/bundletool/commands/InstallApksCommand.java) · [ExtractApksCommand.java](https://github.com/google/bundletool/blob/586a43a450712a1067f3d92cf7574dee68226302/src/main/java/com/android/tools/build/bundletool/commands/ExtractApksCommand.java) · [GetDeviceSpecCommand.java](https://github.com/google/bundletool/blob/586a43a450712a1067f3d92cf7574dee68226302/src/main/java/com/android/tools/build/bundletool/commands/GetDeviceSpecCommand.java) · [DeviceAnalyzer.java](https://github.com/google/bundletool/blob/586a43a450712a1067f3d92cf7574dee68226302/src/main/java/com/android/tools/build/bundletool/device/DeviceAnalyzer.java) · [Android Developers bundletool guide](https://developer.android.com/tools/bundletool)
 
 **الحالة:** مراجعة README ومصدر الأوامر والجهاز والاختبارات؛ لم يتم تشغيل bundletool أو تثبيت APKS أو اختبار اتصال Android فعلي.
+
+### 20.31 تدقيق SAI: تحليل APKM/XAPK واختيار Split APKs (12 نوفمبر 2026)
+
+المستودع: [Aefyr/SAI](https://github.com/Aefyr/SAI) — الفرع `master`، commit `55505d231b1390e824d1cc0c8f4fa35fd4677105`.
+
+**حدود الدليل:** مراجعة مصدر Java وبيانات Releases. لم يتم بناء التطبيق أو تشغيله أو تثبيت أي ملف. SAI تطبيق Android وليس برنامج Windows host. وصف README نفسه يذكر أن التطوير محدود/متقطع؛ لذلك لا نعتمد عليه كمنتج نشط مضمون أو كحزمة جاهزة لبرنامج Windows.
+
+#### 20.31.1 دعم APKM
+
+الملفات:
+- `installerx/resolver/appmeta/apkm/ApkmAppMetaExtractor.java` — blob SHA `4668f9ce9baec5bf3f4a95c5de290d2f6f3cc861`.
+- `installerx/resolver/appmeta/DefaultAppMetaExtractor.java` — blob SHA `34560f99fb849be38beb04b3fa64813675f12b90`.
+
+ما يثبته المصدر:
+- يتعرف على امتداد `.apkm` ويفتحه كـZIP archive source.
+- يبحث عن `info.json` في جذر الأرشيف.
+- يقرأ `apkm_version)، ويعالج الإصدار 5 تحديداً في الكود المراجع.
+- يستخرج `pname` و`app_name` و`release_version` و`versioncode` كبيانات وصفية.
+- يقرأ `icon.png` اختيارياً.
+- إذا لم يتعرف على metadata، ينتقل إلى BruteAppMetaExtractor؛ لكن لا نعتبر fallback ضماناً لدعم كل تنويعات APKM.
+
+بيانات Release الخاصة بـSAI تذكر أن دعم APKM أضيف للملفات غير المشفرة فقط. لا نبني في نطاقنا آلية فك تشفير أو تجاوز حماية. الملف غير المدعوم/المشفّر يجب أن يظهر كصيغة غير قابلة للتحليل مع سبب واضح، لا أن يمر إلى تثبيت عشوائي.
+
+#### 20.31.2 دعم XAPK
+
+الملفات:
+- `installerx/resolver/appmeta/xapk/XapkAppMetaExtractor.java` — blob SHA `8a2f8a2b0b7b45fb4b3bc376c99e92674525fdae`.
+- `installerx/resolver/meta/impl/DefaultSplitApkSourceMetaResolver.java` — blob SHA `beab25108fc5a375d820acb41c711699448f1441`.
+- `installerx/resolver/urimess/impl/DefaultUriMessResolver.java` — blob SHA `c8a4fae1da7cc5ea2cdf73d1bb5e85655a4e2350`.
+- `installerx/postprocessing/DeviceInfoAwarePostprocessor.java` — blob SHA `ae612b4abb2bd1dd6ec900720d87396c7e1deb6a`.
+
+ما يثبته المصدر:
+- يتعرف على `.xapk` كأرشيف ZIP، ويقرأ `manifest.json` للبيانات الوصفية: `package_name`, `name`, `version_name`, `version_code`.
+- يوجد تعليق TODO صريح بخصوص دعم إصدارات مختلفة من XAPK manifest؛ فلا نعتبر parser شاملاً لكل نسخ metadata.
+- محلل المجموعة لا يثق بأسماء الملفات وحدها؛ يقرأ Android binary manifest من كل APK داخلي ويستخرج package/version/split metadata.
+- يرفض غياب APK أو base APK، ويرفض وجود أكثر من base، ويرفض اختلاف package name أو versionCode بين أجزاء المجموعة.
+- يصنف base APK وfeature splits وABI config وlocale config وdensity config وunknown splits.
+- Postprocessor يختار split مناسباً من مجموعات ABI واللغة والكثافة وفق بيانات الجهاز/الإعدادات المتاحة في SAI. منطق الاختيار خاص ببيئة Android داخل التطبيق؛ نعيد استخدام قواعد التصنيف كمرجع، ولا ننقل Android APIs إلى Windows.
+- عند العثور على ملفات OBB في XAPK، يسجل Notice بأن SAI لا يستخرج OBB تلقائياً؛ توجد رسالة واجهة تطلب من المستخدم التعامل معها يدوياً.
+
+**النتيجة:** SAI يوفر نموذجاً مفيداً لفحص اتساق APK set واختيار split parts، لكنه لا يقدم مسار OBB كاملاً، ولا parser متعدد إصدارات XAPK metadata، ولا Windows host integration.
+
+#### 20.31.3 حدود الاختبارات والملاءمة
+
+- ملفات المصدر التي تمت مراجعتها تثبت implementation paths، لكنها لا تثبت Windows runtime.
+- لم يظهر في نطاق الملفات التي راجعناها اختبار شامل لعينة APKM/XAPK على إصدارات metadata متعددة.
+- SAI يستخدم Android Context/Resources/Build/Locale APIs، لذلك لا يصلح اقتباسه كما هو داخل Rust/Windows.
+- يمكن استخراج قواعد domain مستقلة: base/split validation، package/version consistency، split classification، ABI/locale/density targeting، ونتائج التحذير/الفشل.
+- لا ننسخ آلية التثبيت Android PackageInstaller أو طبقة UI أو Android-specific postprocessor.
+
+**القرار:** SAI مرجع source-level قوي لسلوك Split APK، وليس مكوّناً جاهزاً ندمجه. الأولوية هي فصل parser domain محايد عن النظام، ثم استخدام ADB + `install-multiple` في طبقة التنفيذ.
+
+روابط المصدر: [ApkmAppMetaExtractor.java](https://github.com/Aefyr/SAI/blob/55505d231b1390e824d1cc0c8f4fa35fd4677105/app/src/main/java/com/aefyr/sai/installerx/resolver/appmeta/apkm/ApkmAppMetaExtractor.java) · [XapkAppMetaExtractor.java](https://github.com/Aefyr/SAI/blob/55505d231b1390e824d1cc0c8f4fa35fd4677105/app/src/main/java/com/aefyr/sai/installerx/resolver/appmeta/xapk/XapkAppMetaExtractor.java) · [DefaultSplitApkSourceMetaResolver.java](https://github.com/Aefyr/SAI/blob/55505d231b1390e824d1cc0c8f4fa35fd4677105/app/src/main/java/com/aefyr/sai/installerx/resolver/meta/impl/DefaultSplitApkSourceMetaResolver.java) · [DeviceInfoAwarePostprocessor.java](https://github.com/Aefyr/SAI/blob/55505d231b1390e824d1cc0c8f4fa35fd4677105/app/src/main/java/com/aefyr/sai/installerx/postprocessing/DeviceInfoAwarePostprocessor.java)
+
+### 20.32 مراجعة مصادر XAPK إضافية: parser مستقل، أدوات إنشاء، وحدود إعادة الاستخدام (12 نوفمبر 2026)
+
+#### 20.32.1 sebdraven/drakkar — Rust XAPK parser للتحليل
+
+المستودع: [sebdraven/drakkar](https://github.com/sebdraven/drakkar) — commit `1ef884c79a03cfc21e5c4e1170b19c7507be3d08`.
+
+الملف:
+- `src/parser/xapk.rs` — blob SHA `a53af44fe33deedc355f546cf22d06c6b98da2aa`.
+
+ما يثبته المصدر:
+- Rust module يتعرف على XAPK اعتماداً على محتوى ZIP وليس امتداد الملف وحده.
+- يتأكد من عدم وجود AndroidManifest.xml في جذر الأرشيف، ووجود APK entries في الجذر، ثم يفحص APKs الداخلية.
+- يحدد base من APK الذي لا يحمل split attribute في Android binary manifest؛ ويعامل غياب base أو تعدد bases كخطأ صريح.
+- يحتفظ بالـbase والـsplits في الذاكرة، ويحسب SHA-256 للأرشيف والـbase وكل split.
+- يسجل APK entries غير القابلة للقراءة كـanomalies بدلاً من إسقاط كل المعلومات بصمت.
+- يحدد split الذي يحتوي native libraries عبر وجود `lib/**.so`، ويصدر container report مع أسماء الملفات وhashes وsplit IDs.
+
+**حدود الاستخدام:**
+- المشروع موجه لتحليل APKs، وليس مدير تثبيت Android.
+- التعليق في المصدر يوضح أن manifest.json والملفات الإضافية لا تتم قراءتها في هذا المسار؛ لذلك لا يستخرج package metadata من XAPK manifest ولا يدير OBB.
+- اختيار base قائم على split attribute، وليس على قواعد XAPK manifest أو DeviceSpec.
+- لا يختار ABI/locale/density split المطلوب للتثبيت، ولا ينفذ install-multiple.
+- توجد اختبارات داخلية مرتبطة بوحدة XAPK/manifest في المشروع، لكن لم يتم تشغيلها في هذه الجولة، ولم نثبت Windows CI/runtime أو اختبار جهاز.
+
+**القرار:** مرشح قوي لدراسة Rust implementation محايد نسبياً للمنصة: content-based detection، in-memory parsing، hashes، anomaly reporting، واختيار base من binary manifest. لا نقتبس module كاملاً قبل تدقيق حدود الذاكرة/أحجام الأرشيف وعمليات ZIP في بقية المشروع، ولا نستخدمه وحده لتجهيز install set.
+
+رابط المصدر: [xapk.rs](https://github.com/sebdraven/drakkar/blob/1ef884c79a03cfc21e5c4e1170b19c7507be3d08/src/parser/xapk.rs)
+
+#### 20.32.2 knightfall-cs/xapk-tool — أداة إنشاء XAPK وليست parser لتثبيت ملفات موجودة
+
+المستودع: [knightfall-cs/xapk-tool](https://github.com/knightfall-cs/xapk-tool) — commit `33b9b9a2ea64bf3c01e96efb3eb45b508e6ed6af`.
+
+الملف:
+- `xapktool.py` — blob SHA `91a954621aff4ab21d8fdbc2e233192fa5371ae6`.
+
+المصدر يعلن أداة Python لإنشاء XAPK من مجلد APK/split APK وOBB، ويستخدم Androguard لقراءة بيانات APK. في الكود توجد checks مفيدة قبل إنشاء bundle:
+- اتساق package name وversionCode عبر ملفات APK.
+- مقارنة SHA-256 fingerprints لشهادات التوقيع عند توفرها.
+- محاولة تحديد base وsplit من manifest split attribute وأسماء الملفات، ورفض الحالة الملتبسة.
+- التحقق من صيغة OBB القياسية `main|patch.<version>.<package>.obb` ومطابقة package/version، مع تحذير/تجاوز صريح إذا طلب المستخدم ذلك.
+- manifest generator يضع split IDs ومعلومات التطبيق داخل XAPK.
+
+**حدود الاستخدام:** هذه أداة إنشاء/تغليف XAPK من مجلد، وليست أداة فتح XAPK وارد وتحليل ما يجب تثبيته. تصلح كمرجع validation وtest-fixture generation فقط. لم يتم تشغيلها أو توليد ملف تجريبي.
+
+**القرار:** لا نضيفها كاعتماد runtime في برنامجنا حالياً. يمكن لاحقاً استخدامها كمرجع لتصميم اختبارات XAPK synthetic تشمل base/splits وOBB وmismatched package/version/signature، بعد مراجعة fixtures مستقلة.
+
+#### 20.32.3 AppManagerNG — تصنيف أولي لأنواع الحاويات
+
+المستودع: [SysAdminDoc/AppManagerNG](https://github.com/SysAdminDoc/AppManagerNG) — commit `959f11b0d238ec37139d479e1461977509007cf0`.
+
+الملف:
+- `ApkBundleHeaderParser.java` — blob SHA `9ac3ac6cbf178f188e34020d616c049b339a01c8`.
+
+المصدر يقدم Header Parser يصنف APK/APKS/APKM/XAPK بالبحث عن `manifest.json`, `info.json`, `toc.pb`/ `BundleConfig.pb`, `base.apk`, split APK names وOBB paths. ويحتفظ flags مثل hasBaseApk وsplitApkCount وhasObbData.
+
+**تحفظات مصدرية:**
+- هذا تصنيف heuristic لأسماء entries، وليس فحصاً لصحة محتوى APK أو Android manifest أو package/version/signature.
+- parser يجمع أسماء ZIP entries عبر ZipInputStream، ويضع MAX_ZIP_ENTRIES=50,000؛ لكن عند بلوغ الحد يتوقف عن الجمع بدلاً من إرجاع خطأ واضح بأن الأرشيف تجاوز الحد. لا ننسخ هذا السلوك كما هو.
+- المصدر يذكر أنه JVM-clean وقابل لاختبار JVM، لكن المستودع نفسه Android app؛ لم نثبت Windows packaging أو تشغيله على Windows.
+- قد تتغير نتيجة التصنيف إذا كان الأرشيف يستخدم مجلدات داخلية أو أسماء غير canonical؛ لذلك لا نستخدم اسم entry واحد كدليل نهائي على نوع الملف.
+
+**القرار:** نستخدمه كمرجع لفكرة Header Detection ومصفوفة أنواع الحاويات فقط. في تنفيذنا نحتاج قراءة ZIP central directory بطريقة تتحقق من العدد والحدود وترفض تجاوزها، وتستخدم أكثر من إشارة لتصنيف الصيغة، ثم تحقق APK payload فعلياً.
+
+#### 20.32.4 insomn14/Malimite-Core — XAPK merge لأغراض التحليل فقط
+
+المستودع: [insomn14/Malimite-Core](https://github.com/insomn14/Malimite-Core) — commit `52fac3aeed38c23cb508b3d62ea3f794650b9392`.
+
+الملف:
+- `XapkBundle.java` — blob SHA `28bbb880ad49f4eeae3ce4bd51cab38a47466e5a`.
+
+المصدر يوضح أن دمج base + split APKs ينتج APK موحداً لأغراض التحليل فقط، ويصرح أن الناتج **ليس ملفاً قابلاً للتثبيت**. من ضوابط التنفيذ:
+- حدود معلنة لعدد APKs وعدد entries وإجمالي bytes.
+- فحص أسماء المسارات ورفض absolute paths و`..` وbackslashes وبعض الحالات غير الآمنة.
+- اختيار base باستخدام manifest split_apks عند توفره، ثم fallback لقواعد أسماء/manifest.
+- OBB والملفات الإضافية لا تُقرأ في مسار الدمج.
+- يستخدم APK parser لفحص split manifest، ويحتفظ بترتيب deterministic للـsplits.
+
+**القرار:** لا نستخدم الدمج في مسار التثبيت؛ دمج split resources/manifests بهذه الطريقة لا ينتج بالضرورة حزمة Android صالحة للتثبيت. نستفيد فقط من حدود الحجم/العدد، safe-entry validation، ورفض base ambiguity كأفكار لاختبارات parser.
+
+#### 20.32.5 خلاصة مرشحي APKM/XAPK
+
+| المصدر | الوظيفة التي أثبتها المصدر | الملاءمة لبرنامج Windows | القرار |
+|---|---|---|---|
+| Aefyr/SAI | APKM v5 metadata، XAPK manifest metadata، APK binary manifest parsing، split classification وtargeting | Android-side؛ OBB غير مدعوم تلقائياً وXAPK manifest versions عليها TODO | مرجع أساسي للسلوك، لا دمج مباشر |
+| sebdraven/drakkar | Rust XAPK detection، base/split parsing، hashes وanomalies | أقرب إلى Rust/host-neutral؛ ليس installer ولا يقرأ OBB/manifest.json في المسار | مرشح لاستخراج/إعادة تصميم parser core بعد تدقيق أمني واختبارات |
+| knightfall-cs/xapk-tool | إنشاء XAPK والتحقق من اتساق APK/OBB قبل التغليف | Python CLI قابل للتشغيل على Windows وفق README، لكنه ليس inbound parser | مرجع validation وtest fixtures فقط |
+| SysAdminDoc/AppManagerNG | تصنيف Header أولي لـAPK/APKS/APKM/XAPK | JVM-clean method، لكن heuristic محدود وAndroid project | مرجع classifier لا أكثر |
+| insomn14/Malimite-Core | XAPK split merge لأغراض التحليل | Java core؛ الناتج غير قابل للتثبيت وOBB غير مقروء | استبعاد من install pipeline؛ مرجع حدود/مسارات آمنة |
+
+#### 20.32.6 تصميم Parser موحد مقترح دون خلط الصيغ
+
+الاختيار الصحيح ليس «ZIP واحد لكل الامتدادات»، بل طبقة كشف ثم adapters حسب الصيغة:
+
+1. **Container detector:** يتحقق من magic/signature وبنية ZIP، ثم يصنف APKS/APKM/XAPK بناءً على metadata + entry layout، مع الاحتفاظ بالامتداد كإشارة غير حاسمة.
+2. **APKS adapter:** يمرر `.apks` إلى Google bundletool؛ لا يعيد تنفيذ TOC/targeting.
+3. **APKM adapter:** يفحص `info.json` ونسخة metadata المدعومة، ثم يتحقق من كل APK داخلياً. إذا كان metadata version غير معروف أو الملف غير قابل للقراءة، يتوقف مع سبب واضح.
+4. **XAPK adapter:** يقرأ `manifest.json` إن وجد، ويحدد base/split entries، ثم يراجع Android binary manifest لكل APK؛ إذا غاب manifest أو تعارض مع محتوى APK، لا يعتمد على metadata وحدها.
+5. **OBB inventory:** يكتشف ملفات OBB ويعرض اسمها وحجمها وpackage/version المستنتجين من الاسم والمحتوى المتاح. لا ينسخها أو يضعها على الهاتف تلقائياً قبل تحديد وجهة Android/obb وموافقة المستخدم.
+6. **APK validation:** package name/versionCode consistency، وجود base واحد فقط، split IDs، minSdk/targetSdk، ABI/native libraries، locale/density، وsigner certificate digest consistency. اختلاف التوقيع أو تعارض package/version يجعل النتيجة Blocked أو Requires Review؛ لا نتجاهله بصمت.
+7. **Device compatibility:** يجمع SDK/ABIs/density/locales من الجهاز المحدد، ثم ينتج install set واضحاً مع أسباب اختيار/استبعاد كل split.
+8. **Preview:** يعرض الحاوية المكتشفة، base، كل split، OBB، الأحجام، hashes، signer digests، توافق الجهاز، والتحذيرات قبل أي كتابة.
+9. **Apply:** يمرر APK set المختار فقط إلى `adb -s <serial> install-multiple` بعد approval. OBB deployment مسار منفصل بموافقة واضحة، ثم Verify.
+
+**قواعد أمان ZIP إلزامية:** حدود entries/total uncompressed bytes/individual entry size/metadata size، رفض path traversal وabsolute paths، منع symlink surprises، منع duplicate entry names أو تسجيلها كخطأ، فحص compression ratio، timeout/cancellation، وعدم استخراج الملفات إلى مسار يختاره agent بحرية. لا نعتمد على declared ZIP sizes وحدها؛ نعدّ bytes الفعلية أثناء القراءة.
+
+**القرار الحالي:** نستخدم bundletool مباشرة لـAPKS، وSAI مرجعاً رئيسياً لفهم APKM/XAPK split semantics، وDrakkar مرشحاً لطبقة Rust XAPK parser بعد فحص أمني أوسع. لا يوجد حتى الآن parser Windows مثبت أو اختبار على هاتف، ولا نعتمد أي مشروع كمكوّن production قبل PoC واختبارات fixtures متعددة المصادر.
+
+**حالة الجولة:** [x] مراجعة SAI APKM/XAPK source paths. [x] مراجعة Rust XAPK parser. [x] مراجعة XAPK creation/validation tool. [x] مراجعة header classifier وmerge-only parser. [x] توثيق الفروق بين format adapters. [ ] مراجعة كاملة لحدود ZIP في المرشحين. [ ] بناء parser PoC على Windows. [ ] اختبارات fixtures حقيقية من مصادر مختلفة. [ ] اختبار DeviceSpec/install-multiple على أجهزة فعلية. [ ] اعتماد أي كود production.
