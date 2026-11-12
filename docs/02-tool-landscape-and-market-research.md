@@ -854,3 +854,89 @@ default_tools_approval_mode = "writes"
 6. اختبر إغلاق العميل، قتل العملية، انقطاع ADB، وفشل الاستعادة على Windows فعلياً.
 
 **حالة الجولة:** [x] مراجعة دورة حياة MCP في iksnerd. [x] مراجعة ADB process adapter في المشروعين. [x] توثيق فصل STDIO/logging المطلوب. [ ] اختبار Windows-native. [ ] اختبار انقطاع العميل أثناء عملية طويلة. [ ] اختبار الاستعادة بعد crash أو force-kill.
+
+
+### 20.17 تدقيق إدارة التطبيقات وWireless ADB وتكامل Codex في iksnerd/adb-mcp (12 نوفمبر 2026)
+
+هذه مراجعة Source-level فقط؛ لم يتم تشغيل المشروع أو توصيل هاتف أو تنفيذ أوامر تغيير.
+
+#### 20.17.1 إدارة التطبيقات والتواريخ
+
+الملفات المقروءة:
+- `internal/tools/apps.go` — SHA `e55a316d3e36015fdd2e2d4eaf50ade595bdfd0f`
+- `internal/adb/packages.go` — SHA `72d2cb9f033003ab83a13914f989a932200ca4f5`
+- `internal/adb/packages_test.go` — SHA `0206622d201de030880cc59ce73c2ec90d1292c9`
+- `internal/adb/permissions.go` — SHA `5b963a6301163a0bb57e620c247f66e6a506b4cf`
+- `internal/tools/register.go` — SHA `66013675991ea743e9f3f9dba2b6c9de8c215a39`
+- `internal/tools/annotations.go` — SHA `c29e4f85a4ec6d817e112e79f34fdbc4e3cfca07`
+
+**المثبت في المصدر:**
+- `list_packages` ينفذ `pm list packages` ويطبق substring filter على package names.
+- `get_app_details` يعرض version name/code وlauncher activity.
+- `app_state` يعرض runtime state ويستخرج first install time وlast update time من `dumpsys package` لتطبيق محدد.
+- `packages_test.go` يتضمن `TestParseInstallTimes` للتحقق من تحليل التاريخين من عينة dumpsys.
+- توجد أدوات install/uninstall، launch/stop، clear app data، grant/revoke permission، وpush/pull files.
+
+**الفجوات بالنسبة لاحتياجنا:**
+- لا يظهر في `list_packages` جرد غني يصنف System/User أو Enabled/Disabled أو installer أو UID أو paths أو تاريخ التثبيت.
+- وجود parser للتاريخين في app_state لا يعني وجود bulk inventory أو filters/sorting حسب تاريخ التثبيت لكل التطبيقات.
+- `get_app_details` لا يعرض installer أو install/update timestamps في بنية التفاصيل التي راجعتها.
+- لا يظهر في الكتالوج workflow متخصص يجمع كل مسارات APK المثبتة ويصدر Split APK set؛ `pull_file` نقل عام لملف، وليس Export Installed App.
+- `get_app_details(apk_path)` يقرأ metadata من APK محلي عبر aapt2؛ لا يستخرج APK من الهاتف.
+- لا يظهر دعم متكامل لـ`adb install-multiple` أو APKS/bundletool في مسار install الذي راجعته.
+
+**قرار التصميم:** نحتاج Inventory Service يجمع metadata على مستوى الحزمة، مع حقول unknown/unsupported واضحة، ثم فلاتر وفرز محلي. نفصل `inspect_apk` و`export_installed_app` و`install_apk_set`. التصدير يجمع جميع split paths، يعرض Preview وعدد الملفات والحجم ومكان الحفظ، ويطلب موافقة منفصلة لأنه ينقل بيانات من الهاتف إلى الكمبيوتر. لا يشمل بيانات التطبيق الخاصة.
+
+#### 20.17.2 صلاحيات التطبيقات: annotations ليست Authorization
+
+- `grantPermission` و`revokePermission` في `internal/adb/permissions.go` يستدعيان `pm grant` و`pm revoke`.
+- handlers في `internal/tools/apps.go` تتحقق من عدم فراغ package/permission ثم تحل الجهاز وتنفذ العملية؛ لم يظهر Approval Service أو authorization gate داخلي في المسارات المقروءة.
+- `annotations.go` يصنف grant كـchange وrevoke كـdestroy ويحول التصنيف إلى MCP safety hints. هذه metadata للعميل وليست منعاً server-side.
+- الملاحظة تنطبق كذلك على install/uninstall/clear data وغيرها من عمليات التغيير.
+
+**القرار:** لا ننقل هذه handlers كما هي. نحتاج Permission Service داخل طبقة الخدمة، وموافقة مرتبطة بـSerial + العملية + Package + permission/arguments المحددة. تنتهي الموافقة عند تغير أي مدخل، ولا يجوز أن يتجاوز MCP أو GUI هذه الطبقة.
+
+#### 20.17.3 Wireless ADB
+
+- `internal/adb/devices.go` — SHA `0030ae0b279da7872e734a31c6012a3e8e57f0df` — يحتوي `ConnectWireless`.
+- الدالة تدعم `adb pair` باستخدام pairing address/code، ثم `adb connect` باستخدام connect host:port؛ وتسمح بفصل عنوان الاقتران عن عنوان الاتصال لأن المنفذين قد يختلفان.
+- `docs/TOOLS.md` يوثق `connect_wireless`.
+- `ResolveSerial` يرفض اختيار أول جهاز عشوائياً عند تعدد الأجهزة ويطلب Serial صريحاً.
+
+**مرجع جيد لإعادة الاستخدام الوظيفي**، مع متطلبات إضافية عندنا: عدم تسجيل pairing code، Preview للجهاز والعنوان، اختيار Serial صريح بعد الاتصال، Disconnect لا يزيل اتصالات أخرى دون موافقة، واختبارات تغير IP وفشل الاقتران وانقطاع الشبكة على Windows.
+
+#### 20.17.4 Codex Plugin
+
+الملفات المقروءة:
+- `plugin/adb-mcp-codex/.codex-plugin/plugin.json` — SHA `b7478af8fef770f65c0eb068195d034694f061ba`
+- `plugin/adb-mcp-codex/.mcp.json` — SHA `d95bc4be20e59212430a6dde98b22a35092858b3`
+
+المشروع يضم Codex plugin باسم `adb-mcp`، ويعلن Read/Write capabilities، ويحدد MCP server محلياً بالأمر `adb-mcp` دون arguments، ويشير إلى Skills ضمن الإضافة. هذا دليل على وجود مسار تكامل Codex منظم يجمع plugin metadata وMCP configuration وتعليمات الوكيل.
+
+لكن هذا لا يثبت نجاح التثبيت والتشغيل على كل إصدارات Codex/Windows، ولا يجعل Read/Write capability أو safety hints سياسة موافقات server-side. لا ننقل كتالوج أدواته الواسع كما هو؛ نحتاج MCP tools مخصصة لإدارة الأجهزة والتطبيقات وDNS والتعريفات، وكلها تستدعي Service Layer نفسها المستخدمة من GUI.
+
+#### 20.17.5 Windows CI مقابل Windows runtime
+
+ملف `.github/workflows/release.yml` — SHA `ed1927aa1ae0fb9d4570bbf5396cd4aa47c869aa`:
+- يعمل عند دفع version tag، وليس push/PR CI مستمراً.
+- الاختبارات و`go vet` تعمل على `ubuntu-24.04`.
+- ينفذ `go test -race ./...` ثم يبني Windows amd64 وarm64 binaries من Ubuntu باستخدام GOOS/GOARCH ويضع ملفات Windows داخل ZIP مع checksums.
+- لا يظهر Windows runner أو تشغيل اختبارات على Windows.
+
+**الاستنتاج:** Windows artifacts وcross-compilation مثبتان في workflow؛ Windows-native runtime testing غير مثبت. قبل اعتماد المشروع نحتاج Windows 10/11 job يشغل tests وsmoke tests، ويتحقق من ADB discovery، STDIO stdout/stderr، Codex plugin launch، multi-device targeting، cancellation وانقطاع ADB.
+
+#### 20.17.6 قرار إعادة الاستخدام بعد الجولة
+
+| الوظيفة | القرار |
+|---|---|
+| ADB runner وarguments منفصلة | مرجع معماري قوي؛ اختباره على Windows ما زال مطلوباً |
+| اختيار Serial ورفض الاختيار العشوائي | اعتماد السلوك كمطلب تصميم |
+| Wireless Pair/Connect | اعتماد الفكرة بعد إخفاء pairing code وإضافة Preview/Disconnect |
+| Package inventory | `list_packages` غير كافٍ؛ نحتاج Inventory metadata أوسع |
+| Install/update timestamps | إعادة استخدام فكرة parser مع اختبارات Android versions؛ ليس bulk filtering جاهزاً |
+| Grant/Revoke permission | لا ننقل handlers قبل server-side authorization |
+| Export APK/Split APK | لا يوجد workflow متخصص مثبت؛ نبحث عن مكون مستقل أو نبني Adapter حول ADB/bundletool |
+| Codex plugin | مرجع لتجربة الربط والتوزيع، لا مرجع جاهز لسياسة الأمان |
+| Windows | cross-build موجود؛ Windows runtime test غير مثبت |
+
+**حالة الجولة:** [x] مراجعة إدارة التطبيقات والصلاحيات. [x] مراجعة parser واختبار تواريخ التثبيت والتحديث. [x] مراجعة حدود تصدير APK. [x] مراجعة Wireless Pair/Connect. [x] مراجعة Codex plugin. [x] مراجعة Windows release workflow. [ ] Windows-native tests. [ ] اختبار Codex على Windows. [ ] اختبار USB/Wireless فعلي. [ ] اعتماد أي كود مقتبس.
