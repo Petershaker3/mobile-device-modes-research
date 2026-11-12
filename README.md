@@ -22,6 +22,7 @@
 | [04 — Windows Drivers](docs/04-windows-driver-diagnostics.md) | تشخيص تعريفات Windows والإصلاح والتراجع |
 | [05 — Research Coverage Matrix](docs/05-RESEARCH-COVERAGE-MATRIX.md) | تغطية الوظائف، حالة الأدلة، المشاريع المرشحة، والفجوات البحثية |
 | [06 — Android System Information](docs/06-android-system-information.md) | حقول الجهاز والنظام والبناء والـABI والذاكرة والتخزين، وتدقيق أدوات القراءة الجاهزة |
+| [07 — Firmware & Software Inventory](docs/07-firmware-software-inventory.md) | فحص OTA metadata وpayload.bin وpartition manifests وAVB/vbmeta دون تفليش |
 | [09 — Device File Management](docs/09-device-file-management.md) | ADB وMTP/WPD وvirtual drive، dual-pane، نقل الملفات، Unicode، الإلغاء والتحقق، ومراجعة المشاريع الجاهزة |
 | [10 — Android Diagnostics & Logs](docs/10-android-diagnostics-and-logs.md) | Logcat والتسجيل وBugreport وdumpsys وDropbox وPerfetto وتحليل السجلات ومراجعة المشاريع الجاهزة |
 | [Research Methodology](docs/RESEARCH-METHODOLOGY.md) | الأدلة، الاختبارات، إعادة الاستخدام، أمان MCP وصيانة الوثائق |
@@ -67,7 +68,8 @@
 |---|---|---|
 | الاتصال وRead Info والأوضاع | بحث ومصفوفات ومراجعات أولية | اختبارات فعلية حسب الموديل والإصدار |
 | معلومات النظام والجهاز | وثيقة بحث مستقلة 06 ومراجعة مرشحين | استكمال المصفوفة والاختبارات لاحقاً |
-| السوفتوير والفريموير والتخزين والأقسام | تغطية جزئية ومراجع موزعة | استكمال وثائق 07–08 |
+| معلومات build والـOTA والفريموير | وثيقتا بحث 06 و07 ومراجعة payload-dumper-go/AOSP | توسيع صيغ OTA legacy واختبار corpus |
+| التخزين والأقسام | تغطية جزئية ومراجع موزعة | استكمال وثيقة 08 |
 | Logcat وBugreport والتشخيص | وثيقة بحث مستقلة 10 ومراجعة مصدر لعدة مشاريع | اختبارات ZIP وRuntime وHardware لاحقاً |
 | إدارة الملفات والنقل | وثيقة بحث مستقلة 09 ومراجعة مصدر لعدة مشاريع | اختبار Runtime/Hardware وMTP/WPD |
 | النسخ الاحتياطي والاستعادة | تغطية جزئية ومراجع موزعة | استكمال وثيقة 11 |
