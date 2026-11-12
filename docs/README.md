@@ -47,3 +47,5 @@
 - **Windows multi-format installer candidate (xapkInstaller):** تدقيق APK/APKM/APKS/XAPK/AAB، إدارة Serial، أمان الاستخراج، flags، OBB، وقيود CI موثق في القسم 20.47 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2047-تدقيق-xapkInstaller-مرشح-windows-متعدد-الصيغ-apkapkmapksxapkaab).
 
 - **Tauri 2/Rust ADB installer architecture reference:** تدقيق Android Application Installer، device lifecycle، wireless ADB، APK/AAB، cancellation/progress، وأوجه النقص في multi-format وpost-install verification موثق في القسم 20.48 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2048-تدقيق-android-application-installer-مرجع-tauri-2rust-لتكامل-adb-وaab).
+
+- **Tiny APK Installer (Go) TUI/ADB reference:** تدقيق اكتشاف الأجهزة والـWireless pairing وفك APKM/APKS/XAPK وOBB، مع فجوات DeviceSpec وschema validation وtimeouts، موثق في القسم 20.49 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2049-تدقيق-tiny-apk-installer-go-tui-لـadb-وapkmxapk-apks).
