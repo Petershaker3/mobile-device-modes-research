@@ -173,14 +173,19 @@ Windows Desktop UI                 AI Client (Codex)
 
 | المجال | ما هو موجود الآن | ما لا يزال غير مثبت |
 |---|---|---|
-| أوضاع الاتصال وRead Info | بحث ومراجع ومصفوفات adapters وانتقالات | توافق عملي حسب الموديل واختبارات الأجهزة |
-| أدوات جاهزة | مراجعات README/source/Community لبعض المرشحين | اعتماد نسخة ودمجها واختبارها على Windows |
-| APK/APKS/APKM/XAPK/OBB | متطلبات ومحرك موحد وتدقيق parsers/installers | تنفيذ adapters وcorpus واختبار حقيقي على الأجهزة |
+| أوضاع الاتصال وRead Info | بحث ومراجع ومصفوفات adapters وانتقالات في [01](01-connectivity-protocols.md) | توافق عملي حسب الموديل واختبارات الأجهزة |
+| أدوات جاهزة | مراجعات README/source/Community في [02](02-tool-landscape-and-market-research.md) ووثائق المجالات | تثبيت نسخ محددة ودمجها واختبارها على Windows |
+| معلومات النظام والجهاز | [06](06-android-system-information.md) وكتالوج الحقول ومراجعة Host/Android-side projects | corpus حقيقي من أجهزة API 24+ واختبارات Runtime |
+| السوفتوير والفريموير | [07](07-firmware-software-inventory.md)؛ OTA metadata وpayload manifests وAVB | حزم متعددة من OEMs، تحقق مفاتيح موثوقة، واختبارات parser |
+| التخزين والأقسام | [08](08-storage-partition-information.md)؛ AOSP liblp/lpdump ومرشحو Windows | اختبارات super.img/sparse وقراءة أجهزة فعلية |
+| إدارة الملفات | [09](09-device-file-management.md)؛ ADB/MTP/WPD ومرشحو transfer engines | نقل فعلي، MTP provider، واختبارات أمان المسارات |
+| التشخيص والسجلات | [10](10-android-diagnostics-and-logs.md)؛ Logcat/Bugreport/Perfetto ومراجعة المصدر | بناء وتشغيل الأدوات، ZIP corpus، واختبارات Hardware |
+| النسخ الاحتياطي والاستعادة | [11](11-backup-restore-boundaries.md)؛ حدود Android ومراجعة incremental/legacy tools | Backup/Restore فعلي وmanifest/hash/conflict tests |
+| APK/APKS/APKM/XAPK/OBB | متطلبات ومحرك موحد وتدقيق parsers/installers في [02](02-tool-landscape-and-market-research.md) و[03](03-app-management-and-network.md) | تنفيذ adapters وcorpus واختبار حقيقي على الأجهزة |
 | مصادر التنزيل | تصميم F-Droid/APKPure/APKMirror ومحددات الثقة | إثبات تدفقات التنزيل المباشرة واختبار كل مصدر runtime |
-| إدارة التطبيقات | متطلبات ADB ومرشحو أدوات وفلاتر | اختبارات USB/Wireless متعددة الأجهزة |
-| DNS | تصميم ومسارات وقيود واختبارات | تنفيذ واختبار على Android مستهدف |
-| تعريفات Windows | تصميم تشخيص وإصلاح آمن ومصادر | Hardware-ID matrix واختبارات إصلاح/تراجع |
-| MCP | معمارية ومراجعة خوادم مرشحة وسياسات أمان | بناء الخادم وربطه بـCodex واختبار كل أداة |
+| إدارة التطبيقات وDNS | متطلبات ADB ومرشحو أدوات وفلاتر ومسارات DNS في [03](03-app-management-and-network.md) | اختبارات USB/Wireless وDNS متعددة الأجهزة |
+| تعريفات Windows | تصميم تشخيص وإصلاح آمن ومصادر في [04](04-windows-driver-diagnostics.md) | Hardware-ID matrix واختبارات إصلاح/تراجع |
+| MCP | معمارية ومراجعة خوادم مرشحة وسياسات أمان في [02](02-tool-landscape-and-market-research.md) | بناء الخادم وربطه بـCodex واختبار كل أداة |
 
 **قاعدة الحالة:** موثق نظرياً ≠ موجود في الكود ≠ معلن من المطور ≠ CI ناجح ≠ اختبار Runtime ≠ اختبار Hardware. يجب تسمية نوع الدليل دائماً.
 
@@ -194,6 +199,13 @@ Windows Desktop UI                 AI Client (Codex)
 | `docs/02-tool-landscape-and-market-research.md` | سجل تدقيق الأدوات والمشاريع والمقارنات ومراجعات المصدر |
 | `docs/03-app-management-and-network.md` | متطلبات إدارة التطبيقات وDNS والبيانات والفلاتر |
 | `docs/04-windows-driver-diagnostics.md` | تشخيص وإصلاح تعريفات Windows |
+| `docs/05-RESEARCH-COVERAGE-MATRIX.md` | حالة تغطية كل وظيفة والأدلة والفجوات المتبقية |
+| `docs/06-android-system-information.md` | معلومات النظام والجهاز وحقول القراءة ومشاريع إعادة الاستخدام |
+| `docs/07-firmware-software-inventory.md` | فحص OTA والـpayload وAVB محلياً دون تفليش |
+| `docs/08-storage-partition-information.md` | filesystem usage وphysical/logical/dynamic partitions |
+| `docs/09-device-file-management.md` | ADB وMTP/WPD وعمليات الملفات والنقل |
+| `docs/10-android-diagnostics-and-logs.md` | Logcat وBugreport وdumpsys والتشخيص |
+| `docs/11-backup-restore-boundaries.md` | حدود النسخ الاحتياطي والاستعادة وأنواع البيانات |
 | `docs/RESEARCH-METHODOLOGY.md` | منهجية الأدلة والاختبارات والأمان وإعادة الاستخدام وMCP |
 | `docs/README.md` | فهرس تنقل مرتب حسب رحلة القراءة والوظائف |
 
@@ -225,12 +237,12 @@ Windows Desktop UI                 AI Client (Codex)
 
 ## 10. الخطوات التالية بالترتيب
 
-1. مراجعة خريطة المنتج كاملة وتقسيمها إلى محاور ومتطلبات قابلة للتتبع، لا اختزالها في التثبيت.
-2. تدقيق أدوات GitHub الجاهزة لكل محور: الاتصال، Read Info، الأوضاع، معلومات السوفتوير، إدارة التطبيقات، الملفات والتشخيص، تعريفات Windows، وMCP.
-3. بناء مصفوفة قدرات حسب Windows 10/11 وإصدارات Android من 7.0 فأحدث، مع تمييز ما هو موثق وما يحتاج اختباراً.
-4. تحديد المكونات التي يمكن إعادة استخدامها مباشرة، والواجهات التي تحتاج Adapters رفيعة، والفجوات التي لا يغطيها مشروع جاهز.
-5. إعداد اختبارات قبول منفصلة لكل محور، ثم إثباتها على أجهزة وموديلات فعلية قبل ادعاء الدعم.
-6. تطوير مسار تثبيت APK/Split/APKS ضمن محور التطبيقات، ثم توسيعه إلى APKM/XAPK/OBB ومصادر التنزيل وفق نتائج الاختبار.
-7. ترتيب تنفيذ إدارة التطبيقات والبيانات والأوضاع والسوفتوير والملفات والتشخيص وDNS وتعريفات Windows وMCP حسب الاعتماديات الفعلية، دون حذف أي محور من نطاق المنتج.
+1. تدقيق الاتساق بين وثائق 00–11، وإزالة أي تعارض بين القرارات والوثائق البحثية والفهرس.
+2. تثبيت قائمة المرشحين لكل محور مع رابط commit/version محدد، وتحديد المكونات القابلة للاقتباس مباشرةً وملاحظات الأمان والاختبارات المطلوبة.
+3. بناء corpus محلي غير حساس من outputs وملفات OTA/super/logcat/bugreport متنوعة، مع fixtures صناعية للحالات الحدية، دون جمع بيانات خاصة من أجهزة المستخدمين.
+4. إعداد خطة تحقق على Windows 10/11 وأجهزة Android API 24+؛ تمييز اختبارات parser/unit عن Runtime وHardware.
+5. ترتيب قرارات التنفيذ المفتوحة: معمارية Windows، إدارة الاعتماديات، DeviceHandle الصريح، Service Layer، Operation lifecycle، وMCP authorization.
+6. بعد اكتمال التدقيق والحصول على موافقة تنفيذ مستقلة، تنفيذ نواة مشتركة صغيرة ثم ربط المحاور عبر adapters قابلة للاستبدال.
+7. عدم بدء أي كتابة على هاتف أو إصلاح تعريفات أو تغيير DNS أو تفليش/تحديث جهاز ضمن هذه المرحلة البحثية.
 
 **لا نختار تقنية التنفيذ النهائية أو نبدأ إعادة كتابة النظام قبل مراجعة المرشحين الحاليين وتحديد ما يمكن اقتباسه مباشرة.** ولا تُعد هذه الوثيقة موافقة على تنفيذ أي تغييرات على هاتف أو Windows.
