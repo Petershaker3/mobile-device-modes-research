@@ -21,6 +21,8 @@
 - **Native library dependencies (DT_NEEDED/SONAME):** القسم 20.36 محفوظ كتشخيص متقدم مؤجل، وليس شرطاً لمسار تثبيت V1.
 - **APK installation priority and unified engine:** القرار ومصفوفة الصيغ وتدقيق المشاريع موثقة في الأقسام 20.37–20.41 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2037-إعادة-ضبط-الأولوية-التثبيت-واسع-التغطية-هو-هدف-v1-12-نوفمبر-2026) و[إدارة التطبيقات والشبكة](03-app-management-and-network.md#18-محور-التثبيت-واسع-الصيغ-قرار-الأولوية-ومحرك-apk-الموحد).
 
+- **Windows multi-format installer candidate (pacman-apk):** تدقيق الكود ومقارنته بمرشحي التثبيت في القسم 20.42 من [دراسة الأدوات الجاهزة](02-tool-landscape-and-market-research.md#2042-تدقيق-pacman-apk--واجهة-windows-تدعم-apkxapk-apksapkm-12-نوفمبر-2026).
+
 ## مراجع تكامل MCP
 
 - [Codex MCP setup](https://developers.openai.com/codex/mcp) — إعداد خوادم STDIO وStreamable HTTP.
