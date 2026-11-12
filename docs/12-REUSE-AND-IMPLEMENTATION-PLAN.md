@@ -6,7 +6,7 @@
 **المنصة المستهدفة:** Windows 10/11، وAndroid 7.0 / API 24 فأحدث.  
 **حالة المستودع:** بحث وتصميم؛ لا يوجد منتج منفذ أو اختبار Hardware معتمد.
 
-**تقدم Source Revalidation:** اكتملت مراجعة المصدر عند SHAs محددة لـAdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)، ولـbundletool وapkfile وPacMan-APK وxapkInstaller في [14](14-source-revalidation-app-installers.md). بقية المرشحين ما زالت تحتاج إعادة تحقق قبل الاقتباس.
+**تقدم Source Revalidation:** اكتملت مراجعة المصدر عند SHAs محددة لـAdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)، ولـbundletool وapkfile وPacMan-APK وxapkInstaller في [14](14-source-revalidation-app-installers.md)، ولـadb-mcp وus-all/android-mcp-server في [15](15-source-revalidation-mcp-codex.md). بقية المرشحين ما زالت تحتاج إعادة تحقق قبل الاقتباس.
 
 ## 1. القرار التنفيذي
 
@@ -40,7 +40,7 @@
 | Bugreport/Perfetto | [Bugreport_analyzer](https://github.com/VenkateshJallu/Bugreport_analyzer)، [Perfetto](https://github.com/google/perfetto) | parser/analysis references وأداة متخصصة | لا تحميل تقارير الهاتف إلى خدمات خارجية، ولا parser دون ZIP limits/privacy | مرشحان للتجارب المعزولة |
 | Backup files | [chen3feng/android-backup](https://github.com/chen3feng/android-backup) | incremental sync، include/exclude، snapshots | auto-select لكل الأجهزة، وsize/mtime-only comparison، وتنزيل المستبعد قبل حذفه | مرجع خوارزمي؛ نحتاج إعادة تصميم |
 | Legacy .ab | [Android Backup Extractor](https://github.com/nelenkov/android-backup-extractor) | import/unpack legacy .ab | لا ينشئ backup حديثاً ولا يتجاوز Android 12 restrictions | ميزة استيراد اختيارية P2 |
-| MCP/ADB | [us-all/android-mcp-server](https://github.com/us-all/android-mcp-server)، [iksnerd/adb-mcp](https://github.com/iksnerd/adb-mcp) | نماذج أدوات وschemas وADB integration | لا نقل generic shell أو auto-targeting؛ كل tool يحتاج policy وapproval واختبار injection | مراجع تصميم ومراجعة أمان |
+| MCP/ADB | [iksnerd/adb-mcp](https://github.com/iksnerd/adb-mcp) و[us-all/android-mcp-server](https://github.com/us-all/android-mcp-server) | typed ADB client، stdio، tool schemas، context lifecycle، validators، categories | annotations ليست approval؛ auto-single-device مرفوض؛ generic shell/write flags غير معتمدة | Source revalidated في [15](15-source-revalidation-mcp-codex.md)؛ Read-only V1 فقط |
 | Windows PnP/Drivers | Windows PnP/SetupAPI/Configuration Manager وPnPUtil، ومصادر Microsoft/Google/OEM | APIs الرسمية للتشخيص والمطابقة | لا تثبيت/إزالة driver تلقائياً دون exact Hardware ID وpreview/approval/rollback | تصميم في 04؛ يحتاج PoC Windows |
 | مصادر التطبيقات | F-Droid signed indexes؛ APKPure/APKMirror provider pages | تكامل فهرس موثق لـF-Droid، وProvider Adapter للمصادر الأخرى | لا تجاوز CAPTCHA/Cloudflare أو APIs غير موثقة أو مشاركة cookies | F-Droid أولاً؛ APKPure/APKMirror تدفق آمن محدود |
 
@@ -83,7 +83,7 @@
 |---|---|---|
 | ADB/File/Logcat | [13](13-source-revalidation-adb-file-core.md) عند SHAs محددة | PoC .NET/Tauri، build/tests، USB/Wireless/Hardware |
 | APK/APKM/XAPK/APKS | [14](14-source-revalidation-app-installers.md) عند SHAs محددة | archive corpus، apksigner verification، PoC Python sidecar مقابل adapters، install session failure tests |
-| OTA/Partitions/Backup/MCP/Drivers | HEAD snapshots موثقة في هذا الملف ومراجعات المجال | Source revalidation تفصيلية لكل مرشح قبل الاقتباس/الدمج |
+| OTA/Partitions/Backup/Drivers | HEAD snapshots موثقة في هذا الملف ومراجعات المجال | Source revalidation تفصيلية لكل مرشح قبل الاقتباس/الدمج |
 
 ## 4. المعمارية المستهدفة
 
