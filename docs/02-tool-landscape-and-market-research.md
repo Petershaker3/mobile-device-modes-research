@@ -3389,3 +3389,123 @@ Commit code reference: `0368961aa8824521681ce9dfff93d6e50a27605d`.
 **حالة التحقق:** تمت مراجعة الملفات المصدرية المشار إليها في GitHub، ووثائق Android الرسمية، ومراجع OWASP وبنية XAPK المنشورة. لم يتم تنزيل أو بناء أو تشغيل هذه المشاريع، ولم يتم توصيل هاتف أو تنفيذ تثبيت/نقل OBB فعلي. هذه مراجعة source/docs وليست hardware validation.
 
 **القرار النهائي لهذه الجولة:** `apkfile` مرشح parsing/host integration أول، لكن ليس اعتماداً نهائياً؛ `bundletool` يظل المرجع لصيغة APKS القياسية؛ `APKMInstaller` مرجع Android-side لا نحتاج دمجه في Windows V1؛ وOBB يجب أن يبقى مرحلة منفصلة ذات streaming وverification. 
+
+
+---
+
+## 20.46 — AAB وAPKV ومراجع Android-side إضافية لتوسيع صيغ التثبيت (12 نوفمبر 2026)
+
+### 20.46.1 Android App Bundle (.aab): صيغة مصدر وليست ملف تثبيت مباشر
+
+**النتيجة المؤكدة من وثائق Android الرسمية ومرجع Google bundletool:**
+- AAB صيغة نشر وتوزيع، وليست ملف APK يمكن تمريره مباشرة إلى `adb install`.
+- المسار الرسمي هو تحويل AAB إلى APK Set بصيغة `.apks` باستخدام `bundletool build-apks`.
+- يمكن بناء مجموعة عامة أو مجموعة مخصصة لجهاز متصل أو Device Specification JSON.
+- بعد ذلك يختار `bundletool install-apks` مجموعة APKs الملائمة للجهاز، مع تحديد `--device-id` عند وجود أكثر من جهاز.
+- يمكن استخدام `extract-apks` لاستخراج مجموعة متوافقة من APK Set موجود مسبقاً.
+- ملفات AAB التي تحتوي Dynamic Feature Modules تحتاج الانتباه إلى قواعد تضمين/تسليم الوحدات؛ لا نفترض أن universal APK يحتوي كل الوحدات الاختيارية أو عند الطلب.
+
+المراجع: [Android Developers — bundletool](https://developer.android.com/tools/bundletool)، [Google bundletool](https://github.com/google/bundletool).
+
+**قرار التصميم:**
+- نضيف AAB إلى قائمة الصيغ التي يستطيع البرنامج التعرف عليها وشرح مسارها، لكن لا نصنفه على أنه installable APK.
+- مسار AAB اختياري: فحص الملف ثم تشغيل bundletool في بيئة محلية مضبوطة لإنتاج APK Set، ثم تثبيت المجموعة بعد اختيار الجهاز ومراجعة النتيجة.
+- يجب إظهار متطلبات التوقيع/المفاتيح وأي فشل في بناء APK Set للمستخدم؛ لا نطلب أو نرفع مفاتيح توقيع إلى خدمة خارجية.
+- لا نبدأ تنفيذ AAB قبل تثبيت مسارات APK/APKS/APKM/XAPK الأساسية؛ هو امتداد مفيد وليس شرطاً يسبق التثبيت واسع الصيغ.
+
+### 20.46.2 VInstall — تغطية APKV ومرجع لفحص صيغ متعددة
+
+المستودع: [vinstall/VInstall](https://github.com/vinstall/VInstall)  
+Commit تمت مراجعته: `66d930ab8ddb2022f6532d851a7d991e7ce21823`.  
+ملفات تمت مراجعتها: README، `XapkManifest.kt`، `MetadataReader.kt`، `ApkvCrypto.kt`، `ApkvInstaller.kt`.
+
+**ما يعلنه المشروع:**
+- APK وXAPK وAPKS بصيغة SAI وAPKM بصيغة APKMirror وAPKV المخصص وZIP يحوي APK splits.
+- اختيار splits قبل التثبيت، دفعات تثبيت، سجل عمليات، وإدارة التطبيقات.
+- APKV يمكن أن يحتوي payload مشفراً اختيارياً، وبيانات manifest وSHA-256 checksums.
+- المشروع Android-side ويتطلب Android 5.0+؛ لا يوفر Windows host/ADB installer جاهزاً.
+
+**ما ظهر في الكود:**
+- XAPK parser يتعامل مع `xapk_version` و`package_name` و`version_code` و`min_sdk_version` و`split_apks` و`expansions`، ويقبل بعض القيم الرقمية أو النصية. هذا مفيد كعينة إضافية لاختلافات metadata، لكنه لا يثبت تغطية كل منتجي XAPK.
+- APKV يستخدم marker باسم `.apkv_enc`، وملفات manifest/header/payload منفصلة، مع اشتقاق مفتاح PBKDF2-HMAC-SHA256 وتشفير AES-CBC.
+- استخراج payload المشفر في مسار التثبيت يستخدم streaming إلى ملفات مؤقتة، ثم يفك الحاوية الداخلية ويستخرج ملفات APK.
+- التحقق من SHA-256 موجود للملفات التي لها checksum معلن في manifest، ويمكن للمستخدم إلغاء التثبيت عند mismatch.
+
+**ملاحظات ومخاطر من الكود المراجع:**
+1. APKV صيغة خاصة بالمشروع وليست صيغة Android قياسية ولا بديلاً عن APK/APKS؛ لا نضيفها إلى V1 لمجرد ظهورها في مشروع واحد.
+2. مسار فك التشفير الظاهر يستخدم AES-CBC دون MAC/AEAD ظاهر في `ApkvCrypto.kt`. وجود checksum للـAPK لا يساوي تلقائياً مصادقة تشفيرية للـpayload أو manifest؛ يلزم فهم مواصفة APKV كاملة قبل اعتبار سلامة الحاوية مثبتة.
+3. توجد مسارات metadata تقرأ entries إلى الذاكرة باستخدام `readBytes()`؛ لا ننسخ ذلك لبيانات كبيرة.
+4. استخراج APKs يستخدم basename من entry path، ما يستدعي رفض التصادمات وتكرار الأسماء قبل الكتابة؛ لا يكفي قص المسار إلى basename وحده.
+5. يجب تطبيق حدود الحجم وعدد entries والوقت والـactual streamed bytes قبل وأثناء الاستخراج، لا بعد اكتماله.
+6. لم نراجع بعد مواصفة APKV كاملة أو CLI الخاص بها، ولم نختبر ملفات APKV فعلية؛ لذلك لا ندعي دعماً عملياً لها.
+
+**الحكم:** مرجع مفيد لفهم امتداد صيغة حزم مخصصة، وليس مرشح دمج في Windows V1. نؤجل APKV إلى ما بعد دعم الصيغ الشائعة، ولا نعلن دعمه قبل مراجعة المواصفة وعينات اختبار متنوعة.
+
+### 20.46.3 Brokk — مرجع Android PackageInstaller وStreaming للـsplits
+
+المستودع: [trinadhthatakula/Brokk](https://github.com/trinadhthatakula/Brokk)  
+Commit تمت مراجعته: `ce2139ae27c3685e8c31cac637d701cb1d24a666`.  
+الملفات: README، `PROJECT_CONTEXT.md`، `InstallerRepositoryImpl.kt`.
+
+**ما يعلنه المشروع:**
+- Android installer لصيغ APK وAPKS وXAPK وZIP.
+- استخدام Android PackageInstaller Sessions، وكتابة split APKs عبر streams بدلاً من فكها كلها إلى ملفات أولاً.
+- واجهة استقبال ملفات من تطبيقات أخرى، مع حالة تقدم وتأكيد التثبيت.
+
+**ما ظهر في InstallerRepositoryImpl:**
+- إنشاء PackageInstaller session ثم فتحها.
+- فحص ZIP بحثاً عن entries تنتهي بـAPK، وكتابة كل entry إلى session باستخدام `openWrite` ثم `fsync`.
+- fallback لمحاولة التعامل مع الملف كـAPK واحد إذا لم يُعثر على entries.
+- وجود مسار منفصل لنسخ OBB، مع محاولة استخدام مجلد OBB ثم مسار بديل.
+
+**قيود تمنع النقل المباشر إلى مشروعنا:**
+1. الكود Android-side ولا يوفر Windows process management أو ADB device selection أو MCP.
+2. التعامل مع أي ZIP يحوي entries بامتداد APK كحزمة تثبيت عامة heuristic؛ لا يثبت أن الحاوية APKS/XAPK صحيحة أو أن splits تنتمي إلى package/version/signature واحدة.
+3. في المقتطف المراجع لا يظهر تحقق شامل من وجود base واحد، وتطابق package/version/signers، أو uniqueness لأسماء splits قبل فتح جلسة التثبيت.
+4. استخدام اسم entry مباشرة في `session.openWrite(name,...)` يحتاج validation وتسمية داخلية آمنة.
+5. إذا كان حجم entry غير معروف، يتم نسخه أولاً إلى ملف مؤقت؛ يلزم فرض حدود فعلية على الحجم والوقت والمساحة.
+6. مسار OBB يختزل اسم entry إلى basename وينسخ المحتوى دون تحقق hash/read-back ظاهر. كما أن fallback إلى مجلد Downloads لا يثبت أن التطبيق يستطيع قراءة OBB من ذلك الموضع.
+7. المشروع يصف أجزاء من إدارة OBB والتاريخ والميزات الأخرى كمسارات تطوير/توسعة؛ لا نعاملها كدعم مكتمل لمجرد ذكرها في وثيقة المشروع.
+
+**الحكم:** Brokk مرجع جيد لتدفق PackageInstaller والكتابة streaming إلى session، لكنه ليس محرك parsing موثوقاً متعدد الصيغ ولا مكون Windows قابلًا للدمج مباشرة. نقتبس منه المفهوم فقط إذا احتجنا Android helper مستقبلاً، وهو ليس مطلوباً في المسار الحالي.
+
+### 20.46.4 تحديث تصنيف الصيغ ومساراتها
+
+| الصيغة | طبيعتها | المسار المقترح | الأولوية |
+|---|---|---|---|
+| `.apk` | حزمة Android منفردة | فحص ثم `adb install` | أساسية |
+| Split APK files | base + config/feature splits | تحقق المجموعة ثم `adb install-multiple` | أساسية |
+| Google `.apks` | APK Set مع TOC | Google bundletool + DeviceSpec/Serial صريح | أساسية |
+| SAI `.apks` | حاوية SAI metadata | Adapter مستقل بعد تمييز schema | عالية |
+| `.apkm` | حاوية APKMirror | Parser متخصص للنسخ المعروفة؛ رفض غير المدعوم | عالية |
+| `.xapk` | حاوية APK/splits وقد تتضمن OBB | Parser متخصص + OBB مرحلة منفصلة | عالية |
+| `.aab` | صيغة نشر/مصدر | bundletool build-apks ثم install-apks | لاحقة اختيارية |
+| `.apkv` | حاوية مخصصة | مؤجلة حتى تدقيق المواصفة والعينات | مؤجلة |
+| ZIP عادي | ليس صيغة تثبيت موحدة | لا نعتبره bundle إلا بعد اكتشاف/تحقق صريح من البنية | محدودة |
+| صيغ مشفرة/مجهولة | غير قابلة للفحص دون دعم محدد | طلب كلمة مرور فقط عند وجود مواصفة معروفة؛ وإلا رفض واضح | حسب الصيغة |
+
+### 20.46.5 تحديث أولويات العمل
+
+1. تثبيت كشف الصيغة الحقيقي بالـmagic/content/schema، وعدم الاعتماد على الامتداد وحده.
+2. دعم APK وsplit APKs وGoogle APKS وSAI APKS وAPKM وXAPK مع ملفات اختبار تمثل نسخاً متعددة.
+3. إكمال OBB كمرحلة منفصلة: package/version mapping، streaming، collision prevention، checksum/read-back، وإعادة المحاولة دون إعادة تثبيت التطبيق.
+4. إضافة AAB كمسار تحويل اختياري عبر bundletool بعد نجاح المسارات الأساسية.
+5. إبقاء APKV وZIP العام خارج V1 إلى أن توجد حاجة وعينات ومواصفات موثوقة.
+6. لا نضيف ELF/symbol analysis إلى مسار التثبيت؛ فحوص ABI وminSdk وmanifest والتوقيع ومطابقة splits هي ما يلزم لاتخاذ قرار تثبيت مفهوم.
+
+### 20.46.6 اختبارات قبول جديدة
+
+- AAB صالح ينتج APK Set ثم يثبت على Serial محدد.
+- AAB غير صالح أو غير قابل للمعالجة ينتج سبب فشل واضحاً دون تشغيل install.
+- AAB يحتوي dynamic feature modules؛ توثيق ما تم تضمينه وما لم يتم تسليمه محلياً.
+- AAB/APKS مع أكثر من جهاز متصل؛ لا تبدأ العملية دون اختيار Serial.
+- APKV plain وencrypted، كلمة مرور صحيحة وخاطئة، checksum مطابق ومخالف.
+- APKV يحتوي duplicate basenames أو archive paths غير آمنة أو payload يتجاوز حدود الموارد؛ يجب الرفض.
+- APKV manifest ناقص أو غير متوافق مع schema؛ لا نستنتج أسماء splits أو package من التخمين.
+- XAPK metadata بقيم رقمية ونصية وحقول اختيارية ناقصة.
+- ZIP عادي يحتوي APK واحداً أو عدة APKs غير مترابطة؛ لا يُثبت تلقائياً دون تحقق المجموعة.
+- PackageInstaller/ADB success يتبعه post-install verification؛ لا نخلط نجاح الأمر مع تحقق package/version المثبت.
+
+**حالة التحقق:** تمت مراجعة ملفات المصدر المذكورة عند commits محددة ووثائق Android الرسمية. لم يتم بناء أو تشغيل VInstall أو Brokk أو bundletool في هذه الجولة، ولم يتم اختبار AAB/APKV على جهاز فعلي. النتائج Source/Docs Review فقط، وليست Runtime أو Hardware Validation.
+
+**قرار الجولة:** نعتمد bundletool كمسار AAB الرسمي الاختياري؛ نحتفظ بـVInstall وBrokk كمراجع Android-side لا كدمج Windows؛ نؤجل APKV؛ ونواصل إعطاء الأولوية للصيغ الشائعة ومسار التثبيت الآمن والتحقق بعد التثبيت.
