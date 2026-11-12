@@ -14,11 +14,12 @@
 5. [03 — إدارة تطبيقات Android والشبكة عبر ADB](03-app-management-and-network.md) — إدارة التطبيقات، USB/Wireless، البحث والفلاتر، تواريخ التثبيت والتحديث، Installer Source، DNS، وأولوية محرك التثبيت.
 6. [04 — تشخيص وإصلاح تعريفات Android على Windows](04-windows-driver-diagnostics.md) — SetupAPI/PnP، Hardware IDs، مصادر التعريفات الرسمية، الإصلاح، التراجع، واختبارات القبول.
 7. [06 — معلومات نظام Android والجهاز](06-android-system-information.md) — كتالوج حقول الجهاز والبناء والـABI والذاكرة والتخزين والطاقة، مع تدقيق مشاريع GitHub ومصادر القراءة وحدود API 24+.
-8. [10 — تشخيص Android والسجلات](10-android-diagnostics-and-logs.md) — Live Logcat، التسجيل، Bugreport، dumpsys، Dropbox، Perfetto، تحليل الملفات الكبيرة، ومراجعة مشاريع GitHub.
+8. [09 — إدارة ملفات Android والنقل](09-device-file-management.md) — ADB وMTP/WPD وvirtual drive، dual-pane، نقل الملفات، Unicode، الإلغاء والتحقق، ومراجعة مشاريع GitHub.
+9. [10 — تشخيص Android والسجلات](10-android-diagnostics-and-logs.md) — Live Logcat، التسجيل، Bugreport، dumpsys، Dropbox، Perfetto، تحليل الملفات الكبيرة، ومراجعة مشاريع GitHub.
 
 ## 3. سجل الأدوات والأبحاث التفصيلية
 
-9. [02 — دراسة الأدوات الجاهزة والسوق وتجارب المستخدمين](02-tool-landscape-and-market-research.md) — سجل الأدلة والمراجعات التفصيلية. هذا الملف تراكمي وكبير؛ استخدم الخريطة التالية للوصول إلى المحور المطلوب.
+10. [02 — دراسة الأدوات الجاهزة والسوق وتجارب المستخدمين](02-tool-landscape-and-market-research.md) — سجل الأدلة والمراجعات التفصيلية. هذا الملف تراكمي وكبير؛ استخدم الخريطة التالية للوصول إلى المحور المطلوب.
 
 ### خريطة محاور الملف 02
 
@@ -45,7 +46,6 @@
 
 - 07-firmware-software-inventory.md — جرد السوفتوير والفريموير وملفات التحديث وmetadata.
 - 08-storage-partition-information.md — معلومات التخزين والأقسام وما يمكن قراءته بأمان.
-- 09-device-file-management.md — استعراض الملفات ونقلها وإدارتها.
 - 11-backup-restore-boundaries.md — أنواع النسخ الاحتياطي والاستعادة وحدود Android.
 
 ## 5. القرارات الحالية المختصرة
