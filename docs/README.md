@@ -10,7 +10,8 @@
 4. [إعادة التحقق من مصدر ADB والملفات وLogcat](13-source-revalidation-adb-file-core.md) — مراجعة AdvancedSharpAdbClient وADB-Explorer وAdbGui عند commits محددة، مع فجوات الكود والاختبارات المطلوبة.
 5. [إعادة التحقق من مثبتات APK والحزم](14-source-revalidation-app-installers.md) — مراجعة bundletool وapkfile وPacMan-APK وxapkInstaller، وتوحيد format detection وسياسة التثبيت والـarchive security.
 6. [إعادة التحقق من MCP وCodex](15-source-revalidation-mcp-codex.md) — مراجعة adb-mcp وus-all/android-mcp-server، وتحديد Read-only V1 وexplicit targeting وapproval flow.
-7. [منهجية البحث وضبط جودة الأدلة](RESEARCH-METHODOLOGY.md) — درجات الأدلة، حالات التنفيذ والاختبار، بطاقات تقييم الأدوات، سجل الاختبارات، إعادة الاستخدام، سياسة MCP والأمان.
+7. [إعادة التحقق من OTA والتخزين والنسخ الاحتياطي](16-source-revalidation-firmware-storage-backup.md) — مراجعة payload-dumper-go وlucky-arch وlpunpack_cyth وchen3feng/android-backup.
+8. [منهجية البحث وضبط جودة الأدلة](RESEARCH-METHODOLOGY.md) — درجات الأدلة، حالات التنفيذ والاختبار، بطاقات تقييم الأدوات، سجل الاختبارات، إعادة الاستخدام، سياسة MCP والأمان.
 
 ## 2. وثائق المجالات الوظيفية
 
