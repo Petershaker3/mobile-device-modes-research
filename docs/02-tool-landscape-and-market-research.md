@@ -3963,3 +3963,80 @@ Commit تمت مراجعته: `41d4e8f5773f7b7ddeec43bbc405615130043f23`.
 **حالة التحقق:** Source/Docs Review عند commit محدد. لم يتم تشغيل decryptor أو اختبار ملف APKM مشفر فعلياً.
 
 **قرار الجولة:** APKM العادي ZIP هو المسار الأساسي. فك APKM المشفر القديم مؤجل ولا يدخل V1 حتى تظهر حاجة فعلية وعينات اختبار، وهذا يمنع إدخال مسار تشفير تاريخي غير ضروري إلى محرك التثبيت.
+
+
+### 20.53 — تدقيق Paving-Base/APK-Installer: Windows UI وAdvancedSharpAdbClient وAAPTForNet
+
+المستودع: [Paving-Base/APK-Installer](https://github.com/Paving-Base/APK-Installer)  
+Commit تمت مراجعته: `c8f4e634b72c5555cffe9cc5759074a866b68ae1`.  
+الملفات: `README.md`، `InstallViewModel.cs`، `ApkInfo.cs)، `ApkParser.cs`، `AAPTool.cs`، `ApkExtractor.cs)، ABI/Density/Locale filters، وملفات المشروع.
+
+**تحديد نطاق المشروع بدقة:**
+- تطبيق Windows/WinUI لتثبيت تطبيقات Android عبر ADB، مع مسار واضح ومخصص لـWindows Subsystem for Android (WSA).
+- يدعم اختيار جهاز ADB، تنزيل Android Platform Tools عند الحاجة، وتحليل APK وعرض package/version/SDK/ABI/locale/density/permissions.
+- يمكن أن تكون بعض أفكار ADB وواجهة Windows قابلة للاستفادة مع أجهزة Android الفعلية، لكن WSA هو سيناريو محوري في المشروع؛ لذلك لا نعتبره دليلاً على اختبار USB/Wireless Android phones.
+- لا يظهر في README ادعاء دعم APKS/APKM/XAPK كحزم متعددة الصيغ.
+
+**ما ظهر في الكود:**
+
+1. **واجهة Windows وADB**
+   - WinUI 3 / .NET 10، مع `AdvancedSharpAdbClient 3.0.9` لإدارة ADB والأجهزة والتثبيت.
+   - يوجد تنزيل Platform Tools من Google عند عدم توفر ADB محلياً، وWireless discovery عبر Zeroconf في بنية التطبيق.
+   - مسار WSA يكتشف WSA URI handler، ويبدأ WSA ثم يتصل بعنوان localhost على port ثابت `58526`.
+   - الاعتماد على port ثابت خاص بمسار WSA لا يصلح كقاعدة لاكتشاف هواتف Android أو Wireless Debugging؛ مسار pairing للأجهزة الحقيقية يجب أن يستخدم pairing/connect endpoints التي يعلنها الجهاز.
+   - اختيار الجهاز في الكود المراجع يحفظ/يطابق بيانات اسم الجهاز والطراز والمنتج؛ تصميمنا يجب أن يحتفظ بـADB serial كهوية أساسية صريحة، لا يعتمد على خصائص وصفية قابلة للتكرار.
+
+2. **تحليل APK عبر AAPT**
+   - `AAPTForNet` يضم `aapt.exe` ويشغله عبر `Process`، ثم يحلل ناتج `dump badging` وموارد/XML tree.
+   - `ApkInfo` يحتوي حقولاً مفيدة: package/version/split name، minSdk/targetSdk، supported ABIs، locales، densities، permissions، launchable activity، وقائمة split APKs.
+   - هذا نموذج metadata مرجعي جيد لشاشة Package Inspection.
+   - لكن `AAPTool.Dump` يحدد النجاح أساساً من عدد أسطر المخرجات، ولا يظهر فحص موحد لـexit code أو timeout. لا يظهر cancellation token للقراءة، ويعتمد على انتظار process حتى ينتهي.
+   - parser يعتمد على نص مخرجات AAPT؛ يجب تثبيت نسخة الأداة واختبار تغيرات صيغة المخرجات، وعدم اعتبارها parser contract ثابتاً عبر كل الإصدارات.
+   - استخراج الأيقونة يستخدم ZIP entry extraction إلى مجلد مؤقت؛ يجب إخضاع أي استخراج من APK غير موثوق لحدود entries/bytes/path والوقت نفسها المطلوبة في Secure Extraction.
+
+3. **Device compatibility**
+   - التطبيق يستخرج ABI وminSdk وlocales وdensities من APK.
+   - مسار `CheckAPK` الذي تمت مراجعته يقارن minSdk الخاص بالتطبيق مع SDK الجهاز، لكنه لا يظهر فيه استخدام `SupportedABIs` لمطابقة ABI قبل التثبيت.
+   - لا يظهر فحص مسبق شامل لتوقيع APK أو split group certificate identity.
+   - وجود ABI metadata في الواجهة لا يثبت أن المحرك يمنع تثبيت APK غير متوافق مع ABI الجهاز؛ يجب اختبار ذلك صراحةً في محركنا.
+
+4. **Install behavior**
+   - يميز المسار بين APK منفرد، APK مصنف كـsplit، ومجموعة `SplitApks`، ويستخدم AdvancedSharpAdbClient لعمليات install وinstall-multiple.
+   - يمرر `-r` و`-t` في حالات التثبيت التي تمت مراجعتها. تمرير `-t` دائماً يوسع السماح بتثبيت test-only packages؛ وهذا لا يناسب سياسة V1 لدينا، حيث لا نسمح test-only إلا باختيار صريح ومفسر من المستخدم.
+   - لا يظهر تحقق مستقل بعد التثبيت من package/version/signature state؛ نجاح استدعاء المكتبة يتبعه مباشرة تحديث الواجهة إلى Installed.
+   - يوجد تقدم لرفع الملفات وكتابة session والتثبيت، وهي فكرة مفيدة لتصميم progress phases.
+   - لا يظهر في المسار المراجع فصل صريح بين ADB command success وPACKAGE_VERIFIED وAPP_LAUNCH_VERIFIED.
+
+5. **تغطية الصيغ**
+   - الكود يحتوي model لقائمة split APKs ويستدعي install-multiple، لكنه لا يثبت وجود parser متكامل لـGoogle APKS `toc.pb` أو APKM `info.json` أو XAPK `manifest.json` وOBB.
+   - لذلك لا نصنفه كحل multi-format؛ هو أساس UI/ADB وAPK metadata.
+   - لا نستخدمه بديلاً عن bundletool أو adapters المتخصصة للصيغ.
+
+6. **CI والاختبارات**
+   - ملفات المشروع تشير إلى WinUI/.NET 10 وAdvancedSharpAdbClient وSharpCompress وأداة AAPT مضمّنة.
+   - شجرة الملفات التي تمت مراجعتها لم تُظهر مجموعة اختبارات واضحة لـsplit selection أو صيغ APKS/APKM/XAPK أو أجهزة Android فعلية؛ لا نستنتج من ذلك أن المستودع كله بلا اختبارات، لكن لم نجد corpus قبول يغطي احتياجاتنا في الملفات المفحوصة.
+   - لم نشغل build أو CI ولم نختبر التطبيق على Windows أو هاتف.
+
+**الحكم الهندسي:**
+- **مرجع UI/ADB جزئي:** WinUI، ADB client integration، device discovery، progress phases، وAPK metadata model.
+- **غير مناسب كمحرك تثبيت معتمد:** لا يثبت دعم صيغنا المتعددة، ولا يطبق ABI/signature preflight كاملاً، ويمرر test-only flag تلقائياً في المسار المراجع، ولا يقدم post-install verification مستقلاً.
+- **WSA-specific flow لا يُنقل إلى Android phone workflow:** خصوصاً localhost port الثابت وآلية تشغيل WSA.
+- يمكن الرجوع إلى AdvancedSharpAdbClient كمرشح إضافي لمقارنة مكتبات ADB .NET، لكن لا نعتمده قبل مراجعة serial targeting وtimeouts/cancellation وmulti-device semantics وinstall-multiple implementation.
+- لا ننسخ AAPT wrapper كما هو؛ نفضل أدوات Android SDK الرسمية المثبتة بإصدارات محددة، مع timeouts وexit-code handling وحدود output. توثيق Android الرسمي يضع `apkanalyzer` ضمن Command-Line Tools، و`aapt2` و`apksigner` ضمن Build Tools، وADB ضمن Platform Tools.
+
+**اختبارات قبول مستخلصة:**
+- Android phone عبر USB، Wireless ADB pairing/connect، جهازان في الوقت نفسه، وتغيير serial بعد إعادة الاتصال؛ لا يختلط الجهاز المختار.
+- WSA لا يتداخل مع Android device discovery ولا يفرض localhost port على الأجهزة الحقيقية.
+- APK بABI غير مدعوم: رفض قبل بدء التثبيت مع توضيح السبب.
+- APK minSdk أعلى من الجهاز: رفض واضح؛ targetSdk لا يعامل كأنه minSdk.
+- APK testOnly: رفض افتراضياً، والسماح فقط عند تفعيل خيار صريح وتحذير.
+- APK بتوقيع غير قابل للتحقق أو split group بتواقيع مختلفة: لا يصدر Compatibility Pass.
+- APK split منفرد لا يثبت كحزمة كاملة إذا كان يحتاج base/required splits؛ يرفض مع MISSING_BASE_APK أو MISSING_REQUIRED_SPLIT.
+- AAPT process يتوقف أو يعلق أو ينتج output ضخماً: timeout وحدود output وإلغاء process فعلي وتنظيف الموارد.
+- AAPT exit code غير صفري مع مخرجات جزئية: لا يصنف التحليل ناجحاً اعتماداً على عدد الأسطر فقط.
+- post-install query يثبت package/version، ثم launch verification اختيارية منفصلة.
+- لا يتم إعلان Installed قبل اكتمال التحقق، ولا يتم فتح التطبيق تلقائياً إلا إذا طلب المستخدم ذلك.
+
+**حالة التحقق:** Source/Docs Review عند commit محدد. لم يتم build أو تشغيل التطبيق أو تثبيت APK على هاتف. مراجعة الملفات لا تثبت أن WSA/USB/Wireless يعمل runtime في بيئتنا.
+
+**قرار الجولة:** نحتفظ بالمشروع كمرجع جزئي لواجهة Windows وADB client وAPK metadata، لا كمحرك multi-format. لا نقتبس test-only defaults أو WSA-specific assumptions أو غياب post-install verification.
