@@ -3101,3 +3101,124 @@ AOSP يوثق `--streaming` و`--no-streaming`، ويشرح أن الثاني ي
 **القرار:** نستخدم ADB الرسمي كـinstallation transport الأساسي، مع typed adapter يختار install أو install-multiple أو install-multi-package وفق خطة التثبيت. لا نكتب بروتوكول تثبيت موازياً، ولا ننسخ flags من مشاريع طرف ثالث دون سياسة واضحة.
 
 **حالة التحقق:** مراجعة وثائق Android Developers ومرجع AOSP الحالي. لم يتم تشغيل الأوامر على جهاز فعلي في هذه الجولة.
+
+
+### 20.44 قواعد توافق Split APK والتوقيع وإدارة حالات الفشل (12 نوفمبر 2026)
+
+#### 20.44.1 شروط صحة مجموعة Split
+
+مرجع Android PackageInstaller يحدد أن مجموعة split تتكون من Base واحد وSplits بأسماء فريدة، وأن الملفات التي تدخل جلسة تثبيت واحدة يجب أن تتطابق في:
+- package name.
+- version code.
+- signing certificates.
+- split names الفريدة.
+- وجود Base APK واحد بالضبط.
+
+هذه شروط اتساق أساسية قبل إرسال الملفات إلى ADB؛ لا نترك اكتشافها بالكامل لرسالة خطأ متأخرة من Package Manager.
+
+**تنفيذ الفحص المقترح:**
+1. قراءة package name وversionCode وsplitName من Manifest لكل APK.
+2. استخراج signing certificate lineage/digests والتحقق من صحة التوقيع لكل ملف عبر Android SDK Build Tools `apksigner verify --verbose --print-certs`.
+3. مقارنة هوية الحزمة ورقم الإصدار وشهادات التوقيع بين جميع ملفات المجموعة.
+4. رفض تكرار splitName أو غياب Base أو وجود أكثر من Base.
+5. مقارنة المجموعة المثبتة حالياً عند التحديث: package identity والتوقيع وسياسة version code؛ لا نفترض أن اختلاف التوقيع يمكن تجاوزه بإعادة التثبيت.
+6. حفظ نتيجة الفحص كـInstall Plan، وربط موافقة المستخدم ببصمات SHA-256 لكل ملف وبـdevice serial.
+
+**مهم:** التوقيع الصحيح يثبت سلامة الملف وفق آلية التوقيع وهوية الموقّع، لكنه لا يثبت أن التطبيق آمن أو موثوق أو خالٍ من السلوك الضار.
+
+#### 20.44.2 اختيار ملفات ABI / Density / Language / SDK
+
+- في APKS القياسي، لا نكتب selector خاصاً بنا إذا كان bundletool قادراً على استخراج مجموعة الجهاز المستهدفة؛ نستخدم `get-device-spec` و`extract-apks` أو `install-apks` مع Serial محدد.
+- DeviceSpec يتضمن supported ABIs وsupported locales وscreen density وSDK version.
+- يجب احترام targeting على مستوى Variant وعلى مستوى APK، لا اختيار Variant فقط ثم ضم كل APK داخله عشوائياً.
+- إذا كانت الحزمة XAPK/APKM أو تنسيقاً خاصاً لا يملك selector رسمي متوافقاً، نستخدم parser خاصاً بالصيغة مع قواعد مطابقة واضحة ومختبرة. عند غياب معلومات كافية، نعرض "تعذر تحديد مجموعة متوافقة بثقة" بدلاً من التخمين.
+- لا نختار أعلى ABI اسماً أو ترتيباً ثابتاً. نستخدم ترتيب ABIs الفعلي الذي يعلنه الجهاز ونطابقه مع targeting metadata.
+- كثافة الشاشة واللغة لا تعني دائماً أن split واحداً فقط مطلوب؛ قد توجد base/features/configuration splits متعددة يجب الحفاظ عليها وفق metadata.
+
+#### 20.44.3 مصفوفة التعامل مع الملفات والحالات
+
+| الحالة | الفحص | القرار |
+|---|---|---|
+| APK واحد universal | Manifest، minSdk، ABI/native libs، signature | Preview ثم `adb install` |
+| APK base فقط من تطبيق split | اكتشاف split metadata/الاعتماد على المجموعة | تحذير/رفض إذا كانت المجموعة غير مكتملة |
+| Base + مجموعة splits | package/version/cert/base/split uniqueness | `adb install-multiple` بعد validation |
+| APKS قياسي | toc.pb + device targeting | bundletool أولاً |
+| APKM | info.json + محتوى الملفات + بيانات الحزمة | parser مخصص بعد تدقيق البنية، ثم split validation |
+| XAPK | manifest.json + APKs + expansion metadata | APK install plan مستقل وOBB plan منفصل |
+| OBB/expansion | package mapping، الحجم، الاسم والمسار، وجود الحزمة المثبتة | لا ينسخ قبل نجاح التثبيت والتحقق؛ موافقة منفصلة/واضحة |
+| أرشيف مشفر أو صيغة غير مفهومة | عدم القدرة على فحص المحتوى | Unsupported/Encrypted؛ لا نحاول التخمين أو استخراجاً عاماً |
+| ZIP تالف أو حدود الموارد متجاوزة | CRC/offset/entry/size/stream limits | رفض مع سبب محدد |
+| Split ناقص أو مكرر | base/splitName/package/version/cert | رفض المجموعة؛ لا تثبيت جزئي |
+| توقيع غير صالح أو شهادات غير متطابقة | apksigner والتحقق المقارن | رفض قبل التثبيت |
+| minSdk أعلى من SDK الجهاز | Manifest + device SDK | غير متوافق؛ لا نرسل أمر التثبيت |
+| ABI غير مدعوم | device ABI list + native library ABIs/targeting | تحذير أو رفض بحسب وجود native code ومتطلبات الحزمة |
+| تحديث بتوقيع مختلف | مقارنة التوقيع مع النسخة الحالية | رفض update؛ لا uninstall كحل تلقائي |
+| downgrade | مقارنة versionCode وسياسة Android/ADB | خيار صريح فقط؛ لا محاولة تلقائية |
+| مساحة غير كافية أو قيود Package Manager | رسالة النظام/حالة الجهاز | عرض السبب؛ لا حذف ملفات/تطبيقات تلقائياً |
+
+#### 20.44.4 نموذج رسائل الفشل للمستخدم
+
+يجب أن تكون النتيجة قابلة للتصرف، لا مجرد "Install failed":
+
+- `INVALID_ARCHIVE`: الملف تالف أو لا يطابق بنية الصيغة.
+- `UNSUPPORTED_OR_ENCRYPTED_FORMAT`: لا يمكن قراءة المحتوى بهذه النسخة من البرنامج.
+- `MISSING_BASE_APK`: مجموعة Split لا تحتوي Base APK.
+- `DUPLICATE_SPLIT`: يوجد split name مكرر.
+- `PACKAGE_MISMATCH`: ملفات المجموعة لا تخص package واحدة.
+- `VERSION_MISMATCH`: versionCode غير متطابق.
+- `SIGNATURE_MISMATCH`: شهادات التوقيع غير متطابقة أو التوقيع غير صالح.
+- `SDK_INCOMPATIBLE`: الحد الأدنى لإصدار Android أعلى من الجهاز.
+- `ABI_INCOMPATIBLE`: لا توجد native ABI مناسبة للجهاز.
+- `DEVICE_UNAUTHORIZED`: ADB غير مصرح به.
+- `DEVICE_SELECTION_REQUIRED`: يوجد أكثر من جهاز ولم يحدد المستخدم Serial.
+- `INSTALL_REJECTED_BY_ANDROID`: رفض Package Manager؛ نعرض النص الأصلي المنقح ورمز الخطأ.
+- `INSTALL_TIMEOUT_UNKNOWN_STATE`: انتهت مهلة واجهة الانتظار ولا نعرف إن كانت عملية ADB توقفت؛ نتحقق من حالة package قبل إعادة المحاولة.
+- `POST_INSTALL_VERIFICATION_FAILED`: الأمر انتهى بنجاح لكن package/version لم يثبتا في read-back.
+
+كل Error يحتوي: المرحلة، الملف/المجموعة، الجهاز المستهدف، السبب، هل حدثت أي mutation، هل يمكن إعادة المحاولة بأمان، والإجراء المقترح. لا نسجل محتوى APK أو بيانات شخصية من الجهاز في السجل.
+
+#### 20.44.5 Acceptance Test Matrix — مجموعة اختبارات قبل اعتماد المحرك
+
+لا نبدأ باختبار أجهزة عشوائي؛ ننشئ corpus محلياً ثابتاً ومجهول الهوية، مع manifest متوقع وhash لكل fixture:
+
+1. APK صالح universal.
+2. APK صالح يحتوي native libraries لـarm64-v8a فقط.
+3. APK صالح يحتوي أكثر من ABI.
+4. APKS صحيح متعدد variants/config splits.
+5. APKS يطابق جهازاً واحداً ولا يطابق DeviceSpec آخر.
+6. APKM صحيح مع base وsplits.
+7. XAPK صحيح مع base/splits بلا OBB.
+8. XAPK صحيح مع OBB.
+9. Base مفقود.
+10. Split مكرر.
+11. package name مختلف بين splits.
+12. versionCode مختلف.
+13. signing certificate مختلف.
+14. signature غير صالح.
+15. minSdk غير مدعوم.
+16. ABI غير مدعوم مع وجود native code.
+17. ZIP تالف / CRC خاطئ / truncated.
+18. path traversal / absolute path / symlink / duplicate names.
+19. ZIP bomb/resource limit fixture.
+20. ملف مشفر أو امتداد مضلل.
+21. أكثر من جهاز ADB متصل.
+22. جهاز unauthorized/offline.
+23. انقطاع ADB أثناء التثبيت.
+24. نفاد المساحة أو رفض Package Manager.
+25. update بتوقيع صحيح وversion أعلى.
+26. update بتوقيع مختلف.
+27. downgrade صريح ومرفوض من النظام.
+28. إعادة المحاولة بعد timeout مع package state غير محسوم.
+
+**بوابات النجاح:**
+- Parser tests: اكتشاف النوع والـmetadata دون extraction غير آمن.
+- Validation tests: رفض كل fixture غير متسق قبل mutation.
+- Selector tests: اختيار نفس مجموعة الملفات التي يتوقعها bundletool للـAPKS القياسي.
+- Process tests: Serial محدد، arguments منفصلة، timeout/cancellation يملكان process فعلياً، ولا توجد إعادة محاولة تغيّر سياسة الأمان.
+- Device integration tests: تثبيت على أجهزة/محاكيات تمثل ABI/API مختلفة، ثم read-back package/version.
+- OBB tests: لا نقل قبل نجاح التثبيت والتحقق، ولا path escaping.
+- Regression: كل عينة فشل يتم إصلاحها تتحول إلى fixture دائم.
+
+**القرار:** محرك التثبيت لن يقبل مجموعة split لمجرد أن امتداد الملف صحيح. قبول المجموعة مشروط بسلامة الأرشيف، واتساق package/version/signature/base/split metadata، واختيار مكونات متوافقة مع الجهاز. الحالات غير القابلة للحسم تنتهي برفض واضح، لا بتجربة تثبيت عشوائية.
+
+**حالة التحقق:** القواعد المرجعية مبنية على Android PackageInstaller وbundletool docs/source. مصفوفة الاختبار مواصفة مستقبلية؛ لم تُنشأ fixtures ولم يتم تنفيذ الاختبارات أو تثبيت تطبيقات في هذه الجولة.
