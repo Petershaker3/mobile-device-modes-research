@@ -69,17 +69,21 @@
 
 لا نحتاج فتح وثائق مستقلة إضافية حالياً. الفجوات المتبقية تسجل داخل هذه الوثائق أو ملفات المجال الحالية، وتتحول إلى عمل جديد فقط إذا ظهر سبب تقني واضح.
 
-## 5. ترتيب العمل البحثي بعد المصفوفة
+## 5. ترتيب العمل بعد اكتمال الوثائق المستقلة
 
-| الترتيب | الجولة | ناتج البحث المطلوب |
-|---:|---|---|
-| 1 | تم إنجاز 06 — Android System Information | بحث أولي ومراجعة مصدر Host-side وAndroid-side؛ لا اختبار Hardware ولا اعتماد دمج |
-| 2 | تم إنجاز 10 — Android Diagnostics & Logs | بحث ومراجعة مصدر لمرشحي Logcat وBugreport وDropbox وPerfetto؛ لا تشغيل أو اختبار Hardware |
-| 3 | تم إنجاز 09 — Device File Management | تدقيق مشاريع ADB-Explorer وAdbFileManager وWinDroidFS وJSleim ومراجع WPD؛ لا اختبار Hardware |
-| 4 | تم إنجاز 07 — Firmware & Software Inventory | مراجعة AOSP OTA metadata وupdate_metadata.proto وpayload-dumper-go وAVB؛ لا extraction أو flash |
-| 5 | تم إنجاز 08 — Storage & Partition Information | مراجعة AOSP liblp/lpdump وlpunpack-go وlucky-arch وlpunpack_cyth؛ لا اختبار Hardware أو extraction |
-| 6 | تم إنجاز 11 — Backup & Restore Boundaries | حدود Android Auto Backup وadb backup، ومراجعة أدوات incremental/legacy/Windows؛ لا اختبار Backup/Restore فعلي |
-| 7 | تحديث مصفوفة التغطية | ربط كل نتيجة بمشروع ومصدر وملف/قسم ودليل وحالة تحقق، ثم تحديث 00 وREADME |
+اكتمل إنشاء الوثائق المستقلة 06–11. لم تعد الجولة التالية إنشاء وثائق أخرى؛ بل تحويل البحث إلى مرشحين مثبتين وخطة PoC موحدة:
+
+| الترتيب | الجولة | الناتج المطلوب | حالة البداية |
+|---:|---|---|---|
+| 1 | Source Revalidation | مراجعة الفروق عند SHAs المثبتة في [12](12-REUSE-AND-IMPLEMENTATION-PLAN.md)، وفصل commit المراجع عن HEAD الملتقط | In Progress |
+| 2 | Host Core PoC | مقارنة .NET 10 وTauri/Rust في ADB USB/Wireless وmulti-device وcancellation وWindows PnP | Not Started |
+| 3 | Shared Contracts | DeviceHandle وCapability وOperation وResult وAudit schemas | Design Spec موجود؛ يحتاج PoC |
+| 4 | Test Corpus | مخرجات Android منقحة وfixtures APK/OTA/super/logcat/bugreport وعمليات فشل | Not Started |
+| 5 | Runtime Matrix | Windows 10/11 وAndroid API 24+ مع فصل Unit/Parser/Runtime/Hardware evidence | Not Started |
+| 6 | قرار Stack | اختيار Host/UI/ADB/MTP/MCP/dependency delivery بعد نتائج PoC | Open Decision |
+| 7 | Implementation Approval | موافقة تنفيذ مستقلة قبل أي تغيير في البرنامج أو الجهاز | Required Gate |
+
+التفاصيل والمعايير وترتيب المحاور في [12 — خطة إعادة الاستخدام والمعمارية والتنفيذ](12-REUSE-AND-IMPLEMENTATION-PLAN.md).
 
 ## 6. قواعد تحديث هذه المصفوفة
 
