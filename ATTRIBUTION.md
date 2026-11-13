@@ -52,6 +52,9 @@
 | `Models/TryOpenOutcome.cs` | `logcat-uicore/Models/TryOpenOutcome.cs` | 20 |
 | `Models/AdbServerSelfHealResult.cs` | `logcat-uicore/Models/AdbServerSelfHealResult.cs` | 11 |
 | `Models/CommandEntry.cs` | `logcat-uicore/Models/CommandEntry.cs` | 99 |
+| `Adb/AdbManager.cs` | `logcat-uicore/Services/AdbManager.cs` | 578 | **حذف 60 سطراً** — انظر §1.7 |
+| `Adb/TransferProgress.cs` | `logcat-uicore/Services/TransferProgress.cs` | 35 | **لا شيء** |
+| `Adb/LogcatStream.cs` | `logcat-viewer/Services/LogcatStream.cs` | 139 | **لا شيء** |
 | **الإجمالي** | | **5566** | **صفر تعديلات** |
 
 > **لماذا 30 ملفاً وليس 9؟** النسخة الأولى من هذا الجدول ذكرت 9. CI أثبت في أربع دورات
@@ -83,6 +86,9 @@ Win32 (`DllImport`)؛ والاستخدام الوحيد لـ`System.Drawing` ه�
 | `FileProxyChannelStateTests.cs` | `tests/logcat.Tests/FileProxyChannelStateTests.cs` | **لا شيء** |
 | `FileProxyModeTests.cs` | `tests/logcat.Tests/FileProxyModeTests.cs` | **لا شيء** |
 | `LegacySettingsDtoTests.cs` | `tests/logcat.Tests/LegacySettingsDtoTests.cs` | **لا شيء** |
+| `FakeAdbSocket.cs` | `tests/logcat.Tests/FakeAdbSocket.cs` | **لا شيء** |
+| `AdbManagerServerSelfHealTests.cs` | `tests/logcat.Tests/AdbManagerServerSelfHealTests.cs` | **لا شيء** |
+| `TransferProgressTests.cs` | `tests/logcat.Tests/TransferProgressTests.cs` | **لا شيء** |
 | `FakeProxyServer.cs` | `tests/logcat.Tests/FakeProxyServer.cs` | **لا شيء** |
 
 **437 اختباراً تمر كلها** على `windows-latest` — رقم من CI، لا من مستودع upstream.
@@ -150,6 +156,32 @@ Win32 (`DllImport`)؛ والاستخدام الوحيد لـ`System.Drawing` ه�
 `src/DeviceToolkit.Tests/TestHelpers.cs` — **7 أسطر محذوفة، موضعان**، وهو الملف المنقول
 الوحيد الذي مُسّ. التفصيل في §5.1 أدناه، وسكربت التحقق يطبع تحذيراً صريحاً عند هذا الملف
 بدلاً من اعتباره متطابقاً.
+
+### 1.7 `AdbManager.cs` — التعديل الثاني، ولسبب مختلف
+
+`logcat-uicore/Services/AdbManager.cs` (636 سطراً) هو الملف المنقول الثاني الذي مُسّ.
+السطر الوحيد الذي يمنع نقله كما هو هو Screenshot: 58 سطراً تبني `Bitmap` من
+framebuffer الجهاز عبر `System.Drawing`، وهي حزمة Windows-only كانت ستنقض قابلية
+النقل التي أثبتها CI على لينكس.
+
+| ما أُزيل | العدد | السبب |
+|---|---:|---|
+| منطقة `截图` كاملة (`Screenshot`, `ScreenshotAsync`, `FramebufferToImage`) | 58 سطراً | `System.Drawing` — تخص الواجهة لا المكتبة |
+| `using System.Drawing;` و`using System.Drawing.Imaging;` | 2 | لم يبقَ ما يحتاجهما |
+| **مُضاف**: سطران يعلنان التعديل | +2 | ليقرأه من يفتح الملف |
+
+**كل ما تبقّى حرفي.** لكن «حذفنا حوالي ٦٠ سطراً» ليست ضمانة: لو حذف أحدهم ٦١ سطراً
+وأضاف سطراً آخر لطابق العدد وبقي التعديل خفياً. لذلك الفحص **بنيوي** لا حسابي:
+`scripts/check-subsequence.py` يقسّم ملفنا إلى أطول مقاطع متتالية موجودة حرفياً في
+upstream، ويشترط ظهورها بترتيب upstream، ويفشل على أي سطر مُعدَّل أو مُدخَل أو مُعاد
+ترتيبه. اختبرتُه على الحالات الثلاث قبل وصله بالفحص:
+
+| الحالة | النتيجة |
+|---|---|
+| ملفنا كما هو | ✅ 2 مقطعاً، 576 سطراً محفوظاً، 58 محذوفاً |
+| تغيير سطر واحد (`RootProbeTimeoutSec`) | ❌ فشل عند السطر 41 |
+| إدخال سطر واحد | ❌ فشل عند السطر 100 |
+| إعادة ترتيب المقاطع | ❌ فشل — «المقاطع خارج ترتيب upstream» |
 
 ---
 
@@ -219,10 +251,46 @@ dotnet test DeviceToolkit.slnx
 | `DeviceToolkit.Core/Localization/LocTable.g.cs` | جدول الترجمة الكامل (643 مفتاحاً) | **مُولَّد** من 11 ملف `LocTable.*.cs` — لا يُحرَّر يدوياً. التفصيل: §1.5.1 |
 | `scripts/gen-loctable.py` | يولد `LocTable.g.cs` ويتحقق من عدم انحرافه عن upstream | upstream لا يملك مولّداً؛ الجدول عنده موزّع على ملفات `partial` |
 | `scripts/check-loc-keys.py` | يثبت أن كل مفتاح يستخدمه الكود موجود في الجدول | يمنع السقوط الصامت إلى الصينية — عيب حقيقي كشفته CI |
-| `scripts/verify-transplant.sh` | يثبت أن 48 ملفاً منقولاً متطابق + قابلية النقل + البناء | upstream لا يملك آلية تحقق من النقل |
+| `scripts/verify-transplant.sh` | يثبت أن الملفات المنقولة متطابقة + قابلية النقل + البناء | upstream لا يملك آلية تحقق من النقل |
+| `scripts/check-subsequence.py` | يثبت أن `AdbManager.cs` هو upstream مع حذف مقاطع كاملة فقط | الفحص الحسابي («حُذف ٦٠ سطراً») يقبل تعديلاً خفياً |
+| `Adb/AdbShell.cs` | مهلة مفروضة على `adb shell` | **upstream نفسه لا يفعلها** — انظر §5.2 |
 | `DeviceToolkit.Core/DeviceToolkit.Core.csproj` | تعريف المشروع | لا وجود له upstream بهذا الشكل (الكود كان داخل تطبيق WinForms) |
 | `DeviceToolkit.Tests/DeviceToolkit.Tests.csproj` | تعريف مشروع الاختبار | نفس السبب |
 | `Directory.Build.props`, `global.json`, `DeviceToolkit.slnx` | بناء الحل | بنية حل جديدة |
+
+### 5.2 لماذا `AdbShell` جديد ولم يُصلَح `AdbManager.Shell`؟
+
+`AdbManager.Shell(serial, cmd, timeoutSec = 30)` **يأخذ مهلة ولا يستخدمها**:
+
+```csharp
+public string Shell(string serial, string cmd, int timeoutSec = 30)
+{
+    var device = FindDevice(serial);
+    var receiver = new ConsoleOutputReceiver();
+    _client.ExecuteRemoteCommand(cmd, device, receiver, Encoding.UTF8);
+    return receiver.ToString();          // ← timeoutSec لا يُذكر في الجسم
+}
+```
+
+وقناة الأوامر في `AdvancedSharpAdbClient` بلا أي مهلة داخلية، فجهاز ينتظر لمسة على
+نافذة `su` — أو `logcat` معلّق، أو `find /` على قسم ممتلئ — يحجز الخيط إلى الأبد.
+upstream يعرف ذلك: تعليق `RootProbeTimeoutSec` يصف المشكلة حرفياً، ثم يحلّها لمسار
+root probe وحده بسِباق يدوي ٨ ثوانٍ.
+
+**الخيار المرفوض: تعديل `AdbManager.cs`.** سبب وجود هذا المستودع هو أن المنقول مطابق
+قابل للإثبات، و`check-subsequence.py` يثبت ذلك بنيوياً. شيم واحد لحذف `System.Drawing`
+لا مفرّ منه مفهوم؛ شيم ثانٍ يغيّر **السلوك** كان سيحوّل «نقلنا upstream» إلى «نقلنا
+شيئاً يشبه upstream».
+
+**الخيار المتَّخذ:** `AdbShell` يلتف حول العيب بدل أن يخفيه — لا يستدعي `Shell` إطلاقاً،
+بل يركّب بديلين upstream نفسه يملكهما ويصحّهما:
+`AdbManager.AdbArgs` (يضيف `-s <serial>`) و`AdbManager.RunAdbAsync` (يقتل شجرة العملية
+عند الإلغاء) — خلف `CancellationTokenSource` مرتبط بمهلة المتصل. انتهاء المهلة ⇒
+`TimeoutException`؛ وإلغاء المتصل يبقى إلغاءً لا مهلة.
+
+**العيب يبقى قائماً في `AdbManager.Shell`.** أي كود يستدعي `Shell` مباشرة — كما تفعل
+واجهة upstream في ٢٥ موضعاً — لا يزال عرضة للتعليق. هذا مسجَّل هنا كدَين تقني معلوم،
+لا كمشكلة محلولة.
 
 ### 5.1 تعديل واحد على ملف منقول
 
