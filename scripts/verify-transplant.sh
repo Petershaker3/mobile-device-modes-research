@@ -88,6 +88,7 @@ for f in SettingsIO ConfigMigration LegacySettings LanguageSettings AndToolsSett
   check_identical "logcat-uicore/Services/$f.cs" "src/DeviceToolkit.Core/Infrastructure/$f.cs"
 done
 check_identical "logcat-uicore/Services/StartupLog.cs" "src/DeviceToolkit.Core/Infrastructure/StartupLog.cs"
+check_identical "logcat-uicore/Services/TransferProgress.cs" "src/DeviceToolkit.Core/Adb/TransferProgress.cs"
 for f in CrashEvent FilterSpec; do
   check_identical "logcat-viewer/Models/$f.cs" "src/DeviceToolkit.Core/Diagnostics/$f.cs"
 done
@@ -96,7 +97,7 @@ for f in LogParserTests LogDocumentTests LogDocumentZeroCopyTests LogDocumentPro
          TextProbeTests TestCultureBootstrap SidecarCacheTests FileProxyProtocolTests \
          FileProxyLoopbackTests FileProxyChannelStateTests FileProxyModeTests \
          LegacySettingsDtoTests FakeProxyServer FakeAdbSocket \
-         AdbManagerServerSelfHealTests; do
+         AdbManagerServerSelfHealTests TransferProgressTests; do
   check_identical "tests/logcat.Tests/$f.cs" "src/DeviceToolkit.Tests/$f.cs"
 done
 
