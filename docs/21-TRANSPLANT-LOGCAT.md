@@ -22,24 +22,39 @@
 
 هذه هي **الطبقة الأصعب والأغلى** في محور التشخيص. وقرار نقلها يعني أن محور التشخيص في V1 لم يعد يبدأ من الصفر.
 
-## 2. ما نُقل وما لم يُنقل ولماذا
+> **تصحيح مهم بعد أول تشغيل حقيقي.** النسخة الأولى من هذا المستند ادّعت أن 9 ملفات كود
+> هي كل ما يلزم. CI أثبت العكس خلال أربع دورات: كل بناء كان يكشف تبعية لم أنقلها.
+> العدد الحقيقي **28 ملف كود + 20 ملف اختبار**. الدرس مسجّل هنا صريحاً لا مخفياً:
+> **قراءة الكود لا تكشف سلسلة التبعيات؛ المُصرِّف يكشفها.** لذلك لم أعتمد على القراءة
+> في الجولة الأخيرة، بل تبعت سلسلة التبعيات حتى توقف المُصرِّف عن الشكوى.
 
-### نُقل حرفياً — 9 ملفات كود
+### نُقل حرفياً — 28 ملف كود
 
-`LogParser.cs` · `LogDocument.cs` · `FilterEngine.cs` · `CrashExtractor.cs` · `CrashAggregator.cs` · `CrashTime.cs` · `TextProbe.cs` · `CrashEvent.cs` · `FilterSpec.cs`
+| المجموعة | الملفات |
+|---|---|
+| التحليل الأساسي (9) | `LogParser` · `LogDocument` · `FilterEngine` · `CrashExtractor` · `CrashAggregator` · `CrashTime` · `TextProbe` · `CrashEvent` · `FilterSpec` |
+| كاش الـsidecar (2) | `SidecarCache` · `SidecarCacheStore` |
+| الملفات المؤقتة والـIPC (5) | `FileProxyService` · `FileProxyClient` · `FileProxyMode` · `FileProxyException` · `ProxyChannel` |
+| الإعدادات (6) | `LogcatSettings` · `SettingsIO` · `ConfigMigration` · `LegacySettings` · `LanguageSettings` · `AndToolsSettings` |
+| السجلات والنماذج (6) | `StartupLog` + `DeviceLastDir` · `FavoriteDir` · `DeviceInfo` · `FileEntry` · `TryOpenOutcome` · `AdbServerSelfHealResult` · `CommandEntry` |
 
-**كيف عرفنا أنها قابلة للنقل؟** ليس تخميناً — بحث نصي داخل الملفات التسعة:
+**كيف عرفنا أنها قابلة للنقل؟** ليس تخميناً — الفحص النصي:
 ```bash
-grep -n "System.Windows.Forms\|System.Drawing\|DllImport\|#if WINDOWS" <الملفات>
+grep -rn "System.Windows.Forms\|System.Windows.Media\|DllImport" src/DeviceToolkit.Core
 # لا نتائج
 ```
-هذا هو الفرق بين "يبدو قابلاً للنقل" و"مثبت أنه لا يعتمد على Windows".
+ثم أثبت CI البناء الفعلي على ويندوز ولينكس. هذا هو الفرق بين "يبدو قابلاً للنقل" و"مثبت".
 
-### نُقل حرفياً — 10 ملفات اختبار
+**ملاحظة عن `System.Drawing`:** `LogcatSettings` يستخدم `Point` و`Size` فقط، وهما من
+`System.Drawing.Primitives` المتاح على كل الأنظمة. لذلك فحص قابلية النقل يمنع
+`Bitmap`/`Graphics`/`Icon` تحديداً بدل منع النطاق كله — فحص يُطلق إنذارات كاذبة
+يتعلّم الناس تجاهله، وذلك أسوأ من عدم وجود فحص.
 
-`LogParserTests` · `LogDocumentTests` · `LogDocumentZeroCopyTests` · `LogDocumentProxiedTests` · `FilterEngineTests` · `FilterEngineBlockScanTests` · `ChunkedEquivalenceTests` · `CrashTests` · `TextProbeTests` · `TestCultureBootstrap`
+### نُقل حرفياً — 20 ملف اختبار
 
-تحتوي **246 `[Fact]` + 24 `[Theory]` بـ98 `[InlineData]`**. أي: المنقول لا يعمل فقط، بل **مُختبر مسبقاً**.
+`LogParserTests` · `LogDocumentTests` · `LogDocumentZeroCopyTests` · `LogDocumentProxiedTests` · `FilterEngineTests` · `FilterEngineBlockScanTests` · `ChunkedEquivalenceTests` · `CrashTests` · `TextProbeTests` · `TestCultureBootstrap` · `SidecarCacheTests` · `FileProxyProtocolTests` · `FileProxyLoopbackTests` · `FileProxyChannelStateTests` · `FileProxyModeTests` · `LegacySettingsDtoTests` · `FakeProxyServer` (مساعد) + `TestHelpers` (مُعدّل، [§5](#5-الملف-المنقول-الوحيد-الذي-مُسّ))
+
+**437 اختباراً تمر كلها على ويندوز** — رقم مُتحقَّق منه في CI لا معلن. أي: المنقول لا يعمل فقط، بل **مُختبر مسبقاً**.
 
 ### لم يُنقل — والسبب لكل حالة
 
@@ -47,8 +62,9 @@ grep -n "System.Windows.Forms\|System.Drawing\|DllImport\|#if WINDOWS" <المل
 |---|---|
 | `AdbManager.cs` | يستخدم `AdvancedSharpAdbClient` + `System.Drawing` للـscreenshot. **والأهم:** فيه الفجوة الموثقة — `Shell(serial, cmd, timeoutSec = 30)` لا يستخدم `timeoutSec` في جسمه. نقله كما هو = نقل عيب. يُنقل بعد إصلاح حقيقي |
 | `LogcatStream.cs` | يحتاج `AdvancedSharpAdbClient` واتصال جهاز حقيقي؛ اختباره بلا جهاز وهمي |
-| `FileProxyService/Client` | بنية IPC/spool خاصة بتطبيقهم، لا يحتاجها أي محور عندنا |
-| `SidecarCache` | تحسين لتحميل ملفات 1GB؛ يُؤجل حتى قياس حقيقي |
+| ~~`FileProxyService/Client`~~ | **نُقلت.** الحجة الأولى (لا يحتاجها أي محور عندنا) كانت خطأ: `LogDocument` نفسه يعتمد على `SpoolDirLease` من هذا الملف |
+| ~~`SidecarCache`~~ | **نُقلت.** `LogDocument` يعتمد على `SidecarPayload`؛ التأجيل كان سيكسر البناء |
+| `AdbManager`/`Forms`/`Controls`/`AppInfo` | لم تُنقل بعد — تحتاج قرار محور (انظر [§8](#8-التالي-في-قائمة-النقل)) |
 | `Loc.cs` (الملف الأصلي) | 559 سطراً، غالبه WinForms. نُقل منه 4 أعضاء فقط في ملف جديد ([§4](#4-الملف-الجديد-الوحيد)) |
 | كل `Forms/` و`Controls/` | واجهة WinForms — مستبعدة بقرار WPF |
 | 42 ملف اختبار آخر | تخص مكوّنات لم تُنقل |
@@ -69,9 +85,14 @@ grep -n "System.Windows.Forms\|System.Drawing\|DllImport\|#if WINDOWS" <المل
 
 **النتيجة:** `DeviceToolkit.Core` لا يعرف WinForms إطلاقاً، ورغم ذلك يبني كوداً لم يُكتب ليكون مكتبة.
 
-## 4. الملف الجديد الوحيد
+## 4. الملفان الجديدان (لا المنقولان)
 
-`src/DeviceToolkit.Core/Localization/Loc.cs` — **52 سطراً** (مع التعليقات والجدول).
+الملفان الجديدان الوحيدان هما:
+
+| الملف | السطور | لماذا جديد |
+|---|---:|---|
+| `Localization/Loc.cs` | 52 | نسخة منزوعة من WinForms لواجهة `Loc` — التفصيل أدناه |
+| `Localization/LocTable.g.cs` | **مُولَّد آلياً** | 643 مفتاحاً مستخرجة من 11 ملف `LocTable.*.cs`؛ لا يُكتب يدوياً ولا يُحرَّر |
 
 **لماذا لم يُنقل الأصل؟** `Loc.cs` الأصلي 559 سطراً، منها: `ToolTip` مشترك، `ConditionalWeakTable` لربط النصوص بالـcontrols، قياس عرض النص بالبكسل، `ApplyToAllForms`، حفظ `language.json`. كل هذا واجهة. الملفات المنقولة تحتاج **أربعة أعضاء**:
 
@@ -93,13 +114,22 @@ UiLang { ZhCn, En }
 // }
 ```
 
-**جدول الترجمة** (19 مفتاحاً) لم يُكتب من عندنا؛ استُخرج آلياً من `LocTable.CrashUi.cs` و`LocTable.FilterUi.cs` و`LocTable.MainUi.cs` و`LocTable.RuntimeMsg.cs` بسكربت يقرأ `["مفتاح"] = "value"`، لأن اختبارات منقولة تُثبّت النص الإنجليزي حرفياً:
+**جدول الترجمة — القصة التي غيّرت المنهج.** المحاولة الأولى نقلت 19 مفتاحاً اخترتها
+بنفسي من 4 ملفات `LocTable`، بناءً على ما «بدا» أن الكود يحتاجه. CI أثبت الخطأ في أول
+تشغيل: اختبار منقول يسأل عن نص إنجليزي لمفتاح لم أنقله، فيسقط الترجمة إلى الصينية.
+
+الحل ليس إضافة المفتاح الناقص، بل إنهاء التخمين: `scripts/gen-loctable.py` ينسخ
+**كل** مفتاح من 11 ملفاً (643 مفتاحاً، 0 تعارض)، وCI يعيد التوليد ويفشل على أي انحراف.
+ثم `scripts/check-loc-keys.py` يثبت أن كل مفتاح حرفي يستخدمه الكود موجود في الجدول —
+فلا يمكن لسقوط صامت إلى الصينية أن يخفي فجوة بعد اليوم.
+
+ولماذا يجب أن تُنقل النصوص لا أن نترجمها بأنفسنا؟ لأن اختبارات منقولة تُثبّت النص الإنجليزي حرفياً:
 ```csharp
 LangScope.InEn(() => Assert.Equal("Unknown", CrashKind.Name(kind)));
 ```
 لو ترجمناها بأنفسنا لتغير النص ولفشل الاختبار.
 
-**الفرق السلوكي الوحيد المسجّل:** الأصل يستنتج اللغة الأولية من `language.json` أو ثقافة النظام؛ هنا الافتراضي `ZhCn` ثابت. الكود والاختبارات المنقولة تضبط اللغة صراحةً دائماً، فالفارق لا يظهر — لكنه مسجّل لأنه فارق.
+**الفرق السلوكي المسجّل:** الأصل يستنتج اللغة الأولية من `language.json` أو ثقافة النظام؛ هنا الافتراضي `ZhCn` ثابت. الكود والاختبارات المنقولة تضبط اللغة صراحةً دائماً، فالفارق لا يظهر — لكنه مسجّل لأنه فارق.
 
 ## 5. الملف المنقول الوحيد الذي مُسّ
 
@@ -130,45 +160,76 @@ LangScope.InEn(() => Assert.Equal("Unknown", CrashKind.Name(kind)));
 scripts/verify-transplant.sh
 ```
 
-يفحص ثلاثة أشياء مستقلة:
+ست بوابات مستقلة، كلها عملت فعلاً — لا واحدة منها ادعاء:
 
-| الفحص | ماذا يفعل |
-|---|---|
-| **1. سلامة النقل** | يستنسخ upstream عند نفس الـcommit ويشغّل `diff` على 19 ملفاً. يفشل لو تغيّر بايت واحد |
-| **2. قابلية النقل** | يرفض وجود `System.Windows.Forms`/`System.Drawing`/`DllImport` في Core |
-| **3. البناء والاختبار** | `dotnet build` ثم `dotnet test` |
+| البوابة | ماذا تفعل | النتيجة |
+|---|---|---|
+| **1. سلامة النقل** | تستنسخ upstream عند نفس الـcommit وتُشغّل `diff` على 48 ملفاً | ✅ 48/48 متطابقة |
+| **2. قابلية النقل** | ترفض WinForms/WPF/P-Invoke/WinRT، و`System.Drawing` بما يتجاوز البدائيات | ✅ نظيف |
+| **3. البناء والاختبار** | `dotnet build` ثم `dotnet test` على ويندوز ولينكس | ✅ 437/437 ويندوز · 433/437 لينكس |
+| **4. انحراف جدول الترجمة** | تعيد توليد `LocTable.g.cs` من upstream وتفشل على أي فرق بايت | ✅ 643 مفتاحاً |
+| **5. تغطية مفاتيح الترجمة** | كل `Loc.T/F("...")` حرفي في الكود موجود في الجدول | ✅ 43/43 |
+| **6. روابط التوثيق الداخلية** | كل رابط Markdown داخلي بين ملفات `.md` يشير إلى ملف موجود | ✅ بلا كسر |
 
+```bash
+scripts/verify-transplant.sh          # البوابات 1-3
+scripts/gen-loctable.py --upstream <clone> --check   # البوابة 4
+scripts/check-loc-keys.py             # البوابة 5
 ```
-1/3  integrity: copied files vs upstream @ a9856162
-  OK   src/DeviceToolkit.Core/Logcat/LogParser.cs
-  ...  (19 ملفاً)
-  OK   TestHelpers.cs (documented shim: WinFormsCollection removed, 7 lines)
-2/3  portability: no Windows-only dependency in the core
-  OK   no WinForms / System.Drawing / DllImport in src/DeviceToolkit.Core
-```
 
-الفحصان 1 و2 يعملان **الآن** وقد أثبتا نجاحهما. الفحص 3 يحتاج جهازك لأن بيئتي بلا .NET SDK وبلا NuGet.
+البوابات 1 و2 و4 و5 تعمل في طرفيتك بلا .NET SDK (كلها bash/python). البوابة 3 وحدها
+تحتاج SDK — وهي بالضبط ما يشغّله GitHub Actions عنك إن لم يكن مثبتاً عندك.
 
-## 7. ما لم يُثبت بعد — بصراحة
+## 7. ما أُثبت فعلاً — ومَن أثبته
 
-| الادعاء | الحالة |
+كل ما في هذا القسم ناتج تنفيذ حقيقي في GitHub Actions، لا استنتاجاً من قراءة الكود.
+الرابط القابل للمشاركة: [run 43346149307](https://github.com/Petershaker3/mobile-device-modes-research/actions/runs/43346149307).
+
+| الادعاء | الحالة | الدليل |
+|---|---|---|
+| 48 ملفاً منقولاً مطابق بايت-ببايت لأصلهم | ✅ **مثبت** | وظيفة `transplanted code is unmodified`: 48 `check_identical` كلها `OK` |
+| المكتبة تبني على `net10.0` **على ويندوز ولينكس** | ✅ **مثبت** | `dotnet build -c Release` نجح على Runnerين مختلفين |
+| اختبارات ويندوز تمر كلها | ✅ **مثبت** | 437 من 437 (`all 437 tests passed (0 skipped)`) |
+| المكتبة لا تعتمد على ويندوز | ✅ **مثبت** | 433 من 437 تمر على `ubuntu-latest`؛ الأربعة الباقية موثّقة في [ci/known-linux-diffs.txt](../ci/known-linux-diffs.txt) وهي فروق دلالات مسارات لا أخطاء |
+| كل مفتاح ترجمة يستخدمه الكود موجود في الجدول | ✅ **مثبت** | `scripts/check-loc-keys.py`: 43 مفتاحاً مستخدماً داخل جدول من 643 |
+| جدول الترجمة مطابق لأصلهم | ✅ **مثبت** | `scripts/gen-loctable.py --check` = 643 مفتاحاً من 11 ملفاً، 0 تعارض |
+| الحزم من NuGet تُستعاد | ✅ **مثبت** | `dotnet restore` نجح على Runnerين (NuGet كان محجوباً في بيئتي) |
+
+### ما لم يُثبت — وما زال بصراحة على حاله
+
+| الادعاء | لماذا لم يُثبت |
 |---|---|
-| الكود يبني على `net10.0` | **غير مثبت**: لم أشغّل `dotnet build`. الاحتمال قوي (لا WinForms/P-Invoke) لكنه ليس إثباتاً |
-| الاختبارات تمر | **غير مثبت**: لم أشغّل `dotnet test`. الأرقام (852 اختباراً عندهم) **معلنة في مستودعهم**، لا مُتحقَّق منها هنا |
-| `Microsoft.Extensions.Logging.Abstractions 10.0.11` متاح على NuGet | **غير مثبت**: NuGet محجوب في بيئتي. رقم الإصدار منسوخ من csproj الخاص بهم |
-| `net10.0` SDK موجود عندك | **غير معروف**: إن لم يكن، `global.json` يطلب `10.0.100` بـ`rollForward: latestFeature` |
+| الكود يعمل على جهاز أندرويد حقيقي | **لا يوجد جهاز**. ولا اختبار واحد هنا يمسّ USB أو ADB |
+| واجهة WPF تعمل | لم تُبنَ بعد؛ المنقول مكتبة فقط بلا واجهة |
+| `net10.0` SDK مثبت عندك | غير معروف؛ `global.json` يطلب `10.0.100` بـ`rollForward: latestFeature` |
 
-**أول ما تشغّله:** `scripts/verify-transplant.sh`. لو ظهر خطأ build، أرسل لي النص وأصلحه فوراً — هذا أسرع من التخمين.
+> **التمييز المهم:** «437 اختباراً تمر» تعني أن منطق تحليل السجلات وكشف الانهيارات سليم.
+> لا تعني أن البرنامج يتصل بجهازك. تلك المسافة يقطعها أول اختبار على جهاز حقيقي.
+
+### أربعة فروق منصّة معروفة (ليست أخطاء)
+
+على لينكس تفشل أربعة اختبارات لأنها تختبر سلوكاً ويندوزياً بحتاً:
+
+1. `Path.GetFullPath("Z:\\no-access\\x.log")` لا يغيّر شيئاً على ويندوز، أما على لينكس فهو اسم نسبي فيُحلّ مقابل مجلد العمل.
+2. حذف مجلد يحمل مقبضاً مفتوحاً يفشل على ويندوز ويُسمح به على POSIX.
+3. `FileShare.None` ليس له مقابل على POSIX، فمسار «الفشل الصامت» لا يُستثار.
+4. (الرابع بنفس عائلة المسارات.)
+
+هذه مسجّلة في `ci/known-linux-diffs.txt`، والمُبلِّغ يفشل في **الاتجاهين**: أي فشل غير مسجّل، وأي اختبار مسجّل بدأ ينجح (حتى لا يتعفّن الملف ويصير مكاناً نخفي فيه أخطاء حقيقية).
 
 ## 8. التالي في قائمة النقل
 
-| # | المكوّن | المصدر | الشرط |
+| # | المكوّن | المصدر | الحالة/الشرط |
 |---:|---|---|---|
-| 1 | إصلاح مهلة `AdbManager.Shell` **ثم** نقله | logcat-viewer | إصلاح حقيقي + اختبار يثبت أن أمراً معلقاً يُلغى |
-| 2 | `LogcatStream` + `FakeAdbSocket` (اختبار ADB بلا جهاز) | logcat-viewer | يحتاج `AdvancedSharpAdbClient` من NuGet |
-| 3 | `ApkInfo` + فلاتر ABI/SDK | APK-Installer | قرار: نقل `aapt` wrapper أم parser مباشر |
-| 4 | `DeviceInfo`/`FileEntry`/`AdbServerSelfHealResult` | logcat-viewer | تحتاج مراجعة تبعيات |
+| 1 | `DeviceInfo`/`FileEntry`/`AdbServerSelfHealResult`/`CommandEntry` | logcat-viewer | ✅ **نُقلت** (ظهرت كتبعيات أثناء البناء) |
+| 2 | `AdbManager.cs` | logcat-viewer | ⏳ يحتاج إصلاح عيب `Shell` المؤجَّل أولاً + اختبار يثبت إلغاء أمر معلق |
+| 3 | `LogcatStream` + `FakeAdbSocket` | logcat-viewer | ⏳ يحتاج `AdvancedSharpAdbClient` — يمكن استعادته الآن من NuGet عبر CI |
+| 4 | `ApkInfo` + فلاتر ABI/SDK | APK-Installer | ⏳ قرار: نقل `aapt` wrapper أم parser مباشر |
+| 5 | `AppInfo` / حزم التطبيقات | APK-Installer | ⏳ يخدم محور «التطبيقات» |
 
-**قاعدة النقل المستمرة:** كل ملف يُسجَّل في [ATTRIBUTION.md](../ATTRIBUTION.md) قبل الدمج، ويُضاف سطر `check_identical` في سكربت التحقق.
+**قاعدة النقل المستمرة — بعد أن أثبتت CI قيمتها:** كل ملف يُسجَّل في
+[ATTRIBUTION.md](../ATTRIBUTION.md)، ويُضاف سطر `check_identical`، **ولا يُعتبر
+النقل مكتملاً حتى يبني**. آخر أربع دورات CI كشفت أربع تبعيات لم أتوقعها؛ لو اكتفيت
+بقراءة الكود لكان المستودع الآن يبدو مكتملاً وهو لا يبني.
 
-**آخر تحديث:** 13 نوفمبر 2026.
+**آخر تحديث:** 13 نوفمبر 2026 — كل الأرقام أعلاه من [run 43346149307](https://github.com/Petershaker3/mobile-device-modes-research/actions/runs/43346149307).

@@ -18,23 +18,52 @@
 
 **إشعار Apache-2.0 (المادة 4):** الكود التالي مأخوذ من مشروع بترخيص Apache License 2.0، ويُعاد استخدامه هنا مع الإشارة إلى المصدر. يحتفظ كل ملف بتعليقاته الأصلية كما هي. نص الترخيص الكامل: https://www.apache.org/licenses/LICENSE-2.0
 
-### 1.1 الملفات المنقولة حرفياً — `src/DeviceToolkit.Core/`
+### 1.1 الملفات المنقولة حرفياً — `src/DeviceToolkit.Core/` (30 ملفاً)
 
 | الملف المستهدف | المصدر في upstream | الأسطر | تعديل |
 |---|---|---:|---|
-| `Logcat/LogParser.cs` | `logcat-viewer/Services/LogParser.cs` | 441 | **لا شيء** |
-| `Logcat/LogDocument.cs` | `logcat-viewer/Services/LogDocument.cs` | 1100 | **لا شيء** |
-| `Logcat/FilterEngine.cs` | `logcat-viewer/Services/FilterEngine.cs` | 1133 | **لا شيء** |
-| `Diagnostics/CrashExtractor.cs` | `logcat-viewer/Services/CrashExtractor.cs` | 225 | **لا شيء** |
-| `Diagnostics/CrashAggregator.cs` | `logcat-viewer/Services/CrashAggregator.cs` | 59 | **لا شيء** |
-| `Diagnostics/CrashTime.cs` | `logcat-viewer/Services/CrashTime.cs` | 32 | **لا شيء** |
-| `Diagnostics/TextProbe.cs` | `logcat-viewer/Services/TextProbe.cs` | 55 | **لا شيء** |
-| `Diagnostics/CrashEvent.cs` | `logcat-viewer/Models/CrashEvent.cs` | — | **لا شيء** |
-| `Diagnostics/FilterSpec.cs` | `logcat-viewer/Models/FilterSpec.cs` | — | **لا شيء** |
+| `Logcat/LogParser.cs` | `logcat-viewer/Services/LogParser.cs` | 441 |
+| `Logcat/LogDocument.cs` | `logcat-viewer/Services/LogDocument.cs` | 1100 |
+| `Logcat/FilterEngine.cs` | `logcat-viewer/Services/FilterEngine.cs` | 1133 |
+| `Logcat/SidecarCache.cs` | `logcat-viewer/Services/SidecarCache.cs` | 414 |
+| `Logcat/SidecarCacheStore.cs` | `logcat-viewer/Services/SidecarCacheStore.cs` | 241 |
+| `Diagnostics/CrashExtractor.cs` | `logcat-viewer/Services/CrashExtractor.cs` | 225 |
+| `Diagnostics/CrashAggregator.cs` | `logcat-viewer/Services/CrashAggregator.cs` | 59 |
+| `Diagnostics/CrashTime.cs` | `logcat-viewer/Services/CrashTime.cs` | 32 |
+| `Diagnostics/TextProbe.cs` | `logcat-viewer/Services/TextProbe.cs` | 55 |
+| `Diagnostics/CrashEvent.cs` | `logcat-viewer/Models/CrashEvent.cs` | 41 |
+| `Diagnostics/FilterSpec.cs` | `logcat-viewer/Models/FilterSpec.cs` | 65 |
+| `Diagnostics/FileProxyService.cs` | `logcat-viewer/Services/FileProxyService.cs` | 503 |
+| `Diagnostics/FileProxyClient.cs` | `logcat-viewer/Services/FileProxyClient.cs` | 338 |
+| `Diagnostics/FileProxyMode.cs` | `logcat-viewer/Services/FileProxyMode.cs` | 40 |
+| `Diagnostics/FileProxyException.cs` | `logcat-viewer/Services/FileProxyException.cs` | 56 |
+| `Diagnostics/ProxyChannel.cs` | `logcat-viewer/Services/ProxyChannel.cs` | 43 |
+| `Infrastructure/LogcatSettings.cs` | `logcat-viewer/Services/LogcatSettings.cs` | 144 |
+| `Infrastructure/SettingsIO.cs` | `logcat-uicore/Services/SettingsIO.cs` | 69 |
+| `Infrastructure/ConfigMigration.cs` | `logcat-uicore/Services/ConfigMigration.cs` | 53 |
+| `Infrastructure/LegacySettings.cs` | `logcat-uicore/Services/LegacySettings.cs` | 53 |
+| `Infrastructure/LanguageSettings.cs` | `logcat-uicore/Services/LanguageSettings.cs` | 59 |
+| `Infrastructure/AndToolsSettings.cs` | `logcat-uicore/Services/AndToolsSettings.cs` | 131 |
+| `Infrastructure/StartupLog.cs` | `logcat-uicore/Services/StartupLog.cs` | 41 |
+| `Models/DeviceLastDir.cs` | `logcat-uicore/Models/DeviceLastDir.cs` | 17 |
+| `Models/FavoriteDir.cs` | `logcat-uicore/Models/FavoriteDir.cs` | 20 |
+| `Models/DeviceInfo.cs` | `logcat-uicore/Models/DeviceInfo.cs` | 45 |
+| `Models/FileEntry.cs` | `logcat-uicore/Models/FileEntry.cs` | 18 |
+| `Models/TryOpenOutcome.cs` | `logcat-uicore/Models/TryOpenOutcome.cs` | 20 |
+| `Models/AdbServerSelfHealResult.cs` | `logcat-uicore/Models/AdbServerSelfHealResult.cs` | 11 |
+| `Models/CommandEntry.cs` | `logcat-uicore/Models/CommandEntry.cs` | 99 |
+| **الإجمالي** | | **5566** | **صفر تعديلات** |
 
-**لماذا نُقلت هذه بعينها:** لا تحتوي أي إشارة إلى `System.Windows.Forms` أو `System.Drawing` أو Win32 (`DllImport`)، فتعمل على `net10.0` عادي بلا `-windows`. هذا تحقّق آلي، لا تخمين: انظر [§4](#4-كيف-نتحقق-أن-المنقول-سليم).
+> **لماذا 30 ملفاً وليس 9؟** النسخة الأولى من هذا الجدول ذكرت 9. CI أثبت في أربع دورات
+> متتالية أن `LogDocument` و`FileProxyService` و`LegacySettings` يسحبون تبعيات لم أتوقعها.
+> العدد الحقيقي أعلاه مُشتق من الملفات الموجودة فعلاً، لا من قراءتي للكود.
 
-### 1.2 الاختبارات المنقولة حرفياً — `src/DeviceToolkit.Tests/`
+**لماذا نُقلت هذه بعينها:** لا تحتوي أي إشارة إلى `System.Windows.Forms` أو WPF أو
+Win32 (`DllImport`)؛ والاستخدام الوحيد لـ`System.Drawing` هو `Point`/`Size` من
+`System.Drawing.Primitives` المتاح على كل الأنظمة (`LogcatSettings`). تحقّق آلي لا تخمين:
+انظر [§4](#4-كيف-نتحقق-أن-المنقول-سليم)، والبناء الفعلي على لينكس هو الإثبات النهائي.
+
+### 1.2 الاختبارات المنقولة حرفياً — `src/DeviceToolkit.Tests/` (17 ملفاً)
 
 | الملف | المصدر | تعديل |
 |---|---|---|
@@ -47,10 +76,17 @@
 | `ChunkedEquivalenceTests.cs` | `tests/logcat.Tests/ChunkedEquivalenceTests.cs` | **لا شيء** |
 | `CrashTests.cs` | `tests/logcat.Tests/CrashTests.cs` | **لا شيء** |
 | `TextProbeTests.cs` | `tests/logcat.Tests/TextProbeTests.cs` | **لا شيء** |
-| `TestHelpers.cs` | `tests/logcat.Tests/TestHelpers.cs` | **لا شيء** |
 | `TestCultureBootstrap.cs` | `tests/logcat.Tests/TestCultureBootstrap.cs` | **لا شيء** |
+| `SidecarCacheTests.cs` | `tests/logcat.Tests/SidecarCacheTests.cs` | **لا شيء** |
+| `FileProxyProtocolTests.cs` | `tests/logcat.Tests/FileProxyProtocolTests.cs` | **لا شيء** |
+| `FileProxyLoopbackTests.cs` | `tests/logcat.Tests/FileProxyLoopbackTests.cs` | **لا شيء** |
+| `FileProxyChannelStateTests.cs` | `tests/logcat.Tests/FileProxyChannelStateTests.cs` | **لا شيء** |
+| `FileProxyModeTests.cs` | `tests/logcat.Tests/FileProxyModeTests.cs` | **لا شيء** |
+| `LegacySettingsDtoTests.cs` | `tests/logcat.Tests/LegacySettingsDtoTests.cs` | **لا شيء** |
+| `FakeProxyServer.cs` | `tests/logcat.Tests/FakeProxyServer.cs` | **لا شيء** |
 
-مجموع ما فيها: **246 `[Fact]` + 24 `[Theory]` مع 98 `[InlineData]`** = مئات الحالات، كلها تعمل بلا جهاز وبلا Windows.
+**437 اختباراً تمر كلها** على `windows-latest` — رقم من CI، لا من مستودع upstream.
+(upstream يعلن 852 اختباراً لمشروعه كاملاً؛ لم ننقل إلا ما يخص المكوّنات المنقولة.)
 
 ### 1.3 كيف حُلّت الاعتماديات بدون تعديل أي سطر منقول
 
@@ -69,10 +105,51 @@
 |---|---|
 | `AdbManager.cs` (636 سطراً) | يستخدم `AdvancedSharpAdbClient` + `System.Drawing` للـscreenshot، وفيه الفجوة الموثقة (`timeoutSec` غير مستخدم). سيُنقل لاحقاً **بعد** إضافة مهلة فعلية — كملفنا لا كملفه |
 | `LogcatStream.cs` | يحتاج `AdvancedSharpAdbClient` + اتصال جهاز حقيقي للاختبار. يُنقل عند بناء طبقة ADB |
-| `FileProxyService/Client`, `SidecarCache` | مرتبطة ببنية التطبيق (channel, spool, sidecar) وإعدادات UI. ليست أساساً لأي محور في V1 |
-| `Loc.cs` + جدول الترجمة | نظام تعريب خاص بهم؛ منتجنا سيتخذ قرار تعريب مستقل |
+| ~~`FileProxyService/Client`, `SidecarCache`~~ | **نُقلت.** هذه الحجة كانت خطأ أثبتته CI: `LogDocument` نفسه يعتمد على `SidecarPayload` و`SpoolDirLease` منهما، فتركهما يمنع البناء |
+| `Loc.cs` الأصلي (559 سطراً) | غالبه WinForms (ToolTip، شجرة التحكم، قياس البكسل، `language.json`). نُقلت منه 4 أعضاء في ملف جديد (§1.5) و**جدول الترجمة كاملاً** بمولّد آلي (§1.5.1) |
+| `LocTable.*.cs` الأصلي | لم يُنقل كملفات، بل يُستخرج منه جدول CS مُولَّد — انظر §1.5.1 |
 | كل ملفات `Forms/`, `Controls/` | UI — مستبعد بقرار ADR-0001 (WPF) |
 | 42 ملف اختبار آخر | تخص مكوّنات لم تُنقل |
+
+### 1.5 `Loc` — ملف جديد يحمل 4 أعضاء منقولة حرفياً
+
+الأصل: `logcat-uicore/Services/Loc.cs` (559 سطراً). الكود المنقول يحتاج منه أربعة أعضاء
+فقط. نقلُه كاملاً كان سيسحب WinForms إلى مكتبة محمولة.
+
+| العضو | حالة النقل |
+|---|---|
+| `UiLang { ZhCn = 0, En = 1 }` | حرفي — نفس القيم والترتيب |
+| `T(string zh)` | حرفي؛ الجسم الأصلي مقتبس في تعليق فوقه |
+| `F(string zh, params object[])` | حرفي، بما فيه `FormatException` ⇒ نص بلا تنسيق |
+| `SetLangGuard(UiLang)` | حرفي |
+
+**فرق سلوكي واحد مسجَّل:** الأصل يستنتج اللغة الأولية من `language.json` ثم ثقافة النظام؛
+هنا الافتراضي ثابت على `ZhCn`، لأن الاختبارات والكود المنقولين يضبطون اللغة صراحةً دائماً.
+الوقف على `ZhCn` مطابق لسلوك upstream على جهاز صيني.
+
+### 1.5.1 `LocTable.g.cs` — مُولَّد آلياً من upstream (643 مفتاحاً)
+
+| البند | القيمة |
+|---|---|
+| المصدر | 11 ملفاً: `logcat-uicore/Services/LocTable.*.cs` |
+| المولّد | `scripts/gen-loctable.py` |
+| المحتوى | 643 مفتاحاً، **0 تعارض** بين الملفات |
+| التحقق في CI | `--check` يعيد التوليد ويفشل على أي فرق بايت |
+| التغطية في CI | `scripts/check-loc-keys.py` — كل `Loc.T/F("...")` حرفي في الكود موجود في الجدول |
+
+**لماذا مولَّد لا منقول؟** لأن upstream يوزّع نفس الجدول على 11 ملف `partial`.
+نسخها كما هي يتطلب إعادة بناء `partial class LocTable` وأساليب المصنع؛ والتوليد يعطي
+نفس المحتوى بملف واحد قابل للتحقق الآلي. المحتوى نفسه منسوخ حرفياً بلا ترجمة من عندنا.
+
+> **الدرس المسجَّل:** المحاولة الأولى يدوياً نقلت 19 مفتاحاً اخترتها بنفسي. CI أثبت أن
+> اختباراً منقولاً يسأل عن مفتاح لم أنقله، فيسقط إلى الصينية صامتاً. لا تخمّن أي مفاتيح
+> يستخدمها كود منقول — انقل الجدول كله آلياً.
+
+### 1.6 التعديل الوحيد على ملف منقول
+
+`src/DeviceToolkit.Tests/TestHelpers.cs` — **7 أسطر محذوفة، موضعان**، وهو الملف المنقول
+الوحيد الذي مُسّ. التفصيل في §5.1 أدناه، وسكربت التحقق يطبع تحذيراً صريحاً عند هذا الملف
+بدلاً من اعتباره متطابقاً.
 
 ---
 
@@ -99,7 +176,15 @@
 
 ## 4. كيف نتحقق أن المنقول سليم
 
-بدل الثقة، هذه أوامر تُثبت أن النقل حرفي:
+**أمر واحد يكفي، ويعمل في CI:**
+
+```bash
+scripts/verify-transplant.sh --no-build   # 48 ملفاً + فحص قابلية النقل
+scripts/verify-transplant.sh              # ويضيف build + test (يحتاج .NET SDK)
+```
+
+والنتيجة الموثّقة من CI: 48/48 ملفاً متطابقة، والبناء ناجح على ويندوز ولينكس، و437/437
+اختباراً تمر. الأوامر اليدوية التالية محفوظة لمن يريد التحقق دون السكربت:
 
 ```bash
 # 1) بصمة المنقول تساوي بصمة المصدر عند نفس الـcommit
@@ -130,7 +215,11 @@ dotnet test DeviceToolkit.slnx
 
 | الملف | الغرض | لماذا كُتب جديداً |
 |---|---|---|
-| `DeviceToolkit.Core/Localization/Loc.cs` | `UiLang`, `T`, `F`, `SetLangGuard` + جدول الترجمة المطلوب | الملف الأصلي 559 سطراً، غالبه بناء WinForms (ToolTip، شجرة Controls، قياس خطوط). الكود المنقول يحتاج 4 أعضاء فقط. كل عضو هنا منقول حرفياً من جسمه في upstream، والاقتباس مذكور في تعليق فوقه |
+| `DeviceToolkit.Core/Localization/Loc.cs` | `UiLang`, `T`, `F`, `SetLangGuard` | الملف الأصلي 559 سطراً، غالبه بناء WinForms. الكود المنقول يحتاج 4 أعضاء فقط. كل عضو هنا منقول حرفياً من جسمه في upstream، والاقتباس مذكور في تعليق فوقه. التفصيل: §1.5 |
+| `DeviceToolkit.Core/Localization/LocTable.g.cs` | جدول الترجمة الكامل (643 مفتاحاً) | **مُولَّد** من 11 ملف `LocTable.*.cs` — لا يُحرَّر يدوياً. التفصيل: §1.5.1 |
+| `scripts/gen-loctable.py` | يولد `LocTable.g.cs` ويتحقق من عدم انحرافه عن upstream | upstream لا يملك مولّداً؛ الجدول عنده موزّع على ملفات `partial` |
+| `scripts/check-loc-keys.py` | يثبت أن كل مفتاح يستخدمه الكود موجود في الجدول | يمنع السقوط الصامت إلى الصينية — عيب حقيقي كشفته CI |
+| `scripts/verify-transplant.sh` | يثبت أن 48 ملفاً منقولاً متطابق + قابلية النقل + البناء | upstream لا يملك آلية تحقق من النقل |
 | `DeviceToolkit.Core/DeviceToolkit.Core.csproj` | تعريف المشروع | لا وجود له upstream بهذا الشكل (الكود كان داخل تطبيق WinForms) |
 | `DeviceToolkit.Tests/DeviceToolkit.Tests.csproj` | تعريف مشروع الاختبار | نفس السبب |
 | `Directory.Build.props`, `global.json`, `DeviceToolkit.slnx` | بناء الحل | بنية حل جديدة |
