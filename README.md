@@ -1,5 +1,7 @@
 # Android Device Modes & Windows Toolkit Research
 
+[![ci](https://github.com/Petershaker3/mobile-device-modes-research/actions/workflows/ci.yml/badge.svg?branch=arena%2F3195040e-mobile-device-modes-research)](https://github.com/Petershaker3/mobile-device-modes-research/actions/workflows/ci.yml)
+
 مرجع بحثي لتصميم منصة Windows متكاملة للتعامل مع أجهزة Android: الاتصال وقراءة البيانات وفهم الأوضاع ومعلومات السوفتوير وإدارة التطبيقات والملفات والتشخيص والشبكة وتعريفات Windows، مع إتاحة الوظائف لوكلاء الذكاء الاصطناعي عبر MCP.
 
 > **حالة المستودع:** بحث وتصميم + قرارات محسومة + عقود قابلة للفحص + **كود فعلي مبنيّ ومُختبر** في `src/`: 30 ملف C# منقولاً حرفياً (5,566 سطراً) + 17 ملف اختبار منقول (6,803 سطراً).
