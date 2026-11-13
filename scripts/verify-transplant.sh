@@ -52,15 +52,20 @@ check_identical() {  # $1 = upstream relative path, $2 = local path
 for f in LogParser LogDocument FilterEngine; do
   check_identical "logcat-viewer/Services/$f.cs" "src/DeviceToolkit.Core/Logcat/$f.cs"
 done
-for f in CrashExtractor CrashAggregator CrashTime TextProbe; do
+for f in CrashExtractor CrashAggregator CrashTime TextProbe FileProxyService; do
   check_identical "logcat-viewer/Services/$f.cs" "src/DeviceToolkit.Core/Diagnostics/$f.cs"
 done
+for f in SidecarCache SidecarCacheStore; do
+  check_identical "logcat-viewer/Services/$f.cs" "src/DeviceToolkit.Core/Logcat/$f.cs"
+done
+check_identical "logcat-uicore/Services/StartupLog.cs" "src/DeviceToolkit.Core/Infrastructure/StartupLog.cs"
 for f in CrashEvent FilterSpec; do
   check_identical "logcat-viewer/Models/$f.cs" "src/DeviceToolkit.Core/Diagnostics/$f.cs"
 done
 for f in LogParserTests LogDocumentTests LogDocumentZeroCopyTests LogDocumentProxiedTests \
          FilterEngineTests FilterEngineBlockScanTests ChunkedEquivalenceTests CrashTests \
-         TextProbeTests TestCultureBootstrap; do
+         TextProbeTests TestCultureBootstrap SidecarCacheTests FileProxyProtocolTests \
+         FileProxyLoopbackTests FileProxyChannelStateTests FileProxyModeTests; do
   check_identical "tests/logcat.Tests/$f.cs" "src/DeviceToolkit.Tests/$f.cs"
 done
 
