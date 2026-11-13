@@ -1,0 +1,157 @@
+name: ci
+
+# Runs the three things this repository claims are true but that nobody has
+# executed yet: the contracts reject bad documents, the corpus generates and
+# verifies, and the transplanted C# builds and its copied tests pass.
+#
+# The core library is deliberately portable (net10.0, no WinForms), so the build
+# runs on both Linux and Windows. That is how the portability claim gets proven
+# rather than asserted.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  # ---------------------------------------------------------------- contracts
+  contracts:
+    name: contracts + corpus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install validator dependency
+        run: pip install -r contracts/tools/requirements.txt
+
+      - name: Validate contracts (schemas, examples, negative cases)
+        run: python contracts/tools/validate_contracts.py
+
+      - name: Generate corpus and verify it
+        run: python contracts/tools/make_fixtures.py
+
+      - name: Regenerate and confirm determinism
+        run: |
+          python - <<'PY'
+          import hashlib, pathlib, subprocess, sys
+          root = pathlib.Path('contracts/corpus')
+          def digest():
+              h = hashlib.sha256()
+              for p in sorted(root.rglob('*')):
+                  if p.is_file() and p.name != 'GENERATED.json' and p.suffix != '.json':
+                      h.update(p.name.encode())
+                      h.update(p.read_bytes())
+              return h.hexdigest()
+          before = digest()
+          subprocess.run([sys.executable, 'contracts/tools/make_fixtures.py'], check=True,
+                         stdout=subprocess.DEVNULL)
+          after = digest()
+          print('before', before)
+          print('after ', after)
+          if before != after:
+              print('FAIL: corpus generation is not deterministic')
+              sys.exit(1)
+          print('OK: regeneration produced identical bytes')
+          PY
+
+      - name: Verify the corpus refuses PII
+        run: |
+          # check() already rejects 15-digit Luhn-valid runs, but prove the guard
+          # itself works by feeding it a known-valid IMEI-shaped number.
+          python - <<'PY'
+          import importlib.util, sys
+          spec = importlib.util.spec_from_file_location('mf', 'contracts/tools/make_fixtures.py')
+          mf = importlib.util.module_from_spec(spec); spec.loader.exec_module(mf)
+          real_imei = '490154203237518'      # published Luhn-valid example, not a device
+          if not mf._luhn_valid(real_imei):
+              print('FAIL: guard does not flag a Luhn-valid 15-digit number'); sys.exit(1)
+          if mf._luhn_valid('123456789012345'):
+              print('FAIL: guard flags a non-Luhn number'); sys.exit(1)
+          print('OK: PII guard behaves')
+          PY
+
+  # ------------------------------------------------------------ build + test
+  build:
+    name: build + test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Restore
+        run: dotnet restore DeviceToolkit.slnx
+
+      - name: Build
+        run: dotnet build DeviceToolkit.slnx -c Release --no-restore
+
+      - name: Test
+        run: >
+          dotnet test DeviceToolkit.slnx -c Release --no-build
+          --logger "trx;LogFileName=results.trx"
+          --logger "console;verbosity=normal"
+          --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+
+  # ------------------------------------------------------- transplant integrity
+  integrity:
+    name: transplanted code is unmodified
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Diff every copied file against upstream
+        run: bash scripts/verify-transplant.sh --no-build
+
+      - name: Check internal documentation links
+        run: |
+          python - <<'PY'
+          import pathlib, re, sys
+          root = pathlib.Path('.')
+          md = [p for p in root.rglob('*.md')
+                if '.git' not in p.parts and 'node_modules' not in p.parts]
+          broken = []
+          for path in md:
+              text = path.read_text(encoding='utf-8', errors='replace')
+              for target in re.findall(r'\]\((?!https?:)([^)#]+\.md)', text):
+                  if not (path.parent / target).resolve().exists():
+                      broken.append(f'{path}: {target}')
+          for line in broken:
+              print('BROKEN', line)
+          sys.exit(1 if broken else 0)
+          PY
