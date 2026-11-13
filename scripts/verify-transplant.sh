@@ -62,6 +62,9 @@ for f in FileProxyClient FileProxyMode FileProxyException ProxyChannel; do
   check_identical "logcat-viewer/Services/$f.cs" "src/DeviceToolkit.Core/Diagnostics/$f.cs"
 done
 check_identical "logcat-viewer/Services/LogcatSettings.cs" "src/DeviceToolkit.Core/Infrastructure/LogcatSettings.cs"
+for f in DeviceLastDir FavoriteDir DeviceInfo FileEntry TryOpenOutcome AdbServerSelfHealResult CommandEntry; do
+  check_identical "logcat-uicore/Models/$f.cs" "src/DeviceToolkit.Core/Models/$f.cs"
+done
 for f in SettingsIO ConfigMigration LegacySettings; do
   check_identical "logcat-uicore/Services/$f.cs" "src/DeviceToolkit.Core/Infrastructure/$f.cs"
 done
