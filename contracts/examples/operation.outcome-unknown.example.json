@@ -1,0 +1,54 @@
+{
+  "operationId": "c1d2e3f4-a5b6-4c7d-9e8f-0a1b2c3d4e5f",
+  "operationType": "app.install",
+  "targetDeviceId": "dev_a1b2c3d4e5f60718",
+  "impactLevel": "DeviceWrite",
+  "state": "OutcomeUnknown",
+  "createdAt": "2026-11-13T11:02:00Z",
+  "updatedAt": "2026-11-13T11:12:05Z",
+  "startedAt": "2026-11-13T11:02:07Z",
+  "endedAt": null,
+  "deadline": "2026-11-13T11:12:07Z",
+  "cancellationRequested": false,
+  "progress": { "phase": "Reconciling", "current": null, "total": 1, "unit": "Packages" },
+  "planId": "9c8b7a65-4321-4f0e-9d8c-7b6a5f4e3d2c",
+  "approvalTokenId": "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b",
+  "warnings": [
+    {
+      "code": "DEVICE_LOST_MID_INSTALL",
+      "message": "The device disappeared from the transport while the install session was open. The install may or may not have committed; it will not be retried automatically.",
+      "severity": "Warning"
+    }
+  ],
+  "result": {
+    "ok": false,
+    "problemCode": "OutcomeUnknown",
+    "recoverability": "RetryAfterReconcile",
+    "message": "Install session ended without a final status because the device disconnected. Reconnect the device; the toolkit will re-read the package state before allowing another install.",
+    "exitCode": null,
+    "verification": {
+      "performed": false,
+      "verified": false,
+      "evidence": "Device was offline during the verification window.",
+      "verifiedAt": null
+    },
+    "reconcile": {
+      "attempted": true,
+      "outcome": "StillUnknown",
+      "evidence": "Reconnect probe at 11:12:05 returned Offline; no package state could be read."
+    },
+    "warnings": [],
+    "timing": {
+      "startedAt": "2026-11-13T11:02:07Z",
+      "endedAt": "2026-11-13T11:12:05Z",
+      "durationMs": 598000
+    }
+  },
+  "auditEventIds": [
+    "d2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f60",
+    "e3f4a5b6-c7d8-4e9f-8a1b-2c3d4e5f6071"
+  ],
+  "artifacts": [],
+  "parentOperationId": null,
+  "retryOfOperationId": null
+}

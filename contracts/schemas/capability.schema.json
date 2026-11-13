@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.local/capability.schema.json",
+  "title": "Capability",
+  "description": "A single feature claim about one device on one transport. Capabilities are observed, never inferred from brand, model, or a successful call to a different feature.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["capabilityId", "availability", "observedAt", "evidenceSource"],
+  "properties": {
+    "capabilityId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9_]*)+$",
+      "maxLength": 96,
+      "examples": [
+        "adb.shell.exec",
+        "adb.sync.push",
+        "adb.sync.pull",
+        "adb.package.list",
+        "adb.package.install",
+        "adb.package.install_multiple",
+        "adb.package.uninstall",
+        "adb.package.disable",
+        "adb.logcat.stream",
+        "adb.logcat.clear",
+        "adb.bugreport.capture",
+        "adb.settings.dns.read",
+        "adb.settings.dns.write",
+        "adb.root.available",
+        "fastboot.getvar.all",
+        "fastboot.oem.device_info",
+        "mtp.enumerate",
+        "mtp.file.read",
+        "mtp.file.write",
+        "usb.driver.info"
+      ],
+      "description": "Dotted namespace. One capability answers exactly one question; do not define 'adb.full_support'."
+    },
+    "supportedTransport": { "$ref": "_common.schema.json#/$defs/transportKind" },
+    "availability": { "$ref": "_common.schema.json#/$defs/availability" },
+    "androidApiRange": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Declared support window from documentation or the reference implementation — not an observation.",
+      "required": ["min"],
+      "properties": {
+        "min": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "max": { "type": ["integer", "null"], "minimum": 1, "maximum": 100 }
+      }
+    },
+    "deviceScope": {
+      "type": "string",
+      "enum": ["ThisDevice", "ThisModel", "ThisTransport"],
+      "description": "'ThisDevice' = observed here. 'ThisModel' = established for a model from a test record, must cite it. Never promote to a product-wide claim."
+    },
+    "evidenceSource": { "$ref": "_common.schema.json#/$defs/evidenceSource" },
+    "evidenceRef": {
+      "type": ["string", "null"],
+      "maxLength": 512,
+      "description": "Pointer to the probe output, test id, or test corpus entry that justifies this entry."
+    },
+    "observedAt": { "$ref": "_common.schema.json#/$defs/isoTimestamp" },
+    "confidence": { "$ref": "_common.schema.json#/$defs/confidence" },
+    "requirements": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "string",
+        "enum": [
+          "UsbDebuggingEnabled",
+          "RsaAuthorized",
+          "DeveloperOptionsEnabled",
+          "OemUnlockAllowed",
+          "ScreenUnlocked",
+          "ToolPresent",
+          "NotRootRequired",
+          "NetworkReachable",
+          "ElevationRequired"
+        ]
+      },
+      "description": "Prerequisites the user can act on. Surfaced in the UI so an Unsupported result is actionable rather than mysterious."
+    },
+    "reason": {
+      "type": ["string", "null"],
+      "maxLength": 2000,
+      "description": "Why this capability is not Available. Required when availability is Unsupported or PermissionDenied."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "availability": { "enum": ["Unsupported", "PermissionDenied"] } },
+        "required": ["availability"]
+      },
+      "then": { "required": ["reason"] }
+    }
+  ]
+}

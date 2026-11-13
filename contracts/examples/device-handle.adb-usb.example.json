@@ -1,0 +1,62 @@
+{
+  "deviceId": "dev_3f9a1c0d5e7b2846",
+  "transportKind": "ADB_USB",
+  "connectionState": "Online",
+  "transportIdentity": {
+    "redacted": "••••••7F2A",
+    "redactionPolicy": "MaskedTail4",
+    "kind": "AdbSerial"
+  },
+  "usb": {
+    "vendorId": "18D1",
+    "productId": "4EE7",
+    "hardwareIds": [
+      "USB\\VID_18D1&PID_4EE7&REV_0500",
+      "USB\\VID_18D1&PID_4EE7"
+    ],
+    "comPort": null,
+    "instanceId": "USB\\VID_18D1&PID_4EE7\\5&2A3B4C5D&0&1"
+  },
+  "androidApi": 34,
+  "model": "Pixel 7",
+  "manufacturer": "Google",
+  "capabilities": [
+    {
+      "capabilityId": "adb.shell.exec",
+      "supportedTransport": "ADB_USB",
+      "availability": "Available",
+      "deviceScope": "ThisDevice",
+      "evidenceSource": "AdbShell",
+      "evidenceRef": "probe:getprop-1",
+      "observedAt": "2026-11-13T09:41:12Z",
+      "confidence": "High",
+      "requirements": ["UsbDebuggingEnabled", "RsaAuthorized"]
+    },
+    {
+      "capabilityId": "adb.package.install_multiple",
+      "supportedTransport": "ADB_USB",
+      "availability": "Available",
+      "androidApiRange": { "min": 21, "max": null },
+      "deviceScope": "ThisDevice",
+      "evidenceSource": "AdbShell",
+      "evidenceRef": "probe:pm-help",
+      "observedAt": "2026-11-13T09:41:14Z",
+      "confidence": "Medium",
+      "requirements": ["UsbDebuggingEnabled", "RsaAuthorized"]
+    },
+    {
+      "capabilityId": "adb.root.available",
+      "supportedTransport": "ADB_USB",
+      "availability": "Unsupported",
+      "deviceScope": "ThisDevice",
+      "evidenceSource": "AdbShell",
+      "evidenceRef": "probe:which-su",
+      "observedAt": "2026-11-13T09:41:20Z",
+      "confidence": "High",
+      "reason": "'su' is not present on PATH and adbd is not running as root; root paths are disabled for this device."
+    }
+  ],
+  "firstSeenAt": "2026-11-13T09:40:58Z",
+  "lastSeenAt": "2026-11-13T09:41:22Z",
+  "stale": false
+}

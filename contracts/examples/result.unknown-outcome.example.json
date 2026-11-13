@@ -1,0 +1,36 @@
+{
+  "ok": false,
+  "problemCode": "OutcomeUnknown",
+  "recoverability": "RetryAfterReconcile",
+  "message": "The transfer stopped responding after 60 s of no progress. The file may be partially written on the device; it will not be pushed again until the existing file is inspected.",
+  "exitCode": null,
+  "rawEvidence": {
+    "stdoutExcerpt": null,
+    "stderrExcerpt": "adb: error: failed to copy 'C:\\Users\\tech\\DCIM\\IMG_4821.jpg' to '/sdcard/DCIM/IMG_4821.jpg': remote connection closed",
+    "truncated": false,
+    "redactedFields": ["localUserProfile"]
+  },
+  "reconcile": {
+    "attempted": true,
+    "outcome": "ResolvedFailed",
+    "evidence": "After reconnect, 'ls -l' showed the remote file at 1 of 4.8 MB with an mtime inside the operation window, confirming a partial write. The partial file is reported to the user for explicit cleanup rather than deleted automatically."
+  },
+  "verification": {
+    "performed": true,
+    "verified": false,
+    "evidence": "Remote size 1048576 != local 5033165.",
+    "verifiedAt": "2026-11-13T10:22:41Z"
+  },
+  "warnings": [
+    {
+      "code": "PARTIAL_REMOTE_FILE",
+      "message": "A partial file exists on the device at /sdcard/DCIM/IMG_4821.jpg. Nothing was deleted automatically.",
+      "severity": "Warning"
+    }
+  ],
+  "timing": {
+    "startedAt": "2026-11-13T10:20:02Z",
+    "endedAt": "2026-11-13T10:22:41Z",
+    "durationMs": 159000
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.local/audit-event.schema.json",
+  "title": "AuditEvent",
+  "description": "An append-only record of something that actually happened. Written before and after each state transition so that a crash cannot erase the fact that an operation started. No update or delete path exists for this table.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "occurredAt", "eventType", "actor", "seq"],
+  "properties": {
+    "eventId": { "$ref": "_common.schema.json#/$defs/uuid" },
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonic per installation. Gaps are meaningful and must be reported, not silently repaired."
+    },
+    "occurredAt": { "$ref": "_common.schema.json#/$defs/isoTimestamp" },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "DeviceDiscovered",
+        "DeviceLost",
+        "DeviceStateChanged",
+        "CapabilityObserved",
+        "OperationCreated",
+        "PlanCreated",
+        "PreviewShown",
+        "ApprovalRequested",
+        "ApprovalGranted",
+        "ApprovalDenied",
+        "ApprovalExpired",
+        "OperationStarted",
+        "OperationProgressed",
+        "OperationCancelled",
+        "OperationSucceeded",
+        "OperationFailed",
+        "OperationOutcomeUnknown",
+        "OperationReconciled",
+        "VerificationPerformed",
+        "PolicyBlocked",
+        "LimitOverridden",
+        "ArtifactCreated",
+        "CleanupPerformed",
+        "ToolInvoked",
+        "AuditIntegrityViolation"
+      ]
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surface"],
+      "properties": {
+        "surface": {
+          "type": "string",
+          "enum": ["DesktopUser", "McpClient", "Scheduler", "System"],
+          "description": "Which surface initiated this. McpClient never gains more authority than DesktopUser."
+        },
+        "clientId": { "type": ["string", "null"], "maxLength": 128 },
+        "sessionId": { "type": ["string", "null"], "maxLength": 128 }
+      }
+    },
+    "operationId": { "oneOf": [{ "$ref": "_common.schema.json#/$defs/uuid" }, { "type": "null" }] },
+    "device": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Redacted device reference. The raw serial never appears here.",
+      "properties": {
+        "deviceId": { "$ref": "_common.schema.json#/$defs/deviceId" },
+        "transportKind": { "$ref": "_common.schema.json#/$defs/transportKind" },
+        "identityRedacted": { "type": "string", "maxLength": 128 },
+        "redactionPolicy": { "$ref": "_common.schema.json#/$defs/redactionPolicy" },
+        "model": { "type": ["string", "null"], "maxLength": 256 }
+      }
+    },
+    "problemCode": {
+      "oneOf": [{ "$ref": "_common.schema.json#/$defs/problemCode" }, { "type": "null" }]
+    },
+    "impactLevel": {
+      "oneOf": [{ "$ref": "_common.schema.json#/$defs/impactLevel" }, { "type": "null" }]
+    },
+    "summary": { "type": "string", "maxLength": 2000 },
+    "detail": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Structured, redacted, bounded. Never a full shell dump; excerpts cap at 8 KB and are marked truncated.",
+      "properties": {
+        "redacted": { "type": "boolean" },
+        "truncated": { "type": "boolean" },
+        "fields": {
+          "type": "object",
+          "additionalProperties": { "type": ["string", "number", "boolean", "null"], "maxLength": 4000 },
+          "maxProperties": 64
+        }
+      }
+    },
+    "previousEventHash": {
+      "oneOf": [{ "$ref": "_common.schema.json#/$defs/sha256" }, { "type": "null" }],
+      "description": "Hash chain over the previous event's canonical JSON. Null only for the very first event. A mismatch on read is an AuditIntegrityViolation, surfaced to the user — not repaired."
+    }
+  },
+  "allOf": [
+    {
+      "description": "Approval events must reference the operation they authorize.",
+      "if": {
+        "properties": { "eventType": { "enum": ["ApprovalGranted", "ApprovalDenied", "ApprovalExpired", "ApprovalRequested"] } },
+        "required": ["eventType"]
+      },
+      "then": { "required": ["operationId"], "properties": { "operationId": { "$ref": "_common.schema.json#/$defs/uuid" } } }
+    },
+    {
+      "description": "An audit record is not a place for unredacted evidence.",
+      "if": {
+        "properties": { "detail": { "type": "object" } },
+        "required": ["detail"]
+      },
+      "then": { "properties": { "detail": { "properties": { "redacted": { "const": true } } } } }
+    }
+  ]
+}

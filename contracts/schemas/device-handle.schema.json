@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.local/device-handle.schema.json",
+  "title": "DeviceHandle",
+  "description": "The only way an operation names a device. There is no 'first device' fallback: if a caller cannot produce a DeviceHandle, the service returns DeviceSelectionRequired.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["deviceId", "transportKind", "connectionState", "firstSeenAt", "lastSeenAt"],
+  "properties": {
+    "deviceId": { "$ref": "_common.schema.json#/$defs/deviceId" },
+    "transportKind": { "$ref": "_common.schema.json#/$defs/transportKind" },
+    "connectionState": { "$ref": "_common.schema.json#/$defs/connectionState" },
+    "transportIdentity": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "How the transport addresses this device. Stored redacted; the raw value is kept only in memory for the live session.",
+      "required": ["redacted", "redactionPolicy"],
+      "properties": {
+        "redacted": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "redactionPolicy": { "$ref": "_common.schema.json#/$defs/redactionPolicy" },
+        "kind": {
+          "type": "string",
+          "enum": ["AdbSerial", "UsbPortPath", "ComPort", "WpdDeviceId", "TcpEndpoint", "Unknown"]
+        }
+      }
+    },
+    "usb": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Present only when the transport is backed by a Windows USB/COM device. Read from Windows APIs, never guessed from the vendor name alone.",
+      "required": ["vendorId", "productId"],
+      "properties": {
+        "vendorId": { "type": "string", "pattern": "^[0-9A-Fa-f]{4}$" },
+        "productId": { "type": "string", "pattern": "^[0-9A-Fa-f]{4}$" },
+        "hardwareIds": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "type": "string", "maxLength": 512 }
+        },
+        "comPort": { "type": ["string", "null"], "pattern": "^COM[0-9]{1,3}$" },
+        "instanceId": { "type": ["string", "null"], "maxLength": 512 }
+      }
+    },
+    "androidApi": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 100,
+      "description": "Optional and never used as identity. Unknown until a successful read."
+    },
+    "model": { "type": ["string", "null"], "maxLength": 256 },
+    "manufacturer": { "type": ["string", "null"], "maxLength": 256 },
+    "capabilities": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "capability.schema.json" }
+    },
+    "firstSeenAt": { "$ref": "_common.schema.json#/$defs/isoTimestamp" },
+    "lastSeenAt": { "$ref": "_common.schema.json#/$defs/isoTimestamp" },
+    "stale": {
+      "type": "boolean",
+      "description": "True when the handle was not confirmed by a fresh discovery pass. A stale handle may be displayed but must not be used to start a write operation without re-discovery."
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "capabilityId": "adb.logcat.stream",
+  "supportedTransport": "ADB_WIRELESS",
+  "availability": "Available",
+  "androidApiRange": { "min": 24, "max": null },
+  "deviceScope": "ThisDevice",
+  "evidenceSource": "AdbShell",
+  "evidenceRef": "probe:logcat--help",
+  "observedAt": "2026-11-13T11:15:04Z",
+  "confidence": "High",
+  "requirements": ["UsbDebuggingEnabled", "NetworkReachable"]
+}

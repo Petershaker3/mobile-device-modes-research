@@ -1,0 +1,65 @@
+{
+  "operationId": "4a5b6c7d-8e9f-4a0b-9c1d-2e3f4a5b6c7d",
+  "operationType": "app.install",
+  "targetDeviceId": "dev_3f9a1c0d5e7b2846",
+  "impactLevel": "DeviceWrite",
+  "state": "Succeeded",
+  "createdAt": "2026-11-13T10:12:00Z",
+  "updatedAt": "2026-11-13T10:13:41Z",
+  "startedAt": "2026-11-13T10:12:14Z",
+  "endedAt": "2026-11-13T10:13:41Z",
+  "deadline": "2026-11-13T10:22:14Z",
+  "cancellationRequested": false,
+  "progress": { "phase": "Done", "current": 1, "total": 1, "unit": "Packages" },
+  "planId": "9c8b7a65-4321-4f0e-9d8c-7b6a5f4e3d2c",
+  "approvalTokenId": "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b",
+  "warnings": [
+    {
+      "code": "VERSION_CODE_EQUAL",
+      "message": "Installed versionCode equals the on-device version; the install succeeded but changed nothing except the install timestamp.",
+      "severity": "Warning"
+    }
+  ],
+  "result": {
+    "ok": true,
+    "problemCode": "OK",
+    "recoverability": "NotRetryable",
+    "message": "org.example.app 3.4.1 (versionCode 3410) installed on the target device and verified by re-reading the package state.",
+    "exitCode": 0,
+    "rawEvidence": {
+      "stdoutExcerpt": "Success\n",
+      "stderrExcerpt": null,
+      "truncated": false,
+      "redactedFields": []
+    },
+    "verification": {
+      "performed": true,
+      "verified": true,
+      "evidence": "pm list packages -f --user 0 reported org.example.app with versionName 3.4.1 and versionCode 3410 at the expected install path after the install finished.",
+      "verifiedAt": "2026-11-13T10:13:39Z"
+    },
+    "warnings": [],
+    "timing": {
+      "startedAt": "2026-11-13T10:12:14Z",
+      "endedAt": "2026-11-13T10:13:41Z",
+      "durationMs": 87000
+    }
+  },
+  "auditEventIds": [
+    "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b9c",
+    "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+    "8b9c0d1e-2f3a-4b4c-9d5e-6f7a8b9c0d1e",
+    "9c0d1e2f-3a4b-4c5d-8e6f-7a8b9c0d1e2f"
+  ],
+  "artifacts": [
+    {
+      "kind": "ApkCopy",
+      "path": "C:\\Users\\tech\\AppData\\Local\\DeviceToolkit\\state\\staging\\4a5b6c7d\\org.example.app-3.4.1.apk",
+      "sizeBytes": 42111362,
+      "sha256": "3b1f8e2d9c4a7b6e5f0d3c8a1b9e7f2d4c6a8b0e3f5d7c9a1b3e5f7d9c0a2b4e",
+      "retentionDays": 1
+    }
+  ],
+  "parentOperationId": null,
+  "retryOfOperationId": null
+}

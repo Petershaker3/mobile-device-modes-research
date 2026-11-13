@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.local/result.schema.json",
+  "title": "Result",
+  "description": "The outcome of one step or one operation. A process exit code is input to this object, never a substitute for it. 'ExitCode == 0' is not a success claim.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "problemCode", "recoverability", "message", "warnings"],
+  "properties": {
+    "ok": {
+      "type": "boolean",
+      "description": "True only when the intended state was observed. A command that reported success but could not be verified must set ok=false with problemCode=OutcomeUnknown."
+    },
+    "problemCode": { "$ref": "_common.schema.json#/$defs/problemCode" },
+    "recoverability": { "$ref": "_common.schema.json#/$defs/recoverability" },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "description": "Human-readable and localized at the UI edge. Callers branch on problemCode only; never on this string."
+    },
+    "exitCode": {
+      "type": ["integer", "null"],
+      "minimum": -1073741824,
+      "maximum": 2147483647,
+      "description": "Raw process/shell exit code when one exists. Kept for diagnostics and audit; it carries no verdict."
+    },
+    "rawEvidence": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Redacted excerpt of what the device/tool actually returned. Bounded so a huge shell dump cannot become a result payload.",
+      "properties": {
+        "stdoutExcerpt": { "type": ["string", "null"], "maxLength": 8000 },
+        "stderrExcerpt": { "type": ["string", "null"], "maxLength": 8000 },
+        "truncated": { "type": "boolean" },
+        "redactedFields": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "type": "string", "maxLength": 128 }
+        }
+      }
+    },
+    "verification": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "The independent re-read that turns 'the command ran' into 'the state changed'. Required for every DeviceWrite before reporting Succeeded.",
+      "required": ["performed", "verified"],
+      "properties": {
+        "performed": { "type": "boolean" },
+        "verified": { "type": "boolean" },
+        "evidence": { "type": ["string", "null"], "maxLength": 4000 },
+        "verifiedAt": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "reconcile": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "How an unknown outcome was resolved. Present whenever problemCode is OutcomeUnknown or NeedsReconciliation.",
+      "required": ["attempted", "outcome"],
+      "properties": {
+        "attempted": { "type": "boolean" },
+        "outcome": {
+          "type": "string",
+          "enum": ["ResolvedSucceeded", "ResolvedFailed", "StillUnknown", "NotAttempted"]
+        },
+        "evidence": { "type": ["string", "null"], "maxLength": 4000 }
+      }
+    },
+    "retryAfterSeconds": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 86400,
+      "description": "Advice only when recoverability is Retryable."
+    },
+    "warnings": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "_common.schema.json#/$defs/warning" }
+    },
+    "timing": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "startedAt": { "$ref": "_common.schema.json#/$defs/isoTimestamp" },
+        "endedAt": { "$ref": "_common.schema.json#/$defs/isoTimestamp" },
+        "durationMs": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "description": "ok=true is only legitimate with problemCode OK and, if a verification block is present, verified=true.",
+      "if": { "properties": { "ok": { "const": true } }, "required": ["ok"] },
+      "then": {
+        "properties": { "problemCode": { "const": "OK" } },
+        "not": {
+          "properties": { "verification": { "properties": { "verified": { "const": false } }, "required": ["verified"] } },
+          "required": ["verification"]
+        }
+      }
+    },
+    {
+      "description": "ok=false must not claim OK.",
+      "if": { "properties": { "ok": { "const": false } }, "required": ["ok"] },
+      "then": { "properties": { "problemCode": { "not": { "const": "OK" } } } }
+    },
+    {
+      "description": "Unknown outcomes must explain reconciliation and must forbid blind retry.",
+      "if": { "properties": { "problemCode": { "enum": ["OutcomeUnknown", "NeedsReconciliation"] } }, "required": ["problemCode"] },
+      "then": {
+        "required": ["reconcile"],
+        "properties": {
+          "recoverability": { "enum": ["RetryAfterReconcile", "NotRetryable", "RetryAfterUserAction"] },
+          "ok": { "const": false }
+        }
+      }
+    },
+    {
+      "description": "No silent partial success: Partial is expressed as its own problem code.",
+      "if": { "properties": { "problemCode": { "const": "OK" } }, "required": ["problemCode"] },
+      "then": { "properties": { "recoverability": { "const": "NotRetryable" } } }
+    }
+  ]
+}

@@ -6,7 +6,9 @@
 **المنصة المستهدفة:** Windows 10/11، وAndroid 7.0 / API 24 فأحدث.  
 **حالة المستودع:** بحث وتصميم؛ لا يوجد منتج منفذ أو اختبار Hardware معتمد.
 
-**تقدم Source Revalidation:** اكتملت مراجعة المصدر عند SHAs محددة لـAdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)، ولـbundletool وapkfile وPacMan-APK وxapkInstaller في [14](14-source-revalidation-app-installers.md)، ولـadb-mcp وus-all/android-mcp-server في [15](15-source-revalidation-mcp-codex.md)، ولـpayload-dumper-go وlucky-arch وlpunpack_cyth وchen3feng/android-backup في [16](16-source-revalidation-firmware-storage-backup.md). بقية المرشحين ما زالت تحتاج إعادة تحقق قبل الاقتباس.
+**تقدم Source Revalidation:** اكتمل على **جولتين**. الجولة الأولى: AdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)، bundletool وapkfile وPacMan-APK وxapkInstaller في [14](14-source-revalidation-app-installers.md)، adb-mcp وus-all/android-mcp-server في [15](15-source-revalidation-mcp-codex.md)، payload-dumper-go وlucky-arch وlpunpack_cyth وchen3feng/android-backup في [16](16-source-revalidation-firmware-storage-backup.md). **الجولة الثانية** في [20](20-source-revalidation-round2.md) بعد قرار الستاك: logcat-viewer، APK-Installer، AdbFileManager، WinDroidFS، LogCater، Bugreport_analyzer — وأنتجت أربعة تصحيحات لوثائق قائمة.
+
+> **⚠️ تحديث 13 نوفمبر 2026 — قرار الستاك محسوم:** [ADR-0001](17-adr-0001-stack-decision.md) يثبت **.NET 10 + WPF** و**AdvancedSharpAdbClient** و**CsWin32** و**SQLite** و**.NET MCP SDK**. لذلك صفوف `Host Core` و`GUI` و`ADB` في §6 **أُغلقت**، ولم يبق PoC "مقارنة لغتين". ما يبقى من §6 هو قرارات MTP وPersistence وMCP وDependency delivery، وقرارات التنفيذ التفصيلية في [18](18-ENGINEERING-DECISIONS.md). العقود في §4.2 أصبحت مواصفة منفذة في [19](19-SHARED-CONTRACTS.md) — ارجع إليها بدلاً من النثر هنا.
 
 ## 1. القرار التنفيذي
 
@@ -185,15 +187,15 @@ Desktop UI                         MCP Server (local STDIO)
 
 | القرار | المرشح A | المرشح B | ما الذي يجب قياسه؟ |
 |---|---|---|---|
-| Host Core | .NET 10 | Rust/Tauri 2 core | ADB USB/Wireless، process cancellation، Windows PnP/WPD، memory، packaging، testability |
-| GUI | WinUI 3/WPF | Tauri Web UI | offline startup، responsiveness، accessibility، multi-window/device dashboards، update model |
-| ADB | AdvancedSharpAdbClient | Google adb.exe عبر Process Adapter | pairing/connect، multi-device isolation، shell/exec-out، sync streaming، cancellation، recoverability |
+| ~~Host Core~~ | **محسوم: .NET 10** | — | [ADR-0001](17-adr-0001-stack-decision.md) |
+| ~~GUI~~ | **محسوم: WPF** | — | [ADR-0001](17-adr-0001-stack-decision.md) |
+| ~~ADB~~ | **محسوم: AdvancedSharpAdbClient 3.6.16+** (مع `adb.exe` كمسار احتياطي) | — | [ADR-0001](17-adr-0001-stack-decision.md) |
 | MTP | Windows WPD COM/API wrapper | ADB-only first ثم WPD provider | enumeration، Unicode، large files، Android API/OEM differences |
 | Local persistence | SQLite | JSON/flat files | transactions، schema migration، audit retention، corruption recovery |
 | MCP | .NET MCP SDK أو TS SDK عبر STDIO | MCP host منفصل يتصل بـApplication API محلية | Codex handshake، tool schemas، user ACL، approval flow، process lifecycle |
 | Dependency delivery | bundled pinned tools | managed install/update of signed official tools | offline-first، integrity/hash، rollback، Windows Defender/SmartScreen behavior |
 
-### PoC المطلوب قبل تثبيت Stack
+### PoC المطلوب قبل بدء تنفيذ النواة (الستاك محسوم)
 
 - Windows 10 وWindows 11 على x64 كبداية اختبار؛ ARM64 قرار مستقل لاحقاً.
 - اكتشاف جهازين ADB USB مع اختيار serial صريح.
@@ -204,7 +206,7 @@ Desktop UI                         MCP Server (local STDIO)
 - محاكاة device disconnect أثناء upload/install session.
 - MCP STDIO tool read-only يقرأ device info من نفس Application Service، لا من مسار موازٍ.
 - قياس cold start، idle memory، package size، وoffline behavior.
-- نفس الاختبارات على تنفيذ .NET وTauri/Rust قبل قرار نهائي؛ لا نقارن benchmark واحداً فقط.
+- ~~نفس الاختبارات على تنفيذ .NET وTauri/Rust قبل قرار نهائي~~ — **أُلغي:** الستاك محسوم في [ADR-0001](17-adr-0001-stack-decision.md)؛ PoC الآن يقيس تنفيذ النواة نفسها لا يقارن لغتين.
 
 ## 7. خطة ترتيب البناء بعد موافقة تنفيذ مستقلة
 

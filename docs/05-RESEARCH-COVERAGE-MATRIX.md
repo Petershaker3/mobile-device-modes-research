@@ -2,7 +2,7 @@
 
 > **الغرض:** توضيح ما الذي غطته وثائق المستودع فعلياً، وما الذي ورد كإشارة أو مرشح فقط، وما الذي يحتاج بحثاً إضافياً قبل اعتماد تصميم أو مشروع جاهز. هذه مصفوفة بحث وليست إعلاناً عن وظائف منفذة.
 
-**آخر مراجعة:** 12 نوفمبر 2026  
+**آخر مراجعة:** 13 نوفمبر 2026  
 **المنصة المستهدفة:** Windows 10/11 وAndroid 7.0 (API 24) فأحدث.  
 **قيود النطاق:** لا بحث في التراخيص أو أوضاع/بروتوكولات Qualcomm وMediaTek. لا اختبارات على أجهزة فعلية في هذه المرحلة.
 
@@ -39,8 +39,11 @@
 | النسخ الاحتياطي والاستعادة | [11](11-backup-restore-boundaries.md)؛ Android Auto Backup/adb backup limits؛ مراجعة chen3feng/android-backup وOpen Android Backup وAndroid Backup Extractor وJigar Tools | بحث جيد — غير مختبر | اختبار backup/restore فعلياً على Android API 24+، واختبار manifest/hash/incremental/conflict handling | الوثيقة المستقلة موجودة |
 | DNS وPrivate DNS وحجب الإعلانات | [03 §17.1 و17.3–17.4](03-app-management-and-network.md)؛ [02 §20.22](02-tool-landscape-and-market-research.md) | بحث جيد — غير مختبر | تثبيت مصفوفة اختلافات Android 7+ وOEM وWi-Fi/mobile؛ اختبار Preview/Apply/Verify/Restore لاحقاً؛ توثيق متطلبات Local VPN منفصلة عن ADB DNS | لا؛ الموجود مناسب |
 | تعريفات Windows وتشخيصها وإصلاحها | [04](04-windows-driver-diagnostics.md)؛ [02 §20.23–20.25](02-tool-landscape-and-market-research.md) | بحث جيد — غير مختبر | استكمال Hardware-ID matrix واختبار Windows 10/11 وrollback؛ الالتزام بالمصادر الرسمية فقط | لا؛ الموجود مناسب |
-| MCP وربط Codex بطبقة خدمات البرنامج | [02 §20.1–20.20](02-tool-landscape-and-market-research.md)؛ [RESEARCH-METHODOLOGY](RESEARCH-METHODOLOGY.md) | بحث معماري وتدقيق مرشحين جيد — غير مختبر | تثبيت عقود الأدوات والـschemas وApproval Tokens وtimeouts/cancellation وعمليات الجهاز المحدد؛ اختبار MCP فعلياً مع Codex بعد وجود Service Layer | لا؛ استكمال 02 والمنهجية |
-| الأمان وسجل العمليات والموافقات | [00](00-PRODUCT-BASELINE.md)؛ [02 §20.11 و20.14–20.16](02-tool-landscape-and-market-research.md)؛ [RESEARCH-METHODOLOGY](RESEARCH-METHODOLOGY.md) | بحث جيد على مستوى التصميم | تحويل السياسات إلى threat model واختبارات لكل adapter؛ لا اعتبار annotation أو confirmation flag وحده موافقة مخولة | لا؛ تطوير المنهجية |
+| MCP وربط Codex بطبقة خدمات البرنامج | [02 §20.1–20.20](02-tool-landscape-and-market-research.md)؛ [15](15-source-revalidation-mcp-codex.md)؛ [RESEARCH-METHODOLOGY](RESEARCH-METHODOLOGY.md) | بحث معماري وتدقيق مرشحين جيد — غير مختبر | بناء الخادم فوق Application Services واختباره مع Codex؛ لا write tools في V1 | لا؛ استكمال 02 و15 |
+| **العقود المشتركة (Device/Capability/Operation/Result/Plan/Audit)** | [19](19-SHARED-CONTRACTS.md) و[`contracts/schemas`](../contracts/schemas/) | **مواصفة منفذة ومُتحقَّق منها** (45 فحصاً، 10 حالات سلبية) — لا كود C# بعد | توليد الأنواع في .NET + `Contracts.Tests` ترفض نفس الحالات السلبية | **نعم: [19](19-SHARED-CONTRACTS.md)** |
+| **الأمان وسجل العمليات والموافقات** | [Threat Model](../contracts/THREAT-MODEL.md) و[18 §5](18-ENGINEERING-DECISIONS.md) و[19 §3.3](19-SHARED-CONTRACTS.md) | **threat model مُصمَّم بـ13 مسار هجوم؛ ضابطان مُنفَّذان فقط** | كتابة اختبارات T1/T2/T3/T7/T11 بعد بناء الـcorpus؛ T8 مغطى عبر العقود | **نعم: Threat Model** |
+| **Test Corpus وfixtures** | [`contracts/corpus`](../contracts/corpus/README.md) | **مواصفة كاملة، لا fixtures مولَّدة** | توليد الفئتين أ وC بسكربت (لا تحتاج جهازاً) | **نعم: corpus README** |
+| **قرار الستاك وأرقام التشغيل** | [17](17-adr-0001-stack-decision.md) و[18](18-ENGINEERING-DECISIONS.md) | **محسوم** (ما عدا تغطية الأجهزة) | قياس الأرقام على جهاز حقيقي عند توفره | **نعم: 17 و18** |
 
 ## 3. مشاريع وأدوات جاهزة ظهرت في البحث — دون اعتماد تلقائي
 
@@ -75,15 +78,18 @@
 
 | الترتيب | الجولة | الناتج المطلوب | حالة البداية |
 |---:|---|---|---|
-| 1 | Source Revalidation | مراجعة الفروق عند SHAs المثبتة في [12](12-REUSE-AND-IMPLEMENTATION-PLAN.md)، وفصل commit المراجع عن HEAD الملتقط | In Progress — اكتملت مراجعة AdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)، وbundletool وapkfile وPacMan-APK وxapkInstaller في [14](14-source-revalidation-app-installers.md)، وadb-mcp وus-all/android-mcp-server في [15](15-source-revalidation-mcp-codex.md)، وpayload-dumper-go وlucky-arch وlpunpack_cyth وchen3feng/android-backup في [16](16-source-revalidation-firmware-storage-backup.md)؛ بقية المحاور متبقية |
-| 2 | Host Core PoC | مقارنة .NET 10 وTauri/Rust في ADB USB/Wireless وmulti-device وcancellation وWindows PnP | Not Started |
-| 3 | Shared Contracts | DeviceHandle وCapability وOperation وResult وAudit schemas | Design Spec موجود؛ يحتاج PoC |
-| 4 | Test Corpus | مخرجات Android منقحة وfixtures APK/OTA/super/logcat/bugreport وعمليات فشل | Not Started |
-| 5 | Runtime Matrix | Windows 10/11 وAndroid API 24+ مع فصل Unit/Parser/Runtime/Hardware evidence | Not Started |
-| 6 | قرار Stack | اختيار Host/UI/ADB/MTP/MCP/dependency delivery بعد نتائج PoC | Open Decision |
-| 7 | Implementation Approval | موافقة تنفيذ مستقلة قبل أي تغيير في البرنامج أو الجهاز | Required Gate |
+| 1 | Source Revalidation | مراجعة الفروق عند SHAs المثبتة، وفصل commit المراجع عن HEAD الملتقط | **✅ مكتمل على جولتين** — الجولة 1 في [13](13-source-revalidation-adb-file-core.md)/[14](14-source-revalidation-app-installers.md)/[15](15-source-revalidation-mcp-codex.md)/[16](16-source-revalidation-firmware-storage-backup.md)، والجولة 2 في [20](20-source-revalidation-round2.md) (6 مشاريع، 4 تصحيحات لوثائق قائمة) |
+| 2 | قرار Stack | Host/UI/ADB/MTP/MCP/dependency delivery | **✅ محسوم:** [ADR-0001](17-adr-0001-stack-decision.md) — .NET 10 + WPF + AdvancedSharpAdbClient + CsWin32 + SQLite؛ تفاصيل [18](18-ENGINEERING-DECISIONS.md) |
+| 3 | Shared Contracts | DeviceHandle وCapability وOperation وResult وPlan وAudit | **✅ مواصفة منفذة:** [19](19-SHARED-CONTRACTS.md) + `contracts/` — 45 فحصاً يعمل، 10 حالات سلبية. كود C# لم يُكتب |
+| 4 | Threat Model | مسارات هجوم + ضوابط + اختبار لكل ضابط | **✅ مُصمَّم:** [Threat Model](../contracts/THREAT-MODEL.md) — 13 مساراً؛ **ضابطان فقط مُنفَّذان (T8 باختبار يعمل)** |
+| 5 | Test Corpus | fixtures مولَّدة (أ وج) ثم مستوردة (د) | **مواصفة كاملة، لم تُولَّد** — [`contracts/corpus`](../contracts/corpus/README.md). أ وج لا تحتاجان جهازاً → التالي |
+| 6 | Host Core PoC | تنفيذ النواة على `win-x64`: ADB USB/Wireless، جهازان، cancellation، disconnect/reconcile، ثم Windows PnP | Not Started — **يحتاج جهاز اختبار** |
+| 7 | Runtime Matrix | Windows 10/11 وAndroid API 24+ مع فصل Unit/Parser/Runtime/Hardware | Not Started — **يحتاج جهاز اختبار** |
+| 8 | Implementation Approval | موافقة تنفيذ مستقلة قبل أي تغيير في البرنامج أو الجهاز | Required Gate (الجهاز فقط؛ كتابة الكود داخل النطاق المسموح) |
 
-التفاصيل والمعايير وترتيب المحاور في [12 — خطة إعادة الاستخدام والمعمارية والتنفيذ](12-REUSE-AND-IMPLEMENTATION-PLAN.md)، ونتائج أول جولتين Source Revalidation في [13](13-source-revalidation-adb-file-core.md) و[14](14-source-revalidation-app-installers.md) و[15](15-source-revalidation-mcp-codex.md) و[16](16-source-revalidation-firmware-storage-backup.md).
+التفاصيل والمعايير وترتيب المحاور في [12 — خطة إعادة الاستخدام والمعمارية والتنفيذ](12-REUSE-AND-IMPLEMENTATION-PLAN.md)، ونتائج الجولتين في [13](13-source-revalidation-adb-file-core.md) و[14](14-source-revalidation-app-installers.md) و[15](15-source-revalidation-mcp-codex.md) و[16](16-source-revalidation-firmware-storage-backup.md) و[20](20-source-revalidation-round2.md). القرارات التنفيذية في [17](17-adr-0001-stack-decision.md) و[18](18-ENGINEERING-DECISIONS.md).
+
+> **⚠️ اكتشاف مهم من الجولة الثانية (يجب ألا يُفقد):** `daitouniao/logcat-viewer` مبني على **.NET 10 + WinForms + AdvancedSharpAdbClient 3.6.16** مع 852 اختباراً وتغطية 94%، وليس مجرد "مرجع أداء" كما كان موصوفاً. هذا يجعله أعلى قيمة اقتباس بين كل المرشحين — لكن فيه فجوة حرجة: `Shell(serial, cmd, timeoutSec)` **لا يستخدم المهلة**. راجع [20 §2.1](20-source-revalidation-round2.md).
 
 ## 6. قواعد تحديث هذه المصفوفة
 

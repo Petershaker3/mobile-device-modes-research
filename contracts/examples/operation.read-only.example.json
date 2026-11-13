@@ -1,0 +1,49 @@
+{
+  "operationId": "b7d1f3a4-2c5e-4a91-b0f8-6d3e2a1c9b70",
+  "operationType": "device.read_info",
+  "targetDeviceId": "dev_3f9a1c0d5e7b2846",
+  "impactLevel": "ReadOnly",
+  "state": "Succeeded",
+  "createdAt": "2026-11-13T09:41:00Z",
+  "updatedAt": "2026-11-13T09:41:09Z",
+  "startedAt": "2026-11-13T09:41:01Z",
+  "endedAt": "2026-11-13T09:41:09Z",
+  "deadline": "2026-11-13T09:42:30Z",
+  "cancellationRequested": false,
+  "progress": { "phase": "Done", "current": 42, "total": 42, "unit": "Steps" },
+  "planId": null,
+  "approvalTokenId": null,
+  "warnings": [
+    {
+      "code": "FIELD_NOT_REPORTED",
+      "message": "ro.boot.baseband was not present; the baseband row shows NotReported rather than an empty value.",
+      "severity": "Info"
+    }
+  ],
+  "result": {
+    "ok": true,
+    "problemCode": "OK",
+    "recoverability": "NotRetryable",
+    "message": "Read 42 fields: 40 available, 1 not reported, 1 unsupported.",
+    "exitCode": 0,
+    "verification": {
+      "performed": true,
+      "verified": true,
+      "evidence": "Each field carries its own availability; the report was re-read from the cache and matched.",
+      "verifiedAt": "2026-11-13T09:41:09Z"
+    },
+    "warnings": [],
+    "timing": {
+      "startedAt": "2026-11-13T09:41:01Z",
+      "endedAt": "2026-11-13T09:41:09Z",
+      "durationMs": 8000
+    }
+  },
+  "auditEventIds": [
+    "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+    "2d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f60"
+  ],
+  "artifacts": [],
+  "parentOperationId": null,
+  "retryOfOperationId": null
+}

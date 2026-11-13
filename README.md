@@ -2,7 +2,17 @@
 
 مرجع بحثي لتصميم منصة Windows متكاملة للتعامل مع أجهزة Android: الاتصال وقراءة البيانات وفهم الأوضاع ومعلومات السوفتوير وإدارة التطبيقات والملفات والتشخيص والشبكة وتعريفات Windows، مع إتاحة الوظائف لوكلاء الذكاء الاصطناعي عبر MCP.
 
-> **حالة المستودع:** بحث وتوثيق وتصميم متطلبات. لا يوجد حتى الآن تطبيق منتج مكتمل أو ادعاء باختبار كل الوظائف على أجهزة فعلية.
+> **حالة المستودع:** بحث وتوثيق وتصميم متطلبات + **قرارات تنفيذ محسومة + عقود قابلة للفحص آلياً**. لا يوجد تطبيق منتج مكتوب، ولا ادعاء باختبار أي وظيفة على جهاز فعلي.
+>
+> **الستاك محسوم (13 نوفمبر 2026):** .NET 10 + WPF — راجع [ADR-0001](docs/17-adr-0001-stack-decision.md).
+>
+> **جرّب العقود الآن** (لا تحتاج .NET ولا جهازاً):
+> ```bash
+> pip install 'jsonschema>=4.18'
+> python contracts/tools/validate_contracts.py
+> # contracts: 45 checks over 7 schemas, 11 examples, 10 negative cases
+> # OK: all contracts hold
+> ```
 
 ## ابدأ من هنا
 
@@ -13,8 +23,14 @@
 5. **[إعادة التحقق من مثبتات APK والحزم](docs/14-source-revalidation-app-installers.md)** — مراجعة parser/install candidates لكل الصيغ.
 6. **[إعادة التحقق من MCP وCodex](docs/15-source-revalidation-mcp-codex.md)** — مراجعة خوادم MCP وتثبيت سياسة آمنة للربط المحلي.
 7. **[إعادة التحقق من OTA والتخزين والنسخ الاحتياطي](docs/16-source-revalidation-firmware-storage-backup.md)** — مراجعة parser/backup candidates وحدودها.
-8. [فهرس الوثائق](docs/README.md) — خريطة القراءة حسب المجال.
-5. [منهجية البحث وضبط الأدلة](docs/RESEARCH-METHODOLOGY.md) — كيف نراجع المشاريع ونفرق بين الادعاء والكود والاختبار.
+8. **[ADR-0001 — قرار الستاك](docs/17-adr-0001-stack-decision.md)** — .NET 10 + WPF محسوم، وأثره على ترتيب المرشحين وحاجز الترخيص.
+9. **[القرارات الهندسية التنفيذية](docs/18-ENGINEERING-DECISIONS.md)** — المهلات، الحدود، إصدارات الأدوات، الاحتفاظ بالسجلات، نطاق الكتابة.
+10. **[العقود المشتركة](docs/19-SHARED-CONTRACTS.md)** — DeviceHandle/Plan/Operation/Result/Audit كمواصفة منفذة مع مدقّق يعمل.
+11. **[الجولة الثانية من مراجعة المصدر](docs/20-source-revalidation-round2.md)** — 6 مشاريع و4 تصحيحات لوثائق قائمة.
+12. **[Threat Model](contracts/THREAT-MODEL.md)** — 13 مسار هجوم، وضابطا حماية منفَّذان فقط.
+13. **[Test Corpus](contracts/corpus/README.md)** — مواصفة الـfixtures لكل فئة.
+14. [فهرس الوثائق](docs/README.md) — خريطة القراءة حسب المجال.
+15. [منهجية البحث وضبط الأدلة](docs/RESEARCH-METHODOLOGY.md) — كيف نراجع المشاريع ونفرق بين الادعاء والكود والاختبار.
 
 ## خريطة الملفات
 
@@ -37,6 +53,11 @@
 | [14 — App Installer Source Revalidation](docs/14-source-revalidation-app-installers.md) | مراجعة bundletool وapkfile وPacMan-APK وxapkInstaller، وفصل صيغ APKS/APKM/XAPK وسياسة التثبيت وأمان الأرشيف |
 | [15 — MCP & Codex Source Revalidation](docs/15-source-revalidation-mcp-codex.md) | مراجعة adb-mcp وus-all/android-mcp-server، وتصميم MCP محلي read-only مع explicit targeting وapproval protocol |
 | [16 — Firmware, Storage & Backup Source Revalidation](docs/16-source-revalidation-firmware-storage-backup.md) | مراجعة payload-dumper-go وlucky-arch وlpunpack_cyth وchen3feng/android-backup، وتحديد فجوات metadata/sparse/backup |
+| [17 — ADR-0001 Stack](docs/17-adr-0001-stack-decision.md) | قرار .NET 10 + WPF، البدائل المرفوضة، وأثر الترخيص |
+| [18 — Engineering Decisions](docs/18-ENGINEERING-DECISIONS.md) | المهلات والحدود والإصدارات والاحتفاظ ونطاق الكتابة |
+| [19 — Shared Contracts](docs/19-SHARED-CONTRACTS.md) | العقود كمواصفة منفذة + المدقّق + الحالات السلبية |
+| [20 — Source Revalidation R2](docs/20-source-revalidation-round2.md) | الجولة الثانية للمرشحين والتصحيحات |
+| [contracts/](contracts/) | JSON Schemas، أمثلة، المدقّق، Threat Model، corpus |
 | [Research Methodology](docs/RESEARCH-METHODOLOGY.md) | الأدلة، الاختبارات، إعادة الاستخدام، أمان MCP وصيانة الوثائق |
 
 ## بيئة التشغيل المعتمدة
@@ -78,19 +99,21 @@
 
 | المحور | التوثيق الحالي | الخطوة التالية |
 |---|---|---|
-| الاتصال وRead Info والأوضاع | بحث ومصفوفات ومراجعات أولية | اختبارات فعلية حسب الموديل والإصدار |
+| الاتصال وRead Info والأوضاع | بحث ومصفوفات؛ قرار الستاك محسوم؛ عقود قابلة للفحص | اختبارات فعلية حسب الموديل والإصدار (يحتاج جهازاً) |
 | معلومات النظام والجهاز | وثيقة بحث مستقلة 06 ومراجعة مرشحين | استكمال المصفوفة والاختبارات لاحقاً |
 | معلومات build والـOTA والفريموير | وثيقتا بحث 06 و07 ومراجعة payload-dumper-go/AOSP | توسيع صيغ OTA legacy واختبار corpus |
 | التخزين والأقسام | وثيقة بحث مستقلة 08 ومراجعة AOSP/liblp وأدوات Go/Cython | اختبار parser على corpus وقراءة الأجهزة لاحقاً |
 | Logcat وBugreport والتشخيص | وثيقة بحث مستقلة 10 ومراجعة مصدر لعدة مشاريع | اختبارات ZIP وRuntime وHardware لاحقاً |
 | إدارة الملفات والنقل | وثيقة بحث مستقلة 09 ومراجعة مصدر لعدة مشاريع | اختبار Runtime/Hardware وMTP/WPD |
 | النسخ الاحتياطي والاستعادة | وثيقة بحث مستقلة 11 وحدود Android ومراجعة مشاريع incremental/legacy | اختبار Backup/Restore فعلياً بعد اعتماد النطاق |
-| تثبيت التطبيقات | تصميم محرك موحد وتدقيق صيغ ومشاريع | Test Corpus وPoC على Windows وهاتف محدد |
+| تثبيت التطبيقات | تصميم محرك موحد وتدقيق صيغ؛ `Plan`+`Approval`+`Verify` مفروضة في العقود | Test Corpus وPoC على Windows وهاتف محدد |
 | مصادر التطبيقات | F-Droid/APKPure/APKMirror موثقة مبدئياً | إثبات تدفق التنزيل لكل مصدر |
 | إدارة التطبيقات وDNS | متطلبات وخطط اختبار | تدقيق نهائي واختبار فعلي |
 | تعريفات Windows | تصميم تشخيص وإصلاح آمن | Hardware ID matrix واختبارات rollback |
-| MCP/Codex | معمارية ومراجعات أولية | بناء الخادم واختباره بعد استقرار Service Layer |
+| MCP/Codex | معمارية ومراجعات أولية؛ قرار Read-only V1 | بناء الخادم واختباره بعد استقرار Service Layer |
 
 **المرجع الحاكم للأولويات والقرارات:** [docs/00-PRODUCT-BASELINE.md](docs/00-PRODUCT-BASELINE.md).  
 **المرجع الحاكم لحالة التغطية والفجوات:** [docs/05-RESEARCH-COVERAGE-MATRIX.md](docs/05-RESEARCH-COVERAGE-MATRIX.md).  
-**المرجع الحاكم لإعادة الاستخدام وخطة PoC:** [docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md](docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md).
+**المرجع الحاكم لإعادة الاستخدام وخطة PoC:** [docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md](docs/12-REUSE-AND-IMPLEMENTATION-PLAN.md).  
+**المرجع الحاكم لقرار الستاك:** [docs/17-adr-0001-stack-decision.md](docs/17-adr-0001-stack-decision.md).  
+**المرجع الحاكم للعقود والسياسات القابلة للفحص:** [docs/19-SHARED-CONTRACTS.md](docs/19-SHARED-CONTRACTS.md) و[contracts/](contracts/).

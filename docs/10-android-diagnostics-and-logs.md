@@ -242,9 +242,21 @@ README يصف تطبيقين Windows من solution واحدة:
 - وجود command window يعني ضرورة تدقيق حدود الأوامر قبل أي ربط MCP.
 - لم يتم بناء المشروع أو اختبار UI/device integration في هذه الجولة.
 
-**الحكم:** مرجع قوي لتصميم viewer/index/performance واختبارات النقل، وليس مرشح دمج كامل حالياً.
+**⚠️ تصحيح 13 نوفمبر 2026 — ترقية من "مرجع أداء" إلى أعلى قيمة اقتباس:** المراجعة الفعلية للشجرة كشفت ما لم تسجّله هذه الوثيقة:
+
+- مبني على **`net10.0-windows`** (نفس runtime المعتمد في [ADR-0001](17-adr-0001-stack-decision.md)) لا على Rust كما يوحي ذكره مع LogFilter/Sherlog.
+- يستخدم **`AdvancedSharpAdbClient 3.6.16`** — نفس المكتبة المعتمدة كـADB Core.
+- حل من 4 مشاريع بينها **`logcat.UiCore`** كمكتبة مشتركة تحمل `Services/AdbManager.cs` (636 سطراً): تعداد أجهزة، `DeviceMonitor`، self-heal لـadb server، push/pull، screenshots، root detection.
+- **852 اختباراً، 94.26% تغطية سطور / 88.64% branches** على `Services`+`Models` (أرقام مُعلنة في `docs/TESTING.md`، لم نُشغّلها).
+- رخصة **Apache-2.0** مع `THIRD-PARTY-NOTICES.md` و`DISCLAIMER.md`.
+
+**فجوة حرجة مكتشفة:** `AdbManager.Shell(serial, cmd, timeoutSec = 30)` يستقبل مهلة **ولا يستخدمها في جسم الدالة**؛ المهلة المنفَّذة فعلاً تخص `RootProbeTimeoutSec` في دالة أخرى. كما أن `Shell` يأخذ الأمر كنص واحد ويُعيد `string` بلا `problemCode`. لذلك: **يُقتبس النمط والبنية، ولا يُقتبس `Shell` كما هو** — يلزم wrapping بـ`CancellationToken` وإرجاع `Result`.
+
+**الحكم المصحَّح:** **أعلى قيمة اقتباس بين كل المرشحين** (كود C# ناضج بنفس الستاك)، بشرط المراجعة الانتقائية. التفاصيل والاستثناءات في [20 §2.1](20-source-revalidation-round2.md).
 
 ### 6.3 kefengwei/LogCater — ميزات كثيرة لكن سياسة اختيار الجهاز غير مناسبة
+
+> **إضافة 13 نوفمبر 2026:** الشجرة تحتوي `src/mcp/` — أي أن LogCater يضم **خادم MCP داخلياً**، وهو ما لم تذكره هذه الوثيقة. يُضاف كمرجع لتصميم MCP فقط، مع نفس التحذير: لا نقل auto-device ولا generic shell. التفاصيل في [20 §2.2](20-source-revalidation-round2.md).
 
 المستودع: https://github.com/kefengwei/LogCater  
 الفرع الافتراضي وقت المراجعة: master.

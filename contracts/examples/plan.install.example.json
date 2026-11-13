@@ -1,0 +1,81 @@
+{
+  "planId": "9c8b7a65-4321-4f0e-9d8c-7b6a5f4e3d2c",
+  "operationType": "app.install",
+  "impactLevel": "DeviceWrite",
+  "targetDeviceId": "dev_3f9a1c0d5e7b2846",
+  "createdAt": "2026-11-13T10:11:38Z",
+  "steps": [
+    {
+      "stepId": 1,
+      "kind": "LocalReadFile",
+      "description": "Re-hash the staged package set and compare with the approved digests.",
+      "localPath": "C:\\Users\\tech\\Downloads\\org.example.app.apks",
+      "expectedEffect": "Hashes still match the approved values; otherwise abort before touching the device.",
+      "reversible": true,
+      "reversalStepId": null
+    },
+    {
+      "stepId": 2,
+      "kind": "RefreshDeviceState",
+      "description": "Confirm the target device is still Online on ADB_USB and still reports API 34 / arm64-v8a.",
+      "expectedEffect": "Device handle is fresh and its capabilities still include adb.package.install_multiple.",
+      "reversible": true,
+      "reversalStepId": null
+    },
+    {
+      "stepId": 3,
+      "kind": "BundletoolInstallApks",
+      "description": "Let bundletool select the splits for this device spec and install the resulting set in one session.",
+      "command": {
+        "argv": [
+          "bundletool",
+          "install-apks",
+          "--apks=C:\\Users\\tech\\AppData\\Local\\DeviceToolkit\\state\\staging\\4a5b6c7d\\org.example.app.apks",
+          "--device-id=dev_3f9a1c0d5e7b2846"
+        ],
+        "cwd": null
+      },
+      "expectedEffect": "org.example.app appears in the package list with versionCode 3410.",
+      "reversible": false,
+      "reversalStepId": null
+    },
+    {
+      "stepId": 4,
+      "kind": "VerifyPackageState",
+      "description": "Re-read package/version/signature state independently of the install command's output.",
+      "expectedEffect": "packageId org.example.app, versionCode 3410, signer digest equal to the approved value.",
+      "reversible": true,
+      "reversalStepId": null
+    }
+  ],
+  "preexistingState": {
+    "capturedAt": "2026-11-13T10:11:39Z",
+    "capturedBy": "AdbShell",
+    "digest": "a3f1c29d4b8e7560af3c1d92b8e47056cd19ab3e57f2048c6d9b1a3e5f708192"
+  },
+  "inputs": {
+    "packageId": "org.example.app",
+    "versionCode": 3410,
+    "formatKind": "Apks",
+    "files": [
+      {
+        "path": "C:\\Users\\tech\\Downloads\\org.example.app.apks",
+        "sizeBytes": 48210394,
+        "sha256": "3b1f8e2d9c4a7b6e5f0d3c8a1b9e7f2d4c6a8b0e3f5d7c9a1b3e5f7d9c0a2b4e",
+        "role": "Base"
+      }
+    ]
+  },
+  "estimated": {
+    "bytesToTransfer": 48210394,
+    "seconds": 95,
+    "freeSpaceAfterBytes": 12884901888
+  },
+  "warnings": [
+    {
+      "code": "TEST_ONLY_FLAG_NOT_PASSED",
+      "message": "-t is not passed. If this package is test-only the install will fail with INSTALL_FAILED_TEST_ONLY, and that must be resolved explicitly rather than by adding -t silently.",
+      "severity": "Info"
+    }
+  ]
+}

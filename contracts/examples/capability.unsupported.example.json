@@ -1,0 +1,13 @@
+{
+  "capabilityId": "adb.settings.dns.write",
+  "supportedTransport": "ADB_USB",
+  "availability": "Unsupported",
+  "androidApiRange": { "min": 28, "max": null },
+  "deviceScope": "ThisDevice",
+  "evidenceSource": "AdbShell",
+  "evidenceRef": "probe:settings-put-private_dns",
+  "observedAt": "2026-11-13T11:20:41Z",
+  "confidence": "Medium",
+  "reason": "The device's Android build rejected the settings write (SecurityException in the shell output). Private DNS changes are blocked on this OEM build; reading the current value still works.",
+  "requirements": ["UsbDebuggingEnabled", "RsaAuthorized"]
+}

@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "problemCode": "OK",
+  "recoverability": "NotRetryable",
+  "message": "Listed 214 packages across 2 users.",
+  "exitCode": null,
+  "rawEvidence": {
+    "stdoutExcerpt": "package:com.android.settings\npackage:org.example.app\n... (212 more lines)",
+    "stderrExcerpt": null,
+    "truncated": true,
+    "redactedFields": []
+  },
+  "verification": {
+    "performed": true,
+    "verified": true,
+    "evidence": "Package count matched between the two shells (pm list packages --user 0 and cmd package list packages), and the parsed names were non-empty and unique.",
+    "verifiedAt": "2026-11-13T10:40:12Z"
+  },
+  "warnings": [],
+  "timing": {
+    "startedAt": "2026-11-13T10:40:10Z",
+    "endedAt": "2026-11-13T10:40:12Z",
+    "durationMs": 2100
+  }
+}

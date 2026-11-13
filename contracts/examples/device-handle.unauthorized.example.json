@@ -1,0 +1,37 @@
+{
+  "deviceId": "dev_a1b2c3d4e5f60718",
+  "transportKind": "ADB_USB",
+  "connectionState": "Unauthorized",
+  "transportIdentity": {
+    "redacted": "••••••91C3",
+    "redactionPolicy": "MaskedTail4",
+    "kind": "AdbSerial"
+  },
+  "usb": {
+    "vendorId": "04E8",
+    "productId": "6860",
+    "hardwareIds": ["USB\\VID_04E8&PID_6860&REV_0400"],
+    "comPort": null,
+    "instanceId": "USB\\VID_04E8&PID_6860\\7&1F2E3D4C&0&3"
+  },
+  "androidApi": null,
+  "model": "SM-A146U",
+  "manufacturer": "samsung",
+  "capabilities": [
+    {
+      "capabilityId": "adb.shell.exec",
+      "supportedTransport": "ADB_USB",
+      "availability": "PermissionDenied",
+      "deviceScope": "ThisDevice",
+      "evidenceSource": "AdbHost",
+      "evidenceRef": "probe:adb-devices",
+      "observedAt": "2026-11-13T10:02:31Z",
+      "confidence": "High",
+      "requirements": ["RsaAuthorized", "ScreenUnlocked"],
+      "reason": "The device has not accepted the host RSA key. Accept the 'Allow USB debugging' prompt on the phone, then reconnect."
+    }
+  ],
+  "firstSeenAt": "2026-11-13T10:02:28Z",
+  "lastSeenAt": "2026-11-13T10:02:31Z",
+  "stale": false
+}

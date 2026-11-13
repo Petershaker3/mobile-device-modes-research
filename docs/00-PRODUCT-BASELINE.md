@@ -211,6 +211,11 @@ Windows Desktop UI                 AI Client (Codex)
 | `docs/14-source-revalidation-app-installers.md` | إعادة مراجعة bundletool وapkfile وPacMan-APK وxapkInstaller وسياسات APK/APKM/XAPK/APKS |
 | `docs/15-source-revalidation-mcp-codex.md` | إعادة مراجعة خوادم MCP وقرار Read-only V1 وexplicit device targeting وآلية الموافقة |
 | `docs/16-source-revalidation-firmware-storage-backup.md` | إعادة مراجعة OTA payload وsuper metadata وأدوات incremental backup وحدودها |
+| `docs/17-adr-0001-stack-decision.md` | قرار الستاك التنفيذي (.NET 10 + WPF) ونتيجته على ترتيب المرشحين وأثر الترخيص |
+| `docs/18-ENGINEERING-DECISIONS.md` | المهلات والحدود والإصدارات والاحتفاظ بالسجلات ونطاق الكتابة |
+| `docs/19-SHARED-CONTRACTS.md` | العقود المشتركة كمواصفة منفذة مع مدقّق يعمل |
+| `docs/20-source-revalidation-round2.md` | الجولة الثانية من مراجعة المصدر والتصحيحات الأربعة |
+| `contracts/` | ملفات JSON Schema والأمثلة والمدقّق و`THREAT-MODEL.md` و`corpus/` |
 | `docs/RESEARCH-METHODOLOGY.md` | منهجية الأدلة والاختبارات والأمان وإعادة الاستخدام وMCP |
 | `docs/README.md` | فهرس تنقل مرتب حسب رحلة القراءة والوظائف |
 
@@ -225,29 +230,39 @@ Windows Desktop UI                 AI Client (Codex)
 | Windows | Windows 10 وWindows 11 | يلزم تحديد Builds/editions ومعمارية x64/ARM64 في خطة الاختبار، ولا يغير ذلك نطاق الأنظمة المعتمد. |
 | Android | Android 7.0 / API 24 فأحدث | الوظائف المتاحة تختلف حسب إصدار Android والموديل والشركة والصلاحيات؛ لا يعني الحد الأدنى أن كل ميزة تعمل على Android 7. |
 
-### 9.2 قرارات تنفيذ لا تزال مفتوحة
+### 9.2 قرارات التنفيذ — محدَّثة 13 نوفمبر 2026
+
+**محسومة الآن** (كانت مفتوحة في المراجعة السابقة):
+
+| القرار | القرار المعتمد | المرجع |
+|---|---|---|
+| Runtime وGUI | **.NET 10 + WPF** | [ADR-0001](17-adr-0001-stack-decision.md) |
+| ADB | **AdvancedSharpAdbClient 3.6.16+** عبر adapter داخلي | [17 §2](17-adr-0001-stack-decision.md) |
+| معمارية Windows | **`win-x64` أولاً**؛ ARM64 مؤجل | [18 §1](18-ENGINEERING-DECISIONS.md) |
+| سياسة الإصدارات | نسخ مثبتة + `packages.lock.json` + تحقق SHA-256 | [18 §2](18-ENGINEERING-DECISIONS.md) |
+| حدود العمليات والمهلات | جدول ثوابت مسمّاة في `Limits.cs` | [18 §3](18-ENGINEERING-DECISIONS.md) |
+| فشل العمليات الجزئية | `OutcomeUnknown` + `reconcile` مفروضة في العقد | [19 §3.5](19-SHARED-CONTRACTS.md) |
+| الاحتفاظ بالسجلات | جدول مدد + تنقيح + موقع `%LOCALAPPDATA%` | [18 §4](18-ENGINEERING-DECISIONS.md) |
+| نطاق الكتابة | جدول صريح: تثبيت/ملفات/DNS مسموح؛ **تعريفات وتفليش وroot ممنوع في V1** | [18 §5](18-ENGINEERING-DECISIONS.md) |
+
+**لا تزال مفتوحة:**
 
 | القرار | ما يجب تحديده | أثره |
 |---|---|---|
-| معمارية Windows | x64 فقط أولاً أم دعم ARM64 أيضاً | اختيار الحزم والاعتماديات وبناء CI |
 | تغطية Android | مصفوفة إصدارات وموديلات فعلية للاختبار فوق API 24 | التحقق من اختلاف الأوامر والخصائص والأوضاع والصلاحيات |
-| أدوات التشغيل | طريقة توفير ADB Platform Tools وJava/bundletool والمكونات الأخرى عند الحاجة | التثبيت والتحديث والتحقق من سلامة الاعتماديات |
-| سياسة الإصدارات | تثبيت نسخ الأدوات ومواعيد تحديثها وآلية الرجوع | قابلية إعادة البناء وتجنب تغير السلوك دون مراجعة |
-| حدود العمليات | مهلات كل عملية، وحدود الملفات والذاكرة والمساحة، وسلوك الإلغاء | حماية البرنامج من التعليق أو استهلاك الموارد |
-| فشل العمليات الجزئية | حالات timeout/disconnect أثناء تثبيت splits أو نقل الملفات أو عمليات النظام | تصميم reconciliation وإعادة المحاولة ومنع الإبلاغ الكاذب عن النجاح |
-| الاحتفاظ بالسجلات | مدة الاحتفاظ ومكان التخزين وحقول التنقيح | الخصوصية والتشخيص واستعادة سجل العملية |
-| نطاق الكتابة للسوفتوير | ما إذا كانت هناك وظائف تعديل/تحديث/تفليش مستقبلاً، وما الأجهزة والعمليات المسموحة | لا تُبنى أو تُعرض عمليات كتابة/تفليش قبل قرار مستقل ومراجعة أمان واختبار خاص |
+| نطاق الكتابة للسوفتوير | هل تُضاف وظائف تحديث/تفليش مستقبلاً | تحتاج قرار مستقل ومراجعة أمان واختبار خاص |
+| دعم ARM64 | متى يصبح مطلوباً | يحتاج جهاز اختبار ARM64 |
 
 **قاعدة التعامل مع الفشل:** كل عملية طويلة أو متعددة الخطوات يجب أن تمتلك Operation ID وحالات صريحة مثل Pending وRunning وSucceeded وFailed وCancelled وOutcomeUnknown وNeedsReconciliation. لا تُعاد العملية تلقائياً إذا كان من الممكن أن تكون قد نُفذت جزئياً؛ افحص الحالة أولاً. يجب أن تكون عمليات التنظيف محدودة ومحمية من حذف ملفات لا تخص العملية الحالية.
 
 ## 10. الخطوات التالية بالترتيب
 
 1. تم تدقيق الاتساق الأساسي بين الوثائق 00–12 وتحديث الفهرس وروابط المحاور؛ تبقى مراجعة تفصيلية متجددة عند تغير أي قرار أو مصدر.
-2. تم التقاط Source HEAD SHAs للمرشحين الرئيسيين في [12](12-REUSE-AND-IMPLEMENTATION-PLAN.md)، وأعيدت مراجعة AdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)؛ بقية المرشحين تحتاج مراجعة الفروق قبل الاقتباس. وتمت إعادة مراجعة المرشحين الأساسيين للتثبيت في [14](14-source-revalidation-app-installers.md)، ومرشحي MCP/Codex في [15](15-source-revalidation-mcp-codex.md)، ومرشحي OTA/storage/backup في [16](16-source-revalidation-firmware-storage-backup.md).
-3. تنفيذ Source Revalidation للمرشحين الأعلى أولوية، ثم إعداد corpus محلي غير حساس من outputs وملفات OTA/super/logcat/bugreport وAPK fixtures، دون جمع بيانات خاصة.
-4. تنفيذ PoC مقارنة لـ.NET 10 وTauri/Rust في ADB USB/Wireless وmulti-device وcancellation وWindows PnP/WPD، ثم حسم Host/UI/ADB/MTP/MCP/dependency delivery.
-5. تثبيت عقود DeviceHandle وCapability وOperation وResult وAudit، وخطة اختبار Windows 10/11 وAndroid API 24+ مع فصل Unit/Parser/Runtime/Hardware.
-6. بعد موافقة تنفيذ مستقلة، تنفيذ النواة المشتركة ثم ربط المحاور عبر adapters قابلة للاستبدال، دون بناء برامج منفصلة لكل محور.
-7. لا تبدأ أي كتابة على هاتف أو إصلاح تعريفات أو تغيير DNS أو تفليش/تحديث جهاز ضمن هذه المرحلة البحثية.
+2. **اكتمل Source Revalidation على جولتين** لـ10 مشاريع: الجولة الأولى في [13](13-source-revalidation-adb-file-core.md) و[14](14-source-revalidation-app-installers.md) و[15](15-source-revalidation-mcp-codex.md) و[16](16-source-revalidation-firmware-storage-backup.md)، والجولة الثانية بعد قرار الستاك في [20](20-source-revalidation-round2.md) — وكشفت أربعة تصحيحات لوثائق قائمة (منها حاجز ترخيص GPL-3.0 وحقيقة أن `daitouniao/logcat-viewer` هو كود .NET 10 بنفس ستاكنا).
+3. **اكتملت القرارات التنفيذية والمواصفات:** الستاك في [ADR-0001](17-adr-0001-stack-decision.md)، المهلات والاحتفاظ وإصدارات الأدوات في [18](18-ENGINEERING-DECISIONS.md)، والعقود كـJSON Schema قابلة للتحقق في [19](19-SHARED-CONTRACTS.md)، ونموذج التهديد في [Threat Model](../contracts/THREAT-MODEL.md)، ومواصفة الـcorpus في [corpus](../contracts/corpus/README.md).
+4. **التالي:** بناء الـcorpus المولَّد (الفئتان أ وج لا تحتاجان جهازاً)، ثم `Contracts.Tests` و`ApprovalService` و`AuditStore`، ثم Host Core PoC على `win-x64`: ADB USB/Wireless مع جهازين، وcancellation، وdisconnect/reconcile، ثم Windows PnP.
+5. إعداد Runtime Matrix لـWindows 10/11 وAndroid API 24+ مع فصل Unit/Parser/Runtime/Hardware، **عند توفر جهاز اختبار** (غير متوفر حالياً).
+6. بعد ذلك فقط: تنفيذ المحاور عبر adapters قابلة للاستبدال، دون بناء برامج منفصلة لكل محور.
+7. لا تبدأ أي كتابة على هاتف أو إصلاح تعريفات أو تفليش/تحديث جهاز. تغيير DNS أو تثبيت تطبيق يتطلب Preview وموافقة وVerify والتحقق المستقل من النتيجة.
 
-**لا نختار تقنية التنفيذ النهائية أو نبدأ إعادة كتابة النظام قبل مراجعة المرشحين الحاليين وتحديد ما يمكن اقتباسه مباشرة.** ولا تُعد هذه الوثيقة موافقة على تنفيذ أي تغييرات على هاتف أو Windows.
+**قرار الستاك محسوم (.NET 10 + WPF) ولا يُعاد فتحه.** والوثيقة تبقى غير مانحة موافقة على تغييرات على جهاز أو Windows.

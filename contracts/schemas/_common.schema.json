@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.local/_common.schema.json",
+  "title": "Common definitions shared by all device-toolkit contracts",
+  "description": "Every other schema in this folder $refs into this file. Nothing here is a wire format by itself.",
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+      "description": "RFC 4122 UUID. Operation/Audit ids are UUIDv4; never reused across restarts."
+    },
+    "deviceId": {
+      "type": "string",
+      "pattern": "^dev_[0-9a-f]{16}$",
+      "description": "Internal, non-sensitive device identity. Derived from transport identity + a local salt, so it is stable per machine but cannot be reversed into a serial."
+    },
+    "isoTimestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC 3339 UTC with 'Z'. Local time is never stored in contracts."
+    },
+    "transportKind": {
+      "type": "string",
+      "enum": ["ADB_USB", "ADB_WIRELESS", "FASTBOOT", "FASTBOOTD", "MTP", "SAMSUNG_AT", "SAMSUNG_ODIN", "XIAOMI_MI_ASSISTANT", "UNKNOWN"],
+      "description": "How the device is reached. A single physical device can expose several transports at once; each is a separate handle."
+    },
+    "connectionState": {
+      "type": "string",
+      "enum": ["Online", "Offline", "Unauthorized", "Authorizing", "Bootloader", "Recovery", "Sideload", "Disconnected"],
+      "description": "Transport-level state as reported by the transport, not an interpretation of device health."
+    },
+    "availability": {
+      "type": "string",
+      "enum": ["Available", "Unsupported", "PermissionDenied", "NotReported", "Unknown"],
+      "description": "Capability/field availability. 'Unknown' means not yet probed; 'NotReported' means the protocol answered but carried no value."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["Info", "Warning", "Error"]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["High", "Medium", "Low"],
+      "description": "How much to trust a value: High = read directly from a documented source; Medium = parsed with a heuristic or an OEM-specific property; Low = inferred."
+    },
+    "evidenceSource": {
+      "type": "string",
+      "enum": ["AdbShell", "AdbHost", "FastbootGetvar", "FastbootOem", "MtpWpd", "WindowsApi", "LocalFile", "VendorProtocol", "UserProvided", "Derived"],
+      "description": "Where a value came from. 'Derived' means computed from other fields and must never be presented as read from the device."
+    },
+    "redactionPolicy": {
+      "type": "string",
+      "enum": ["None", "MaskedTail4", "Hashed", "Dropped"],
+      "description": "How an identity field is stored in audits. Raw serials never appear in logs."
+    },
+    "problemCode": {
+      "type": "string",
+      "enum": [
+        "OK",
+        "DeviceSelectionRequired",
+        "DeviceNotFound",
+        "DeviceDisconnected",
+        "Unauthorized",
+        "PermissionDenied",
+        "Unsupported",
+        "NotReported",
+        "Timeout",
+        "Cancelled",
+        "MalformedResponse",
+        "ParseError",
+        "LimitExceeded",
+        "PolicyBlocked",
+        "ApprovalMissing",
+        "ApprovalExpired",
+        "PreconditionFailed",
+        "IntegrityMismatch",
+        "Conflict",
+        "Busy",
+        "OutcomeUnknown",
+        "NeedsReconciliation",
+        "InternalError"
+      ],
+      "description": "The closed set of machine-readable failure codes. Every Result carries exactly one. Human text is a separate field and never parsed by callers."
+    },
+    "recoverability": {
+      "type": "string",
+      "enum": ["Retryable", "NotRetryable", "RetryAfterReconcile", "RetryAfterUserAction"],
+      "description": "What the caller may do next. 'RetryAfterReconcile' forbids automatic retry: the operation may already have taken effect."
+    },
+    "operationState": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Preview",
+        "AwaitingApproval",
+        "Running",
+        "Succeeded",
+        "Partial",
+        "Failed",
+        "Cancelled",
+        "OutcomeUnknown",
+        "NeedsReconciliation"
+      ],
+      "description": "Terminal states are Succeeded, Partial, Failed, Cancelled. OutcomeUnknown and NeedsReconciliation are NOT terminal: they require a reconcile step before any retry."
+    },
+    "impactLevel": {
+      "type": "string",
+      "enum": ["ReadOnly", "LocalWrite", "DeviceWrite", "WindowsSystemChange", "Destructive"],
+      "description": "Drives the approval requirement. Destructive operations are not implemented in V1."
+    },
+    "byteSize": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Bytes. Never a formatted string ('1.2 GB') in a contract."
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Lower-case hex SHA-256."
+    },
+    "androidPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^/",
+      "description": "Absolute POSIX path on the device. '..' segments are rejected by the policy layer, not by the schema."
+    },
+    "windowsPath": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 4096,
+      "description": "Absolute Windows path. The policy layer additionally rejects UNC paths, device paths (\\\\.\\), and reparse-point escapes."
+    },
+    "warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "message": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "severity": { "$ref": "#/$defs/severity" },
+        "evidence": { "type": ["string", "null"], "maxLength": 4000 }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["LogFile", "BugreportArchive", "Screenshot", "BackupManifest", "ApkCopy", "ReportJson", "ReportHtml", "DownloadedPackage"]
+        },
+        "path": { "$ref": "#/$defs/windowsPath" },
+        "sizeBytes": { "$ref": "#/$defs/byteSize" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "retentionDays": { "type": "integer", "minimum": 0, "maximum": 365 }
+      }
+    },
+    "approvalToken": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tokenId", "operationId", "impactLevel", "issuedAt", "expiresAt", "scopeDigest"],
+      "properties": {
+        "tokenId": { "$ref": "#/$defs/uuid" },
+        "operationId": { "$ref": "#/$defs/uuid" },
+        "impactLevel": { "$ref": "#/$defs/impactLevel" },
+        "issuedAt": { "$ref": "#/$defs/isoTimestamp" },
+        "expiresAt": { "$ref": "#/$defs/isoTimestamp" },
+        "scopeDigest": {
+          "$ref": "#/$defs/sha256",
+          "description": "SHA-256 over the canonical (sorted-key, UTF-8, no-whitespace) JSON of the approved Plan. If the plan changes by one byte, the token no longer matches. This is what makes approval non-transferable."
+        },
+        "approvedBy": {
+          "type": "string",
+          "enum": ["DesktopUser", "McpClient"],
+          "description": "Which surface requested the approval. Recorded for audit; it does not grant more trust."
+        }
+      }
+    }
+  }
+}

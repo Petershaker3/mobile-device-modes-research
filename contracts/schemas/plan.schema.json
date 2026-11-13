@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.local/plan.schema.json",
+  "title": "Plan",
+  "description": "A fully materialized, reviewable description of an operation before it runs. The UI previews it, the user approves exactly it, and the Operation Engine refuses to deviate from it. If anything would differ, a new Plan and a new approval are required.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["planId", "operationType", "impactLevel", "targetDeviceId", "steps", "createdAt"],
+  "properties": {
+    "planId": { "$ref": "_common.schema.json#/$defs/uuid" },
+    "operationType": { "$ref": "operation.schema.json#/properties/operationType" },
+    "impactLevel": { "$ref": "_common.schema.json#/$defs/impactLevel" },
+    "targetDeviceId": {
+      "oneOf": [{ "$ref": "_common.schema.json#/$defs/deviceId" }, { "type": "null" }]
+    },
+    "createdAt": { "$ref": "_common.schema.json#/$defs/isoTimestamp" },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "description": "Ordered. Each step is a typed action the engine can execute; the preview shows this list verbatim, not a summary of it.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stepId", "kind", "description"],
+        "properties": {
+          "stepId": { "type": "integer", "minimum": 1 },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "AdbShellCommand",
+              "AdbInstall",
+              "AdbInstallMultiple",
+              "AdbUninstall",
+              "AdbPush",
+              "AdbPull",
+              "AdbSyncList",
+              "BundletoolInstallApks",
+              "LocalExtractArchive",
+              "LocalWriteFile",
+              "LocalReadFile",
+              "VerifyPackageState",
+              "VerifyFileState",
+              "RefreshDeviceState",
+              "ReconcileState"
+            ]
+          },
+          "description": { "type": "string", "minLength": 1, "maxLength": 1000 },
+          "command": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "description": "Structured, never a raw command line. The adapter quotes and validates arguments; no step ever carries a pre-joined shell string.",
+            "required": ["argv"],
+            "properties": {
+              "argv": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 64,
+                "items": { "type": "string", "maxLength": 4096 },
+                "description": "Program plus arguments as separate elements. 'adb shell' payloads are a single element and are quoted by ShellQuoter, not by callers."
+              },
+              "cwd": { "type": ["string", "null"], "maxLength": 1024 }
+            }
+          },
+          "devicePath": {
+            "oneOf": [{ "$ref": "_common.schema.json#/$defs/androidPath" }, { "type": "null" }]
+          },
+          "localPath": {
+            "oneOf": [{ "$ref": "_common.schema.json#/$defs/windowsPath" }, { "type": "null" }]
+          },
+          "expectedEffect": { "type": "string", "maxLength": 2000 },
+          "reversible": {
+            "type": "boolean",
+            "description": "True only when an explicit, tested inverse step exists. Do not claim reversibility for installs, uninstalls, or deletes."
+          },
+          "reversalStepId": { "type": ["integer", "null"], "minimum": 1 }
+        }
+      }
+    },
+    "preexistingState": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "The state captured right before execution, so 'what changed' is answerable after the fact.",
+      "properties": {
+        "capturedAt": { "$ref": "_common.schema.json#/$defs/isoTimestamp" },
+        "capturedBy": { "$ref": "_common.schema.json#/$defs/evidenceSource" },
+        "digest": {
+          "$ref": "_common.schema.json#/$defs/sha256",
+          "description": "SHA-256 of the captured state blob, not the blob itself."
+        }
+      }
+    },
+    "inputs": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Normalized operation inputs (package id, version code, file set, split names...). This is what the approval digest covers, so any change invalidates approval.",
+      "properties": {
+        "packageId": { "type": ["string", "null"], "maxLength": 256 },
+        "versionCode": { "type": ["integer", "null"], "minimum": 0 },
+        "formatKind": {
+          "type": ["string", "null"],
+          "enum": ["Apk", "SplitApkSet", "Apks", "Apkm", "Xapk", "Aab", "Obb", "Unknown", null]
+        },
+        "files": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "sizeBytes"],
+            "properties": {
+              "path": { "type": "string", "maxLength": 4096 },
+              "sizeBytes": { "$ref": "_common.schema.json#/$defs/byteSize" },
+              "sha256": { "$ref": "_common.schema.json#/$defs/sha256" },
+              "role": { "type": "string", "enum": ["Base", "Split", "Obb", "Metadata", "Unknown"] }
+            }
+          }
+        }
+      }
+    },
+    "estimated": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Shown in the preview. Estimates never block execution; hard limits do.",
+      "properties": {
+        "bytesToTransfer": { "$ref": "_common.schema.json#/$defs/byteSize" },
+        "seconds": { "type": ["integer", "null"], "minimum": 0 },
+        "freeSpaceAfterBytes": { "type": ["integer", "null"] }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "_common.schema.json#/$defs/warning" }
+    }
+  },
+  "allOf": [
+    {
+      "description": "A plan that can change device state must declare what it expects to observe afterwards, so verification is designed in rather than bolted on.",
+      "if": {
+        "properties": { "impactLevel": { "enum": ["DeviceWrite", "WindowsSystemChange", "Destructive"] } },
+        "required": ["impactLevel"]
+      },
+      "then": {
+        "properties": {
+          "steps": {
+            "contains": {
+              "type": "object",
+              "properties": {
+                "kind": { "enum": ["VerifyPackageState", "VerifyFileState", "RefreshDeviceState"] }
+              },
+              "required": ["kind"]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

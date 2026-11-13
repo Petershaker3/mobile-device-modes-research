@@ -1,0 +1,16 @@
+# Generated test corpus (contracts/corpus/README.md §1): reproducible with
+#   python contracts/tools/make_fixtures.py
+# Nothing here is hand-authored, and the hostile archives are intentionally large.
+contracts/corpus/android/
+contracts/corpus/malicious/
+contracts/corpus/GENERATED.json
+
+# Imported, non-redistributable fixtures (real APK/OTA/super/logcat samples)
+.corpus/
+
+# .NET build output
+bin/
+obj/
+*.user
+.vs/
+packages.lock.json.tmp

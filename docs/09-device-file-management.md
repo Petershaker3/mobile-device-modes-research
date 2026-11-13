@@ -264,7 +264,11 @@ WinDroidFS يقدم طبقة مختلفة:
 - لا نعتبر README claim عن الأداء/التوافق دليلاً على تجربتنا؛ لم يتم تشغيل المشروع أو قياسه.
 - الوصول إلى Android/data وAndroid/obb يعتمد على مسار ADB منفصل عن FileServer app-side؛ لا نعمم النتيجة على كل جهاز قبل اختبارها.
 
-**الحكم:** مرشح لتكامل اختياري "Mount phone as drive" إذا وافق المستخدم مستقبلاً على Android companion + WinFsp. لا نضعه شرطاً لعمل File Manager الأساسي.
+**⚠️ حاجز ترخيص (أُضيف 13 نوفمبر 2026):** ملف `apps/windows-daemon/Cargo.toml` ينص على `license = "GPL-3.0-only"`. **GPL-3.0 يمنع نسخ أي كود إلى منتجنا.** لذلك يُصحَّح الحكم السابق: هذا المشروع **مرجع تصميم فقط، لا اقتباس كود**، ويُسجَّل هنا صراحةً حتى لا يُقتبس سهواً لاحقاً. راجع [20 §2.4](20-source-revalidation-round2.md).
+
+**فكرة تُنقل (فكرة لا كود):** الـdaemon يستخدم delay-load لـWinFsp عبر `winfsp_link_delayload()`، ويسقط إلى **WebDAV mount** عند غياب WinFsp. هذا النمط صحيح لمبدأ "لا تجعل تثبيت مكوّن نظام شرطاً لتشغيل الميزة"، ويُنقل كتصميم مستقل: virtual drive اختياري + fallback بلا driver.
+
+**الحكم المصحَّح:** مرجع تصميم فقط (لا اقتباس كود بسبب GPL-3.0). لا نضعه شرطاً لعمل File Manager الأساسي.
 
 روابط المصدر:
 - [WinDroidFS README](https://github.com/Wilsoon7721/WinDroidFS/blob/main/README.md)

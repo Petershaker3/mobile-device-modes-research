@@ -4018,6 +4018,7 @@ Commit تمت مراجعته: `c8f4e634b72c5555cffe9cc5759074a866b68ae1`.
    - لم نشغل build أو CI ولم نختبر التطبيق على Windows أو هاتف.
 
 **الحكم الهندسي:**
+> **تحديث 13 نوفمبر 2026 (بعد [ADR-0001](17-adr-0001-stack-decision.md)):** بما أن GUI المعتمد هو **WPF** لا WinUI 3، فإن الجزء الوحيد القابل للاقتباس من هذا المشروع هو **نموذج metadata** (`AAPT2ForNet`: `ApkInfo`، `AAPTool`، `ApkParser`، وستة filters: ABI/SDK/Package/Permission/SupportScr/Application). أما UI فمستبعد بقرار الستاك. ويُفضَّل في منتجنا **parser manifest مباشر** بدل الاعتماد على نص `aapt dump badging` لأن صيغة المخرجات هشّة بين إصدارات build-tools. التفاصيل في [20 §2.3](20-source-revalidation-round2.md).
 - **مرجع UI/ADB جزئي:** WinUI، ADB client integration، device discovery، progress phases، وAPK metadata model.
 - **غير مناسب كمحرك تثبيت معتمد:** لا يثبت دعم صيغنا المتعددة، ولا يطبق ABI/signature preflight كاملاً، ويمرر test-only flag تلقائياً في المسار المراجع، ولا يقدم post-install verification مستقلاً.
 - **WSA-specific flow لا يُنقل إلى Android phone workflow:** خصوصاً localhost port الثابت وآلية تشغيل WSA.
