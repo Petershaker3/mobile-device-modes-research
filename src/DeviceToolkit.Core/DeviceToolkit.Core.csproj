@@ -33,8 +33,12 @@
     </AssemblyAttribute>
   </ItemGroup>
 
+  <!-- ADB layer. Both versions are upstream's own pins (logcat-uicore.csproj),
+       not guesses: AdvancedSharpAdbClient 3.6.16 and Logging.Abstractions 10.0.11.
+       Restore is proven in CI on both runners, so these are verified available. -->
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageReference Include="AdvancedSharpAdbClient" Version="3.6.16" />
   </ItemGroup>
 
 </Project>
