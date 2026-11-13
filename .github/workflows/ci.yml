@@ -114,12 +114,19 @@ jobs:
       - name: Build
         run: dotnet build DeviceToolkit.slnx -c Release --no-restore
 
+      # --logger console is omitted on purpose: GitHub's log retrieval from this
+      # sandbox is blocked, so the only channel that reaches me is a check-run
+      # annotation. test-report.py parses the trx and emits one annotation per
+      # failing test, which makes the failure visible without the raw log.
       - name: Test
         run: >
           dotnet test DeviceToolkit.slnx -c Release --no-build
           --logger "trx;LogFileName=results.trx"
-          --logger "console;verbosity=normal"
           --results-directory TestResults
+
+      - name: Summarise failures as annotations
+        if: always()
+        run: python .github/scripts/test-report.py TestResults
 
       - name: Upload test results
         if: always()
