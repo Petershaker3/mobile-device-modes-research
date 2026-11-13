@@ -65,7 +65,7 @@ check_identical "logcat-viewer/Services/LogcatSettings.cs" "src/DeviceToolkit.Co
 for f in DeviceLastDir FavoriteDir DeviceInfo FileEntry TryOpenOutcome AdbServerSelfHealResult CommandEntry; do
   check_identical "logcat-uicore/Models/$f.cs" "src/DeviceToolkit.Core/Models/$f.cs"
 done
-for f in SettingsIO ConfigMigration LegacySettings; do
+for f in SettingsIO ConfigMigration LegacySettings LanguageSettings AndToolsSettings; do
   check_identical "logcat-uicore/Services/$f.cs" "src/DeviceToolkit.Core/Infrastructure/$f.cs"
 done
 check_identical "logcat-uicore/Services/StartupLog.cs" "src/DeviceToolkit.Core/Infrastructure/StartupLog.cs"
