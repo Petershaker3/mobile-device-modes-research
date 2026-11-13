@@ -123,7 +123,14 @@ jobs:
       # sandbox is blocked, so the only channel that reaches me is a check-run
       # annotation. test-report.py parses the trx and emits one annotation per
       # failing test, which makes the failure visible without the raw log.
+      # `dotnet test` exits non-zero as soon as any test fails, which on Linux is
+      # expected for the four POSIX-vs-Windows cases. Without this the job would
+      # fail before the reporter could judge whether the failures are the known
+      # ones - the exit code would be the verdict instead of the evidence.
+      # On Windows nothing is allowed to fail, so the step stays fatal there and
+      # the reporter also runs strictly.
       - name: Test
+        continue-on-error: ${{ matrix.os == 'ubuntu-latest' }}
         run: >
           dotnet test DeviceToolkit.slnx -c Release --no-build
           --logger "trx;LogFileName=results.trx"
@@ -180,7 +187,9 @@ jobs:
       - name: Regenerate the translation table from upstream and require no drift
         run: |
           bash scripts/verify-transplant.sh --no-build --fetch-only
-          python scripts/gen-loctable.py --upstream "$TMPDIR/logcat-viewer-upstream" --check
+          # TMPDIR is not set on GitHub runners; use the same default as
+          # verify-transplant.sh (${TMPDIR:-/tmp}) instead of assuming.
+          python scripts/gen-loctable.py --upstream "${TMPDIR:-/tmp}/logcat-viewer-upstream" --check
 
       - name: Verify every localisation key the core uses exists
         run: python scripts/check-loc-keys.py
