@@ -61,6 +61,10 @@ done
 for f in FileProxyClient FileProxyMode FileProxyException ProxyChannel; do
   check_identical "logcat-viewer/Services/$f.cs" "src/DeviceToolkit.Core/Diagnostics/$f.cs"
 done
+check_identical "logcat-viewer/Services/LogcatSettings.cs" "src/DeviceToolkit.Core/Infrastructure/LogcatSettings.cs"
+for f in SettingsIO ConfigMigration; do
+  check_identical "logcat-uicore/Services/$f.cs" "src/DeviceToolkit.Core/Infrastructure/$f.cs"
+done
 check_identical "logcat-uicore/Services/StartupLog.cs" "src/DeviceToolkit.Core/Infrastructure/StartupLog.cs"
 for f in CrashEvent FilterSpec; do
   check_identical "logcat-viewer/Models/$f.cs" "src/DeviceToolkit.Core/Diagnostics/$f.cs"
@@ -92,13 +96,23 @@ fi
 # --------------------------------------------------------------------------
 head2 "2/3  portability: no Windows-only dependency in the core"
 
-if grep -rn "System.Windows.Forms\|System.Drawing\|DllImport\|windows-only" \
-     "$REPO_ROOT/src/DeviceToolkit.Core" --include=*.cs >/dev/null 2>&1; then
-  bad "core references WinForms/Drawing/P-Invoke:"
-  grep -rn "System.Windows.Forms\|System.Drawing\|DllImport" \
-       "$REPO_ROOT/src/DeviceToolkit.Core" --include=*.cs | sed 's/^/       /'
+# What actually breaks portability: WinForms, WPF, Win32 P-Invoke, and WinRT.
+# `using System.Drawing;` alone does NOT break it: System.Drawing.Primitives
+# (Point, Size, Rectangle, Color) ships in the shared framework on every OS.
+# LogcatSettings uses exactly Point and Size for window geometry, so banning the
+# whole namespace would be a false positive. Anything beyond the primitives
+# (Bitmap, Graphics, Icon) is caught by the second pattern.
+FORBIDDEN='System\.Windows\.Forms|System\.Windows\.Media|System\.Windows\.Controls|DllImport|LibraryImport|WinRT|Microsoft\.Win32'
+DRAWING_IMPL='new Bitmap|new Graphics|Graphics\.FromImage|System\.Drawing\.Imaging|new Icon\(|SystemIcons\.'
+
+if grep -rEn "$FORBIDDEN" "$REPO_ROOT/src/DeviceToolkit.Core" --include=*.cs >/dev/null 2>&1; then
+  bad "core references a Windows-only framework or P-Invoke:"
+  grep -rEn "$FORBIDDEN" "$REPO_ROOT/src/DeviceToolkit.Core" --include=*.cs | sed 's/^/       /'
+elif grep -rEn "$DRAWING_IMPL" "$REPO_ROOT/src/DeviceToolkit.Core" --include=*.cs >/dev/null 2>&1; then
+  bad "core uses System.Drawing beyond the portable primitives:"
+  grep -rEn "$DRAWING_IMPL" "$REPO_ROOT/src/DeviceToolkit.Core" --include=*.cs | sed 's/^/       /'
 else
-  ok "no WinForms / System.Drawing / DllImport in src/DeviceToolkit.Core"
+  ok "no WinForms / WPF / P-Invoke / non-portable Drawing in src/DeviceToolkit.Core"
 fi
 
 # --------------------------------------------------------------------------
