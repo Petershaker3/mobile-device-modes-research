@@ -58,6 +58,9 @@ done
 for f in SidecarCache SidecarCacheStore; do
   check_identical "logcat-viewer/Services/$f.cs" "src/DeviceToolkit.Core/Logcat/$f.cs"
 done
+for f in FileProxyClient FileProxyMode FileProxyException ProxyChannel; do
+  check_identical "logcat-viewer/Services/$f.cs" "src/DeviceToolkit.Core/Diagnostics/$f.cs"
+done
 check_identical "logcat-uicore/Services/StartupLog.cs" "src/DeviceToolkit.Core/Infrastructure/StartupLog.cs"
 for f in CrashEvent FilterSpec; do
   check_identical "logcat-viewer/Models/$f.cs" "src/DeviceToolkit.Core/Diagnostics/$f.cs"
