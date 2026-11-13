@@ -95,7 +95,8 @@ for f in LogParserTests LogDocumentTests LogDocumentZeroCopyTests LogDocumentPro
          FilterEngineTests FilterEngineBlockScanTests ChunkedEquivalenceTests CrashTests \
          TextProbeTests TestCultureBootstrap SidecarCacheTests FileProxyProtocolTests \
          FileProxyLoopbackTests FileProxyChannelStateTests FileProxyModeTests \
-         LegacySettingsDtoTests FakeProxyServer; do
+         LegacySettingsDtoTests FakeProxyServer FakeAdbSocket \
+         AdbManagerServerSelfHealTests; do
   check_identical "tests/logcat.Tests/$f.cs" "src/DeviceToolkit.Tests/$f.cs"
 done
 
@@ -115,6 +116,42 @@ else
     bad "TestHelpers.cs changed beyond the documented shim ($removed_lines removed lines)"
   fi
 fi
+
+# AdbManager.cs: the screenshot region may be gone (System.Drawing dependency),
+# plus its two usings and a 2-line provenance header. Checked strictly: the
+# allowed removed lines are counted and the *content* must be exactly the
+# screenshot block, not merely "few lines changed".
+check_adbmanager() {
+  local up="$UPSTREAM_DIR/logcat-uicore/Services/AdbManager.cs"
+  local mine="$REPO_ROOT/src/DeviceToolkit.Core/Adb/AdbManager.cs"
+  [ -f "$mine" ] || { bad "missing locally: src/DeviceToolkit.Core/Adb/AdbManager.cs"; return; }
+
+  if diff -q "$up" "$mine" >/dev/null 2>&1; then
+    ok "src/DeviceToolkit.Core/Adb/AdbManager.cs (identical)"; return
+  fi
+
+  local removed added
+  removed=$(diff "$up" "$mine" | grep -c '^<' || true)
+  added=$(diff "$up" "$mine" | grep -c '^>' || true)
+
+  # Expected: 60 upstream lines removed (58 screenshot + 2 usings), 2 added (header).
+  if [ "$removed" -eq 60 ] && [ "$added" -eq 2 ]; then
+    # And the kept content must be exactly upstream minus that one region:
+    # strip the header, drop the two usings, then require the remainder of our
+    # file to appear verbatim inside upstream's line sequence.
+    if grep -q "FramebufferToImage\|Screenshot\|System.Drawing" "$mine"; then
+      bad "AdbManager.cs still references the screenshot region"
+    elif python3 "$REPO_ROOT/scripts/check-subsequence.py" \
+           <(tail -n +3 "$mine") <(grep -v '^using System.Drawing' "$up") >/dev/null; then
+      ok "AdbManager.cs (documented shim: screenshot region removed, $removed lines out / $added in)"
+    else
+      bad "AdbManager.cs changed beyond the documented shim"
+    fi
+  else
+    bad "AdbManager.cs changed beyond the documented shim (removed=$removed added=$added, expected 60/2)"
+  fi
+}
+check_adbmanager
 
 # --------------------------------------------------------------------------
 head2 "2/3  portability: no Windows-only dependency in the core"
