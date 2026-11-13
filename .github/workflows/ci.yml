@@ -32,9 +32,9 @@ jobs:
     name: contracts + corpus
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -96,14 +96,17 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      # No `cache:` here on purpose. actions/setup-dotnet fails the step when the
+      # cache-dependency-path does not exist yet, and packages.lock.json only
+      # appears once `dotnet restore --use-lock-file` has run at least once.
+      # Adding a cache key that breaks the build is the wrong trade for a repo
+      # this small.
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: |
             10.0.x
-          cache: true
-          cache-dependency-path: '**/packages.lock.json'
 
       - name: Restore
         run: dotnet restore DeviceToolkit.slnx
@@ -120,7 +123,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ matrix.os }}
           path: TestResults/**/*.trx
@@ -131,7 +134,7 @@ jobs:
     name: transplanted code is unmodified
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
