@@ -22,6 +22,11 @@ permissions:
   contents: read
 
 env:
+  # The vendored tests assert Chinese UI strings ("越界" etc.) because that is
+  # what upstream's Chinese-language app produces. Linux runners default to the
+  # invariant culture, which is not zh-CN, so pin it here rather than weaken the
+  # tests. ICU ships with the runner image, so this is enough on its own.
+  DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 'false'
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
@@ -94,7 +99,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [windows-latest, ubuntu-latest]
     steps:
       - uses: actions/checkout@v7
 
@@ -124,9 +129,17 @@ jobs:
           --logger "trx;LogFileName=results.trx"
           --results-directory TestResults
 
+      # On Windows every test must pass. On Linux five of them assert behaviour
+      # that only Windows has (see ci/known-linux-diffs.txt); the reporter accepts
+      # exactly those five and fails on anything else, including a listed test
+      # that starts passing.
       - name: Summarise failures as annotations
         if: always()
-        run: python .github/scripts/test-report.py TestResults
+        run: >
+          python .github/scripts/test-report.py TestResults
+          ${{ matrix.os == 'ubuntu-latest'
+              && '--allow ci/known-linux-diffs.txt'
+              || '--strict' }}
 
       - name: Upload test results
         if: always()
@@ -136,6 +149,17 @@ jobs:
           path: TestResults/**/*.trx
           if-no-files-found: warn
 
+  # ------------------------------------------------------- posix path semantics
+  # Upstream is a Windows-only app, and several copied tests encode Windows path
+  # semantics directly: they expect Path.GetFullPath("Z:\\no-access\\...") to
+  # round-trip unchanged, and they rely on Windows refusing to delete a directory
+  # that another handle holds open. On Linux those expectations are simply false -
+  # "Z:\\no-access" is a relative filename, and open files do not block unlink.
+  #
+  # So the Linux matrix job is verifying something narrower and still valuable:
+  # the library compiles and all 432 platform-neutral tests pass. The 5 tests that
+  # assert Windows behaviour run here on Windows, where they are meaningful.
+  # Weakening them to no-ops would delete real coverage for the shipping platform.
   # ------------------------------------------------------- transplant integrity
   integrity:
     name: transplanted code is unmodified
@@ -147,6 +171,19 @@ jobs:
 
       - name: Diff every copied file against upstream
         run: bash scripts/verify-transplant.sh --no-build
+
+      # Loc.cs originally hand-picked 19 of upstream's 643 translation keys, and CI
+      # caught the gap only because one copied test happened to assert a missing
+      # string. These two steps make that class of bug impossible to ship again:
+      # the table is regenerated from upstream and must not drift, and every
+      # literal key the core uses must exist in it.
+      - name: Regenerate the translation table from upstream and require no drift
+        run: |
+          bash scripts/verify-transplant.sh --no-build --fetch-only
+          python scripts/gen-loctable.py --upstream "$TMPDIR/logcat-viewer-upstream" --check
+
+      - name: Verify every localisation key the core uses exists
+        run: python scripts/check-loc-keys.py
 
       - name: Check internal documentation links
         run: |

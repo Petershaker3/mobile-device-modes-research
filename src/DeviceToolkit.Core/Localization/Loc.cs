@@ -36,32 +36,16 @@ public static class Loc
     // default and matches upstream's behaviour on a zh-CN machine.
     static UiLang _lang = UiLang.ZhCn;
 
-    /// <summary>الجدول الإنجليزي. المفاتيح هي النص الصيني الأصلي — نقل حرفي من LocTable.*.</summary>
-    static readonly Dictionary<string, string> En = new()
-    {
-        // LocTable.CrashUi.cs
-        ["Java 崩溃"] = "Java Crash",
-        ["Native 崩溃"] = "Native Crash",
-        ["ANR 应用无响应"] = "ANR (App Not Responding)",
-        ["Native 崩溃（tombstone）"] = "Native Crash (tombstone)",
-        ["未知"] = "Unknown",
-        // LocTable.FilterUi.cs
-        ["（无过滤）"] = "(no filter)",
-        ["级别 {0}"] = "Level {0}",
-        ["仅标记行"] = "Marked only",
-        ["分钟({0})"] = "Minute({0})",
-        ["；"] = "; ",
-        // LocTable.RuntimeMsg.cs / LocTable.MainUi.cs — progress messages asserted by tests
-        ["扫描行…"] = "Scanning lines…",
-        ["合并索引…"] = "Merging index…",
-        ["过滤…"] = "Filtering…",
-        ["加载中…"] = "Loading…",
-        ["追加新内容…"] = "Appending new content…",
-        ["完成"] = "Done",
-        ["候选 {0:N0} 行"] = "{0:N0} candidate rows",
-        ["导出 {0:N0}/{1:N0}"] = "Exporting {0:N0}/{1:N0}",
-        ["匹配 message {0}/{1}"] = "Matching message {0}/{1}",
-    };
+    /// <summary>
+    /// الجدول الإنجليزي الكامل (643 مفتاحاً). مملوك بالكامل لـ LocTable.g.cs
+    /// المولَّد آلياً من upstream — لا تُضف مفاتيح هنا.
+    /// <para>
+    /// كانت النسخة الأولى من هذا الملف تحتوي 19 مفتاحاً اخترتها يدوياً، فأسقط
+    /// اختبار في CI مفتاح رسالة «طول الحمولة» فسقط الترجمة إلى الصينية. الدرس:
+    /// لا تخمّن أي مفاتيح يحتاجها كود منقول — انقلها كلها.
+    /// </para>
+    /// </summary>
+    static readonly Dictionary<string, string> En = LocTable.All();
 
     /// <summary>اللغة الحالية. نقل حرفي: `public static UiLang Current => _lang;`</summary>
     public static UiLang Current => _lang;

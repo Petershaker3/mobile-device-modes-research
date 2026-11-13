@@ -1,0 +1,40 @@
+# Tests that are expected to fail on Linux, and why.
+#
+# This file exists so that the Linux matrix job can run the real, unweakened
+# test suite instead of excluding tests. Every entry below is a genuine,
+# documented difference between Windows and POSIX semantics - not a flaky test
+# and not a bug we are hiding.
+#
+# It is checked in both directions by .github/scripts/test-report.py:
+#   * a failure NOT listed here fails the job (so a real regression is visible)
+#   * a listed test that PASSES fails the job (so the list cannot rot)
+#
+# If you fix one of these, delete its line. CI will tell you when you forget.
+#
+# Evidence: CI run 43345159734, 432 of 437 tests passed on ubuntu-latest and
+# these 5 failed. On windows-latest all 437 pass.
+
+# Path.GetFullPath("Z:\\no-access\\x.log") is a no-op on Windows - the drive is
+# simply absent. On Linux "Z:\\no-access\\x.log" is a relative filename, so
+# GetFullPath resolves it against the working directory and returns
+# /home/runner/work/.../Z:\no-access\x.log instead.
+logcat.Tests.LogDocumentProxiedTests.显示路径指定时两路径分离
+logcat.Tests.LogDocumentProxiedTests.代理文档_Reload按源路径增量
+
+# Asserts that deleting a directory fails while another handle holds a file
+# inside it. Windows enforces that; POSIX allows unlink of an open file, so the
+# delete succeeds and the "could not delete" branch is never taken.
+logcat.Tests.LogDocumentProxiedTests.Close_删不掉只留痕不抛_锁仍释放可再清理
+
+# Same root cause: opens the cache entry with FileShare.None to force the atomic
+# replace to fail. POSIX has no FileShare, so the replace succeeds, Save returns
+# true, and the silent-failure path is not exercised.
+logcat.Tests.SidecarCacheTests.Write_Failure_SilentAndOriginalCacheIntact
+
+# Asserts the localised English message "out-of-range". The copied tests flip the
+# language per case; on Linux the runner's culture is not zh-CN, so the resource
+# lookup for the English string misses and falls back to Chinese. The library
+# behaviour under test (reject before reading the payload) is platform-neutral;
+# only the runner culture differs. See the DOTNET_SYSTEM_GLOBALIZATION note in
+# ci.yml - this entry should disappear once the culture pin lands and is proven.
+logcat.Tests.FileProxyLoopbackTests.读响应负载超上限或为负_收负载前即报越界

@@ -11,8 +11,12 @@
 # Requires: git, dotnet SDK 10, network access to github.com and nuget.org.
 #
 # Usage:
-#   scripts/verify-transplant.sh            # all checks incl. build+test
-#   scripts/verify-transplant.sh --no-build # integrity + portability only
+#   scripts/verify-transplant.sh             # all checks incl. build+test
+#   scripts/verify-transplant.sh --no-build  # integrity + portability only
+#   scripts/verify-transplant.sh --fetch-only # clone upstream and stop
+#
+# --fetch-only exists for CI steps that need an upstream checkout for a separate
+# purpose (regenerating the translation table) but not the diff itself.
 #
 set -uo pipefail
 
@@ -22,7 +26,13 @@ UPSTREAM_SHA="a985616224a342d6064ed962eec28ace3f38365a"
 UPSTREAM_DIR="${TMPDIR:-/tmp}/logcat-viewer-upstream"
 
 RUN_BUILD=1
-[ "${1:-}" = "--no-build" ] && RUN_BUILD=0
+FETCH_ONLY=0
+for arg in "$@"; do
+  case "$arg" in
+    --no-build)   RUN_BUILD=0 ;;
+    --fetch-only) FETCH_ONLY=1; RUN_BUILD=0 ;;
+  esac
+done
 
 fail=0
 ok()   { printf '  \033[32mOK\033[0m   %s\n' "$1"; }
@@ -30,7 +40,11 @@ bad()  { printf '  \033[31mFAIL\033[0m %s\n' "$1"; fail=1; }
 head2() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 # --------------------------------------------------------------------------
-head2 "1/3  integrity: copied files vs upstream @ ${UPSTREAM_SHA:0:8}"
+if [ "$FETCH_ONLY" = "1" ]; then
+  head2 "fetching upstream @ ${UPSTREAM_SHA:0:8}"
+else
+  head2 "1/3  integrity: copied files vs upstream @ ${UPSTREAM_SHA:0:8}"
+fi
 
 if [ ! -d "$UPSTREAM_DIR/.git" ]; then
   echo "  fetching upstream (one time)..."
@@ -39,6 +53,11 @@ if [ ! -d "$UPSTREAM_DIR/.git" ]; then
 fi
 git -C "$UPSTREAM_DIR" checkout --quiet "$UPSTREAM_SHA" 2>/dev/null || {
   bad "cannot check out $UPSTREAM_SHA"; exit 1; }
+
+if [ "$FETCH_ONLY" = "1" ]; then
+  ok "upstream ready at $UPSTREAM_DIR"
+  exit 0
+fi
 
 check_identical() {  # $1 = upstream relative path, $2 = local path
   if [ ! -f "$REPO_ROOT/$2" ]; then bad "missing locally: $2"; return; fi
