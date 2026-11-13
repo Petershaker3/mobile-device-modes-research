@@ -30,11 +30,3 @@ logcat.Tests.LogDocumentProxiedTests.Close_删不掉只留痕不抛_锁仍释放
 # replace to fail. POSIX has no FileShare, so the replace succeeds, Save returns
 # true, and the silent-failure path is not exercised.
 logcat.Tests.SidecarCacheTests.Write_Failure_SilentAndOriginalCacheIntact
-
-# Asserts the localised English message "out-of-range". The copied tests flip the
-# language per case; on Linux the runner's culture is not zh-CN, so the resource
-# lookup for the English string misses and falls back to Chinese. The library
-# behaviour under test (reject before reading the payload) is platform-neutral;
-# only the runner culture differs. See the DOTNET_SYSTEM_GLOBALIZATION note in
-# ci.yml - this entry should disappear once the culture pin lands and is proven.
-logcat.Tests.FileProxyLoopbackTests.读响应负载超上限或为负_收负载前即报越界

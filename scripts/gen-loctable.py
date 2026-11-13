@@ -82,6 +82,34 @@ def render(table: dict[str, str]) -> str:
     return HEADER.replace("__COUNT__", str(len(table))).replace("__BODY__", body)
 
 
+def annotate(level: str, message: str) -> None:
+    """Emit a GitHub check-run annotation.
+
+    CI log retrieval is blocked from where this repo is developed, so a plain
+    print would tell nobody anything. An annotation is the one channel that
+    survives, and it also shows inline on the diff.
+    """
+    flat = " ".join(str(message).split())
+    if len(flat) > 900:
+        flat = flat[:900] + "..."
+    print(f"::{level}::{flat}", file=sys.stdout)
+
+
+def explain(first: str, second: str) -> str:
+    """Describe the first difference between committed and generated output."""
+    import difflib
+
+    a = first.splitlines()
+    b = second.splitlines()
+    for i, (x, y) in enumerate(zip(a, b)):
+        if x != y:
+            return (f"first difference at line {i + 1}: "
+                    f"committed={x.strip()[:120]!r} generated={y.strip()[:120]!r}")
+    if len(a) != len(b):
+        return f"line count differs: committed={len(a)} generated={len(b)}"
+    return "content differs only in line endings or trailing whitespace"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--upstream", required=True, type=Path,
@@ -90,15 +118,25 @@ def main() -> int:
                     help="compare with the committed file instead of writing")
     args = ap.parse_args()
 
-    table, files = collect(args.upstream)
+    try:
+        table, files = collect(args.upstream)
+    except SystemExit as exc:
+        annotate("error", f"gen-loctable: {exc}")
+        return 1
     generated = render(table)
 
     if args.check:
         if not OUT.exists():
+            annotate("error", f"gen-loctable: {OUT} does not exist; run the generator")
             print(f"FAIL {OUT} does not exist", file=sys.stderr)
             return 1
-        if OUT.read_text(encoding="utf-8") != generated:
-            print(f"FAIL {OUT} differs from upstream ({len(table)} keys)", file=sys.stderr)
+        committed = OUT.read_text(encoding="utf-8")
+        if committed != generated:
+            detail = explain(committed, generated)
+            annotate("error",
+                     f"gen-loctable: {OUT} differs from upstream "
+                     f"({len(table)} keys from {len(files)} files); {detail}")
+            print(f"FAIL {OUT} differs from upstream: {detail}", file=sys.stderr)
             return 1
         print(f"OK   LocTable.g.cs matches upstream ({len(table)} keys, {len(files)} files)")
         return 0
