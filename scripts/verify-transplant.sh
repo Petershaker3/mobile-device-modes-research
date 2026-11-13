@@ -89,6 +89,7 @@ for f in SettingsIO ConfigMigration LegacySettings LanguageSettings AndToolsSett
 done
 check_identical "logcat-uicore/Services/StartupLog.cs" "src/DeviceToolkit.Core/Infrastructure/StartupLog.cs"
 check_identical "logcat-uicore/Services/TransferProgress.cs" "src/DeviceToolkit.Core/Adb/TransferProgress.cs"
+check_identical "logcat-viewer/Services/LogcatStream.cs" "src/DeviceToolkit.Core/Adb/LogcatStream.cs"
 for f in CrashEvent FilterSpec; do
   check_identical "logcat-viewer/Models/$f.cs" "src/DeviceToolkit.Core/Diagnostics/$f.cs"
 done
