@@ -21,6 +21,8 @@
 12. [20 — الجولة الثانية من مراجعة المصدر](20-source-revalidation-round2.md) — 6 مشاريع و4 تصحيحات لوثائق قائمة.
 13. [Threat Model](../contracts/THREAT-MODEL.md) — 13 مسار هجوم وضوابط واختبارات مطلوبة.
 14. [Test Corpus](../contracts/corpus/README.md) — مواصفة الـfixtures بالتفصيل لكل فئة.
+15. **[21 — النقل الأول: طبقة Logcat والتشخيص](21-TRANSPLANT-LOGCAT.md)** — 8,530 سطراً منقولة حرفياً بلا تعديل، وكيف نُقلت بلا لمس الكود.
+16. **[ATTRIBUTION](../ATTRIBUTION.md)** — سجل كل ملف منقول: مصدره، SHA، وهل عُدّل.
 
 ## 2. وثائق المجالات الوظيفية
 

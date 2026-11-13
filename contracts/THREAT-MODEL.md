@@ -1,6 +1,6 @@
 # Threat Model — منصة أدوات أجهزة Android
 
-> **الغرض:** تحويل سياسات الأمان المتناثرة في [00 §6](docs/00-PRODUCT-BASELINE.md) و[02 §20](docs/02-tool-landscape-and-market-research.md) إلى نموذج تهديد قابل للتنفيذ: أصول محددة، هجوم محتمل، ضابط مبني، واختبار يثبته.
+> **الغرض:** تحويل سياسات الأمان المتناثرة في [00 §6](../docs/00-PRODUCT-BASELINE.md) و[02 §20](../docs/02-tool-landscape-and-market-research.md) إلى نموذج تهديد قابل للتنفيذ: أصول محددة، هجوم محتمل، ضابط مبني، واختبار يثبته.
 >
 > **الحالة:** التهديدات والضوابط **مصمَّمة**؛ لم يُختبر أي ضابط على تشغيل فعلي. كل صف في §5 مرتبط باختبار مطلوب.
 
@@ -56,8 +56,8 @@
 
 **كيف:** اسم ملف أو package id أو مسار يحوي `'` أو `;` أو `$()` فيُدمج في سلسلة shell على الجهاز.
 **الضابط:**
-- العقود لا تسمح بأي خطوة تحمل سلسلة shell واحدة؛ `plan.steps[].command.argv[]` مصفوفة ([19 §3.3](docs/19-SHARED-CONTRACTS.md)).
-- `ShellQuoter` مركزي واحد: تغليف مفرد مع `'\''` (النمط المُدقَّق في [13](docs/13-source-revalidation-adb-file-core.md)).
+- العقود لا تسمح بأي خطوة تحمل سلسلة shell واحدة؛ `plan.steps[].command.argv[]` مصفوفة ([19 §3.3](../docs/19-SHARED-CONTRACTS.md)).
+- `ShellQuoter` مركزي واحد: تغليف مفرد مع `'\''` (النمط المُدقَّق في [13](../docs/13-source-revalidation-adb-file-core.md)).
 - أي مسار يصل بين quotes يُرفض إن احتوى بايت تحكم (`\x00`–`\x1F`).
 **الاختبار:** corpus أسماء ملفات: `a'b`, `a;rm -rf /`, `$(reboot)`, `a b`, `ملف عربي.jpg`, newline داخل اسم.
 
@@ -73,7 +73,7 @@
 ### T3 — Zip Slip / Zip Bomb / Symlink Escape
 
 **كيف:** أرشيف APKS/APKM/XAPK يحتوي `../../`، أو نسبة ضغط هائلة، أو symlink يخرج من مجلد الاستخراج.
-**الضابط (من [18 §3](docs/18-ENGINEERING-DECISIONS.md)):**
+**الضابط (من [18 §3](../docs/18-ENGINEERING-DECISIONS.md)):**
 - حد 100,000 entry، نسبة 100:1، 4 GiB مفكوك، عمق 32، طول مسار 4096.
 - لكل entry: رفض المسار المطلق، رفض `..`, رفض `:` في اسم على Windows، رفض symlink/hardlink.
 - الاستخراج إلى مجلد باسم `operation_id` فقط، والتنظيف يمس هذا المجلد حصراً.
@@ -89,9 +89,9 @@
 
 **كيف:** وكيل AI يستدعي `install` أو `file.delete` مباشرة، أو يطلب موافقة على خطة ثم ينفّذ خطة أخرى.
 **الضابط (ثلاث طبقات، لا طبقة واحدة):**
-1. **لا أدوات كتابة في V1 من MCP** ([15 §7](docs/15-source-revalidation-mcp-codex.md)). الأدوات المكشوفة ReadOnly فقط.
+1. **لا أدوات كتابة في V1 من MCP** ([15 §7](../docs/15-source-revalidation-mcp-codex.md)). الأدوات المكشوفة ReadOnly فقط.
 2. **عند فتح الكتابة:** الموافقة تُطلب من **سطح Desktop**، لا من داخل الـMCP session. الوكيل يحصل على `AwaitingApproval` فقط.
-3. **الموافقة مرتبطة بـ`scopeDigest`** ([19 §3.3](docs/19-SHARED-CONTRACTS.md))؛ تغيير بايت = إبطال. وتنتهي صلاحية الـtoken بعد 5 دقائق.
+3. **الموافقة مرتبطة بـ`scopeDigest`** ([19 §3.3](../docs/19-SHARED-CONTRACTS.md))؛ تغيير بايت = إبطال. وتنتهي صلاحية الـtoken بعد 5 دقائق.
 **الاختبار:** استدعاء أداة كتابة يُرجع `PolicyBlocked`؛ تغيير حقل واحد في الخطة يُرجع `ApprovalExpired`/mismatch.
 
 ### T6 — CSRF على خدمة محلية
@@ -106,13 +106,13 @@
 ### T7 — مخرجات جهاز ضخمة أو مُلفَّقة (Resource Exhaustion / Deception)
 
 **كيف:** `getprop` يُرجع 50 MB، أو `logcat` لا ينتهي، أو `pm list packages` يُرجع أسطر مكررة تُشبع الذاكرة.
-**الضابط:** كل قراءة لها سقف بايتات وأسطر ومهلة ([18 §3](docs/18-ENGINEERING-DECISIONS.md))؛ التجاوز = `LimitExceeded` صريح لا قص صامت. `rawEvidence` محدود 8 KB ويُعلَّم `truncated`.
+**الضابط:** كل قراءة لها سقف بايتات وأسطر ومهلة ([18 §3](../docs/18-ENGINEERING-DECISIONS.md))؛ التجاوز = `LimitExceeded` صريح لا قص صامت. `rawEvidence` محدود 8 KB ويُعلَّم `truncated`.
 **الاختبار:** fixtures بمخرجات 10 MB وسطور بلا نهاية (بدون newline).
 
 ### T8 — إيهام بالنجاح (False Success)
 
 **كيف:** الجهاز يُرجع "Success" دون تنفيذ، أو `exitCode=0` مع `Failure [INSTALL_FAILED_...]` في النص.
-**الضابط:** `result.ok` لا يُشتق من الـexit code؛ يلزم `verification.verified=true` من قراءة مستقلة ([19 §3.7](docs/19-SHARED-CONTRACTS.md)). رسمياً: `ok=true` مع `verified=false` مرفوض في الـschema.
+**الضابط:** `result.ok` لا يُشتق من الـexit code؛ يلزم `verification.verified=true` من قراءة مستقلة ([19 §3.7](../docs/19-SHARED-CONTRACTS.md)). رسمياً: `ok=true` مع `verified=false` مرفوض في الـschema.
 **الاختبار:** fixture يُرجع `Success` ثم `pm list` لا يجد الحزمة ⇒ النتيجة `Failed`، لا `Succeeded`.
 
 ### T9 — تسريب بيانات حساسة عبر السجلات
@@ -124,7 +124,7 @@
 ### T10 — حزمة تعريف مُزيَّفة
 
 **كيف:** موقع "driver updater" يقدّم INF/SYS موقّعاً بمفتاح مشبوه أو غير موقّع.
-**الضابط:** V1 **لا يثبّت تعريفات** — تشخيص فقط ([18 §5](docs/18-ENGINEERING-DECISIONS.md)). وأي لاحق: مطابقة Hardware IDs + تحقق توقيع + مصدر رسمي فقط + rollback plan + elevation صريح.
+**الضابط:** V1 **لا يثبّت تعريفات** — تشخيص فقط ([18 §5](../docs/18-ENGINEERING-DECISIONS.md)). وأي لاحق: مطابقة Hardware IDs + تحقق توقيع + مصدر رسمي فقط + rollback plan + elevation صريح.
 **الاختبار:** لا ينطبق في V1؛ اختبار تصميم: حزمة غير موقّعة تُرفض في مرحلة الفحص.
 
 ### T11 — استغلال تطبيق أندرويد خبيث عند فحص الحزمة
@@ -151,7 +151,7 @@
 |---|---|
 | مقاومة مالك الجهاز بصلاحيات Administrator | خارج نموذج التهديد؛ لا يمكن ضمانه |
 | root / Magisk | خارج النطاق؛ أي مسار `su` مرفوض |
-| تفليش/كتابة أقسام | خارج النطاق بقرار [00](docs/00-PRODUCT-BASELINE.md) |
+| تفليش/كتابة أقسام | خارج النطاق بقرار [00](../docs/00-PRODUCT-BASELINE.md) |
 | بروتوكولات Qualcomm/MediaTek | خارج النطاق |
 | حماية ضد جهاز يعيد تعريف نفسه كـUSB آخر (Malicious USB Device) بيد مادية | V1 لا يفرض USB allowlist صارم؛ يُسجَّل كخطر مقبول ومؤجل |
 
@@ -165,7 +165,7 @@
 | T4 SSRF | ❌ | مُعرَّف | ❌ |
 | T5 MCP write bypass | ✅ قرار (§4 V1 = read-only) | مُعرَّف | ❌ |
 | T6 CSRF | ✅ قرار (STDIO فقط) | مُعرَّف | ❌ |
-| T7 Resource exhaustion | ✅ أرقام في [18 §3](docs/18-ENGINEERING-DECISIONS.md) | مُعرَّف | ❌ |
+| T7 Resource exhaustion | ✅ أرقام في [18 §3](../docs/18-ENGINEERING-DECISIONS.md) | مُعرَّف | ❌ |
 | T8 False success | ✅ مفروض في schema | ✅ **نعم** (حالة سلبية #5) | ✅ **نعم** |
 | T9 Data leakage | ✅ قرار التنقيح | مُعرَّف | ❌ |
 | T10 Fake driver | ✅ قرار (لا تثبيت في V1) | لا ينطبق | — |

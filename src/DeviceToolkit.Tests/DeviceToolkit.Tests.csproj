@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Tests are copied VERBATIM from daitouniao/logcat-viewer @ a9856162
+       (tests/logcat.Tests/). The assembly is named logcat.Tests on purpose:
+       the upstream code declares InternalsVisibleTo("logcat.Tests"), so the
+       copied tests reach internal members without a single edit.
+
+       Package versions are the same ones upstream pins, so behaviour matches
+       what their published 852-passing baseline measured. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>logcat.Tests</AssemblyName>
+    <RootNamespace>logcat.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DeviceToolkit.Core\DeviceToolkit.Core.csproj" />
+  </ItemGroup>
+
+</Project>

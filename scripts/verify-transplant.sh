@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+#
+# Proves the transplanted code is intact and actually builds.
+#
+# Runs three independent checks:
+#   1. every copied file is byte-identical to upstream at the pinned commit
+#      (TestHelpers.cs is the single documented exception: two hunks removed)
+#   2. the core library has no Windows-only dependency
+#   3. it compiles and the copied tests pass
+#
+# Requires: git, dotnet SDK 10, network access to github.com and nuget.org.
+#
+# Usage:
+#   scripts/verify-transplant.sh            # all checks incl. build+test
+#   scripts/verify-transplant.sh --no-build # integrity + portability only
+#
+set -uo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+UPSTREAM_REPO="https://github.com/daitouniao/logcat-viewer.git"
+UPSTREAM_SHA="a985616224a342d6064ed962eec28ace3f38365a"
+UPSTREAM_DIR="${TMPDIR:-/tmp}/logcat-viewer-upstream"
+
+RUN_BUILD=1
+[ "${1:-}" = "--no-build" ] && RUN_BUILD=0
+
+fail=0
+ok()   { printf '  \033[32mOK\033[0m   %s\n' "$1"; }
+bad()  { printf '  \033[31mFAIL\033[0m %s\n' "$1"; fail=1; }
+head2() { printf '\n\033[1m%s\033[0m\n' "$1"; }
+
+# --------------------------------------------------------------------------
+head2 "1/3  integrity: copied files vs upstream @ ${UPSTREAM_SHA:0:8}"
+
+if [ ! -d "$UPSTREAM_DIR/.git" ]; then
+  echo "  fetching upstream (one time)..."
+  git clone --quiet --filter=blob:none --no-checkout "$UPSTREAM_REPO" "$UPSTREAM_DIR" || {
+    bad "cannot clone upstream (no network?)"; exit 1; }
+fi
+git -C "$UPSTREAM_DIR" checkout --quiet "$UPSTREAM_SHA" 2>/dev/null || {
+  bad "cannot check out $UPSTREAM_SHA"; exit 1; }
+
+check_identical() {  # $1 = upstream relative path, $2 = local path
+  if [ ! -f "$REPO_ROOT/$2" ]; then bad "missing locally: $2"; return; fi
+  if diff -q "$UPSTREAM_DIR/$1" "$REPO_ROOT/$2" >/dev/null 2>&1; then
+    ok "$2"
+  else
+    bad "$2 differs from upstream $1"
+  fi
+}
+
+for f in LogParser LogDocument FilterEngine; do
+  check_identical "logcat-viewer/Services/$f.cs" "src/DeviceToolkit.Core/Logcat/$f.cs"
+done
+for f in CrashExtractor CrashAggregator CrashTime TextProbe; do
+  check_identical "logcat-viewer/Services/$f.cs" "src/DeviceToolkit.Core/Diagnostics/$f.cs"
+done
+for f in CrashEvent FilterSpec; do
+  check_identical "logcat-viewer/Models/$f.cs" "src/DeviceToolkit.Core/Diagnostics/$f.cs"
+done
+for f in LogParserTests LogDocumentTests LogDocumentZeroCopyTests LogDocumentProxiedTests \
+         FilterEngineTests FilterEngineBlockScanTests ChunkedEquivalenceTests CrashTests \
+         TextProbeTests TestCultureBootstrap; do
+  check_identical "tests/logcat.Tests/$f.cs" "src/DeviceToolkit.Tests/$f.cs"
+done
+
+# TestHelpers.cs: exactly the WinFormsCollection block may be gone.
+if diff -q "$UPSTREAM_DIR/tests/logcat.Tests/TestHelpers.cs" \
+           "$REPO_ROOT/src/DeviceToolkit.Tests/TestHelpers.cs" >/dev/null 2>&1; then
+  ok "TestHelpers.cs (identical — no shim needed after all)"
+else
+  removed_lines=$(diff "$UPSTREAM_DIR/tests/logcat.Tests/TestHelpers.cs" \
+                       "$REPO_ROOT/src/DeviceToolkit.Tests/TestHelpers.cs" \
+                  | grep -c '^<' || true)
+  if grep -q "WinFormsCollection" "$UPSTREAM_DIR/tests/logcat.Tests/TestHelpers.cs" \
+     && ! grep -q "class WinFormsCollection" "$REPO_ROOT/src/DeviceToolkit.Tests/TestHelpers.cs" \
+     && [ "$removed_lines" -le 12 ]; then
+    ok "TestHelpers.cs (documented shim: WinFormsCollection removed, $removed_lines lines)"
+  else
+    bad "TestHelpers.cs changed beyond the documented shim ($removed_lines removed lines)"
+  fi
+fi
+
+# --------------------------------------------------------------------------
+head2 "2/3  portability: no Windows-only dependency in the core"
+
+if grep -rn "System.Windows.Forms\|System.Drawing\|DllImport\|windows-only" \
+     "$REPO_ROOT/src/DeviceToolkit.Core" --include=*.cs >/dev/null 2>&1; then
+  bad "core references WinForms/Drawing/P-Invoke:"
+  grep -rn "System.Windows.Forms\|System.Drawing\|DllImport" \
+       "$REPO_ROOT/src/DeviceToolkit.Core" --include=*.cs | sed 's/^/       /'
+else
+  ok "no WinForms / System.Drawing / DllImport in src/DeviceToolkit.Core"
+fi
+
+# --------------------------------------------------------------------------
+if [ "$RUN_BUILD" -eq 0 ]; then
+  head2 "3/3  build: skipped (--no-build)"
+else
+  head2 "3/3  build + test"
+  if ! command -v dotnet >/dev/null 2>&1; then
+    bad "dotnet SDK not found on PATH"
+  else
+    echo "  dotnet $(dotnet --version)"
+    if ( cd "$REPO_ROOT" && dotnet build DeviceToolkit.slnx -c Release --nologo -v quiet ); then
+      ok "build succeeds"
+      if ( cd "$REPO_ROOT" && dotnet test DeviceToolkit.slnx -c Release --nologo --no-build ); then
+        ok "copied tests pass"
+      else
+        bad "tests fail"
+      fi
+    else
+      bad "build fails"
+    fi
+  fi
+fi
+
+# --------------------------------------------------------------------------
+if [ "$fail" -ne 0 ]; then
+  printf '\n\033[31mone or more checks failed\033[0m\n'
+  exit 1
+fi
+printf '\n\033[32mall checks passed\033[0m\n'

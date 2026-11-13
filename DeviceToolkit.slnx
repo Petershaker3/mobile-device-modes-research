@@ -1,0 +1,12 @@
+<Solution>
+
+  <!-- .slnx is the XML solution format supported by .NET 9+ SDKs
+       (dotnet build DeviceToolkit.slnx). Upstream uses the same format. -->
+  <Folder Name="/src/">
+    <Project Path="src/DeviceToolkit.Core/DeviceToolkit.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="src/DeviceToolkit.Tests/DeviceToolkit.Tests.csproj" />
+  </Folder>
+
+</Solution>

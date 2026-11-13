@@ -1,0 +1,19 @@
+<Project>
+
+  <!-- Single source of truth for the product version.
+       Upstream keeps this in the repo root too (logcat-viewer/Directory.Build.props);
+       we keep the same pattern so the copied projects inherit it unchanged. -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <LangVersion>latest</LangVersion>
+    <!-- Reproducible builds: same input bytes -> same assembly bytes. -->
+    <Deterministic>true</Deterministic>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+  <!-- Everything under src/ targets net10.0 unless a project overrides it. -->
+  <PropertyGroup Condition="'$(MSBuildProjectDirectory)' != '' AND $([System.String]::Copy('$(MSBuildProjectDirectory)').Contains('src'))">
+    <Company>DeviceToolkit</Company>
+  </PropertyGroup>
+
+</Project>

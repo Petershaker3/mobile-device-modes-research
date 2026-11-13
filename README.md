@@ -2,9 +2,19 @@
 
 مرجع بحثي لتصميم منصة Windows متكاملة للتعامل مع أجهزة Android: الاتصال وقراءة البيانات وفهم الأوضاع ومعلومات السوفتوير وإدارة التطبيقات والملفات والتشخيص والشبكة وتعريفات Windows، مع إتاحة الوظائف لوكلاء الذكاء الاصطناعي عبر MCP.
 
-> **حالة المستودع:** بحث وتوثيق وتصميم متطلبات + **قرارات تنفيذ محسومة + عقود قابلة للفحص آلياً**. لا يوجد تطبيق منتج مكتوب، ولا ادعاء باختبار أي وظيفة على جهاز فعلي.
+> **حالة المستودع:** بحث وتصميم + قرارات محسومة + عقود قابلة للفحص + **أول كود فعلي: 8,530 سطراً منقولة حرفياً** (مصدر C# منشور، بلا تعديل) في `src/`. لا ادعاء باختبار أي وظيفة على جهاز فعلي.
+>
+> **نهج التنفيذ (قرار المستخدم):** نقل الموجود فعلاً على GitHub لا كتابته. التفاصيل في [ADR-0001 §3.1](docs/17-adr-0001-stack-decision.md) وسجل النقل في [ATTRIBUTION.md](ATTRIBUTION.md).
 >
 > **الستاك محسوم (13 نوفمبر 2026):** .NET 10 + WPF — راجع [ADR-0001](docs/17-adr-0001-stack-decision.md).
+>
+> **تحقق من الكود المنقول** (يحتاج .NET SDK 10 على جهازك):
+> ```bash
+> scripts/verify-transplant.sh
+> # 1/3 integrity: copied files vs upstream @ a9856162   → 19 files identical
+> # 2/3 portability: no WinForms / System.Drawing / DllImport
+> # 3/3 build + test
+> ```
 >
 > **جرّب العقود الآن** (لا تحتاج .NET ولا جهازاً):
 > ```bash
@@ -29,6 +39,8 @@
 11. **[الجولة الثانية من مراجعة المصدر](docs/20-source-revalidation-round2.md)** — 6 مشاريع و4 تصحيحات لوثائق قائمة.
 12. **[Threat Model](contracts/THREAT-MODEL.md)** — 13 مسار هجوم، وضابطا حماية منفَّذان فقط.
 13. **[Test Corpus](contracts/corpus/README.md)** — مواصفة الـfixtures لكل فئة.
+14. **[النقل الأول — طبقة Logcat](docs/21-TRANSPLANT-LOGCAT.md)** — 8,530 سطراً منقولة حرفياً وكيف بُنيت بلا لمس الكود.
+15. **[ATTRIBUTION](ATTRIBUTION.md)** — سجل كل ملف منقول ومصدره.
 14. [فهرس الوثائق](docs/README.md) — خريطة القراءة حسب المجال.
 15. [منهجية البحث وضبط الأدلة](docs/RESEARCH-METHODOLOGY.md) — كيف نراجع المشاريع ونفرق بين الادعاء والكود والاختبار.
 
@@ -58,6 +70,9 @@
 | [19 — Shared Contracts](docs/19-SHARED-CONTRACTS.md) | العقود كمواصفة منفذة + المدقّق + الحالات السلبية |
 | [20 — Source Revalidation R2](docs/20-source-revalidation-round2.md) | الجولة الثانية للمرشحين والتصحيحات |
 | [contracts/](contracts/) | JSON Schemas، أمثلة، المدقّق، Threat Model، corpus |
+| [src/](src/) | الكود: `DeviceToolkit.Core` (منقول) + `DeviceToolkit.Tests` |
+| [ATTRIBUTION.md](ATTRIBUTION.md) | سجل النقل: كل ملف ومصدره وSHA وهل عُدّل |
+| [scripts/verify-transplant.sh](scripts/verify-transplant.sh) | يثبت أن المنقول مطابق ويبني ويختبر |
 | [Research Methodology](docs/RESEARCH-METHODOLOGY.md) | الأدلة، الاختبارات، إعادة الاستخدام، أمان MCP وصيانة الوثائق |
 
 ## بيئة التشغيل المعتمدة
@@ -103,7 +118,7 @@
 | معلومات النظام والجهاز | وثيقة بحث مستقلة 06 ومراجعة مرشحين | استكمال المصفوفة والاختبارات لاحقاً |
 | معلومات build والـOTA والفريموير | وثيقتا بحث 06 و07 ومراجعة payload-dumper-go/AOSP | توسيع صيغ OTA legacy واختبار corpus |
 | التخزين والأقسام | وثيقة بحث مستقلة 08 ومراجعة AOSP/liblp وأدوات Go/Cython | اختبار parser على corpus وقراءة الأجهزة لاحقاً |
-| Logcat وBugreport والتشخيص | وثيقة بحث مستقلة 10 ومراجعة مصدر لعدة مشاريع | اختبارات ZIP وRuntime وHardware لاحقاً |
+| Logcat والتشخيص | **كود منقول يعمل** (parser + mmap index + فلترة SIMD + crash extract) مع اختباراته | Bugreport ZIP وRuntime وHardware؛ نقل `LogcatStream` |
 | إدارة الملفات والنقل | وثيقة بحث مستقلة 09 ومراجعة مصدر لعدة مشاريع | اختبار Runtime/Hardware وMTP/WPD |
 | النسخ الاحتياطي والاستعادة | وثيقة بحث مستقلة 11 وحدود Android ومراجعة مشاريع incremental/legacy | اختبار Backup/Restore فعلياً بعد اعتماد النطاق |
 | تثبيت التطبيقات | تصميم محرك موحد وتدقيق صيغ؛ `Plan`+`Approval`+`Verify` مفروضة في العقود | Test Corpus وPoC على Windows وهاتف محدد |

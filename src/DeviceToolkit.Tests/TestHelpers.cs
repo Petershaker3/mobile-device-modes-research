@@ -1,0 +1,310 @@
+using System.Globalization;
+using System.IO;
+using System.Text;
+using Xunit;
+
+namespace logcat.Tests;
+
+/// <summary>
+/// 会修改 <c>Loc</c> 全局语言状态的测试集合。
+///
+/// <para>
+/// <b>为什么需要它</b>：<c>Loc._lang</c> 是**进程级静态可变状态**，而 xUnit 默认
+/// **按测试类并行**执行。改动语言的测试若分布在多个类里，这些类会同时跑，
+/// 互相把语言抢走 —— 表现为<b>偶发</b>失败：本地串行反射跑（tstrun）永远复现不出，
+/// CI 上并行跑就挂一条。2026-10-10 实测：<c>CommandStoreTests.重载后内置中文分类仍可本地化</c>
+/// 在 CI 上 Expected "Logs &amp; Crashes" / Actual "日志与异常"，
+/// 本地英文环境连跑多次都全绿。
+/// </para>
+///
+/// <para>
+/// <b>怎么用</b>：语言相关用例所在的类打<code>[Collection(LangCollection.Name)]</code>，
+/// 同集合内的类之间不再并行。<c>InZh</c>/<c>InEn</c> 本身仍只保证"设了会还原"，
+/// 不保证"期间不被别人改"。
+/// </para>
+/// </summary>
+[CollectionDefinition(LangCollection.Name, DisableParallelization = true)]
+public sealed class LangCollection
+{
+    /// <summary>集合名。引用它即可把类并入该集合。</summary>
+    public const string Name = "Loc-global-language";
+}
+
+/// <summary>
+/// 会构造 WinForms 控件 / 窗体的测试集合（独占执行，不与其它集合并行）。
+///
+/// <para>
+/// <b>为什么需要它</b>：控件构造并非线程安全——<c>Loc.BindTip</c> 走共享 <see cref="ToolTip"/>，
+/// 其内部 <c>Dictionary</c> 被多线程同时写会直接抛
+/// 「Operations that change non-concurrent collections must have exclusive access」，
+/// 表现为<b>偶发</b>失败（2026-11-06 实测：4 次全量里挂 2 次，栈顶
+/// <c>ToolTip.SetToolTipInternal</c> ← <c>Loc.ApplyTip</c> ← <c>frmMain.InitializeComponent2</c>）。
+/// </para>
+///
+/// <para>
+/// <b>怎么用</b>：测试类里若会 <c>new Form()</c> / <c>new frmMain()</c> 或构造控件，就打
+/// <c>[Collection(WinFormsCollection)]</c> (removed)。一个类只能属于一个集合——已因语言状态需要
+/// <see cref="LangCollection"/> 的类留在原集合（它同样独占），无需改。
+/// </para>
+/// </summary>
+// ── SHIM (new; see ATTRIBUTION.md §1.6) ─────────────────────────────
+// Upstream defines WinFormsCollection here, to serialise tests that build
+// WinForms controls against a shared ToolTip. No copied test builds a
+// control, and this assembly has no WinForms reference, so the type is
+// dropped. LangCollection above stays verbatim: the copied CrashTests and
+// LogDocumentTests do mutate the process-wide Loc._lang state.
+
+/// <summary>
+/// 固定界面语言执行一段测试代码，结束后自动还原。
+///
+/// 存在的理由：i18n 落地后，大量被测输出（<c>FilterSpec.Describe</c>、
+/// 进度上报文案、通道显示名…）走 <c>Loc.T</c>/<c>Loc.F</c>，**结果随界面语言变化**。
+/// 测试若直接硬编码中文期望值，结果就取决于机器的系统区域：本地中文全绿，
+/// CI runner 上是英文环境就整片红（2026-10-10 实测 412 条里 9 条失败）。
+///
+/// 用法：断言要跟语言绑定时用这两条 helper，<b>并且在两种语言下各断言一次</b>——
+/// 只测一种语言的话，把被测代码退回硬编码中文仍然全绿，抓不住回归。
+/// 注意：被测输出是"生成那一刻"按当时语言算出来的，涉及生成动作（如 Build）
+/// 的断言必须在 helper 内部<b>重新生成</b>，事后切语言比对拿到的是旧语言的串。
+///
+/// ⚠️ 用到本 helper 的测试类**必须**打 <c>[Collection(LangCollection.Name)]</c>，
+/// 否则并行时会与其他改语言的类互相抢状态（见 <see cref="LangCollection"/>）。
+/// </summary>
+static class LangScope
+{
+    /// <summary>固定为中文界面跑 <paramref name="body"/>，结束后自动还原语言。</summary>
+    public static void InZh(System.Action body)
+    {
+        var restore = Services.Loc.SetLangGuard(Services.UiLang.ZhCn);
+        try { body(); }
+        finally { restore(); }
+    }
+
+    /// <summary>固定为英文界面跑 <paramref name="body"/>，结束后自动还原语言。</summary>
+    public static void InEn(System.Action body)
+    {
+        var restore = Services.Loc.SetLangGuard(Services.UiLang.En);
+        try { body(); }
+        finally { restore(); }
+    }
+}
+
+/// <summary>
+/// 固定 <see cref="CultureInfo.CurrentCulture"/> 执行一段测试代码，结束后自动还原。
+///
+/// <para>
+/// <b>为什么需要</b>：走 <c>"{val:F2}"</c> 这类格式化的被测输出（<c>frmMain.HumanSize</c>）
+/// 会跟随当前区域 —— 同一份代码在 en-US 下是 <c>1.50 KB</c>，de-DE 下是 <c>1,50 KB</c>。
+/// 断言里写死 <c>.</c> 的话，在非英文机器上会整片红；而 CI runner 的区域又不归我们控制。
+/// </para>
+///
+/// <para>
+/// <b>注意与 <see cref="LangScope"/> 的区别</b>：那个固定的是<b>界面语言</b>（<c>Loc</c> 表），
+/// 这个固定的是<b>数字/日期格式</b>。两者互不影响，需要同时固定时嵌套使用。
+/// <see cref="CultureInfo.CurrentCulture"/> 只对当前线程生效（xUnit 每条用例一个线程上下文），
+/// 但仍按惯例还原，避免影响同一线程后续的用例。
+/// </para>
+/// </summary>
+static class CultureScope
+{
+    /// <summary>固定为与区域无关的格式（<c>.</c> 小数点、<c>,</c> 千分位）跑 <paramref name="body"/>。</summary>
+    public static void Invariant(System.Action body) => In(CultureInfo.InvariantCulture, body);
+
+    /// <summary>固定为 <paramref name="ci"/> 指定的区域跑 <paramref name="body"/>，结束后自动还原。</summary>
+    public static void In(CultureInfo ci, System.Action body)
+    {
+        var origin = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = ci;
+        try { body(); }
+        finally { CultureInfo.CurrentCulture = origin; }
+    }
+}
+
+/// <summary>临时文件的公共根目录：tests/logcat.Tests/tmp，由各 Temp* 帮助类共用。</summary>
+static class TempRoot
+{
+    // 使用项目目录下的临时文件夹，避免 %TEMP% 在某些环境下被测试运行器沙盒限制
+    static readonly string s_tempRoot = System.IO.Path.Combine(
+        AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..",  // 从 bin 回溯到项目根
+        "tests", "logcat.Tests", "tmp");
+
+    public static readonly string Dir = System.IO.Path.GetFullPath(s_tempRoot);
+}
+
+/// <summary>
+/// 一次性临时日志文件。Dispose 时删除（必须在被测的 LogDocument 释放之后）。
+/// </summary>
+sealed class TempLogFile : IDisposable
+{
+    public string Path { get; }
+
+    public TempLogFile(string content = "", bool withBom = false)
+    {
+        Directory.CreateDirectory(TempRoot.Dir);
+        Path = System.IO.Path.Combine(TempRoot.Dir, Guid.NewGuid().ToString("N") + ".log");
+        var bytes = new List<byte>();
+        if (withBom) bytes.AddRange(new byte[] { 0xEF, 0xBB, 0xBF });
+        bytes.AddRange(new UTF8Encoding(false).GetBytes(content));
+        File.WriteAllBytes(Path, bytes.ToArray());
+    }
+
+    /// <summary>以 UTF-8 无 BOM 追加内容，模拟 logcat 流式写入。</summary>
+    public void Append(string text) =>
+        File.AppendAllText(Path, text, new UTF8Encoding(false));
+
+    /// <summary>
+    /// 就地覆写（不截断文件）。文件正被 mmap 打开时，FileMode.Create 会在 Windows 上
+    /// 报「请求的操作无法在使用用户映射区域打开的文件上执行」，必须走这条路径。
+    /// 写到末尾时若新内容更短，尾部会残留旧字节——用于「头部变化」这类等长场景。
+    /// </summary>
+    public void WriteInPlace(string text)
+    {
+        var bytes = new UTF8Encoding(false).GetBytes(text);
+        using var fs = new FileStream(Path, FileMode.Open, FileAccess.Write, FileShare.ReadWrite);
+        fs.Write(bytes, 0, bytes.Length);
+        fs.Flush();
+    }
+
+    /// <summary>整体重写并截断。调用前必须确保被测的 LogDocument 已 Close。</summary>
+    public void Overwrite(string text) =>
+        File.WriteAllBytes(Path, new UTF8Encoding(false).GetBytes(text));
+
+    public long Length => new FileInfo(Path).Length;
+
+    public void Dispose()
+    {
+        try { File.Delete(Path); } catch { /* 句柄未及时释放时留给系统清理 */ }
+    }
+}
+
+/// <summary>
+/// 收集进度回调，用于断言进度确实上报过。
+///
+/// <para>
+/// <b>必须用线程安全的容器</b>：过滤/索引的进度回报走<code>Task.Run</code> 的工作线程
+/// （<c>FilterEngine</c> / <c>LogDocument</c> 里多线程分段推进度），
+/// 无锁 <c>List.Add</c> 会在并发写时抛「Collection was modified」。
+/// 该异常<b>偶发</b>——只在恰好两个线程同时 Add 时出现，表现为测试"时好时坏"。
+/// </para>
+/// </summary>
+sealed class ProgressRecorder : IProgress<(double pct, string msg)>
+{
+    readonly List<(double pct, string msg)> _items = new();
+
+    public IReadOnlyList<(double pct, string msg)> Items
+    {
+        get { lock (_items) return _items.ToArray(); }
+    }
+
+    public void Report((double pct, string msg) value)
+    {
+        lock (_items) _items.Add(value);
+    }
+}
+
+/// <summary>首次收到进度上报时取消令牌，用于验证长任务能中途取消（而不是跑完整份才抛）。</summary>
+sealed class CancelOnFirstReport : IProgress<(double pct, string msg)>
+{
+    readonly CancellationTokenSource _cts;
+
+    public CancelOnFirstReport(CancellationTokenSource cts) => _cts = cts;
+
+    public int Count { get; private set; }
+
+    public void Report((double pct, string msg) value)
+    {
+        Count++;
+        if (Count == 1) _cts.Cancel();
+    }
+}
+
+/// <summary>
+/// 同 <see cref="CancelOnFirstReport"/>，但等到**第一次 pct &gt; 0** 的上报才取消，
+/// 并记下那一刻的 pct。
+/// 用来区分异常是「扫描途中抛出」还是「扫描完了在收尾处抛出」——
+/// 后者 pct 已接近 1，前者必然远小于 1。
+/// 注意不能用「第一次上报」：DoBuild 在扫描开始前就先Report((0.0, "扫描行…"))，
+/// 那一刀取消掉的话异常由 DoBuild 收尾处的 ThrowIfCancellationRequested 抛出，
+/// 跟扫描期检查点稀不稀疏无关，抓不住 % 5000 → % 1000000 的变异。
+/// </summary>
+sealed class CancelOnFirstMidScanReport : IProgress<(double pct, string msg)>
+{
+    readonly CancellationTokenSource _cts;
+
+    public CancelOnFirstMidScanReport(CancellationTokenSource cts) => _cts = cts;
+
+    /// <summary>触发取消的那次上报的 pct。</summary>
+    public double CancelPct { get; private set; } = -1;
+
+    /// <summary>收到的全部 pct，用于断言「没有跑到收尾阶段」。</summary>
+    public List<double> Log { get; } = new();
+
+    public int Count { get; private set; }
+
+    public void Report((double pct, string msg) value)
+    {
+        Count++;
+        Log.Add(value.pct);
+        if (Count == 1) return;              // pct=0 那次是「扫描开始」信号，不 cancel
+        if (CancelPct >= 0) return;         // 已取消过
+        if (value.pct <= 0) return;
+
+        CancelPct = value.pct;
+        _cts.Cancel();
+    }
+}
+
+static class TestData
+{
+    /// <summary>threadtime 假日志行（单字符宽度字段，偏移量好数）。</summary>
+    public static string Threadtime(string time, int pid, int tid, char level, string tag, string msg)
+        => $"{time}  {pid}  {tid} {level} {tag}: {msg}\n";
+}
+
+/// <summary>
+/// 一次性临时文件，供存储类（CommandStore / FavoritesStore / AndToolsSettings）的落盘测试使用，
+/// 避免触碰 %LOCALAPPDATA% 下的真实数据文件。
+/// content 传 null 表示「只给路径、不创建文件」，用于测「文件不存在」分支。
+/// </summary>
+sealed class TempStoreFile : IDisposable
+{
+    public string Path { get; }
+
+    public TempStoreFile(string? content = "")
+    {
+        Directory.CreateDirectory(TempRoot.Dir);
+        Path = System.IO.Path.Combine(TempRoot.Dir, Guid.NewGuid().ToString("N") + ".json");
+        if (content != null)
+            File.WriteAllText(Path, content, new UTF8Encoding(false));
+    }
+
+    public bool Exists => File.Exists(Path);
+
+    public string Read() => File.ReadAllText(Path);
+
+    public void Dispose()
+    {
+        try { File.Delete(Path); } catch { /* 句柄未及时释放时留给系统清理 */ }
+    }
+}
+
+/// <summary>
+/// 一次性临时目录，供配置迁移类（LogcatSettings.EnsureSplit / ConfigMigration）测试使用——
+/// 迁移一次派生三份文件，必须落在同一目录才能模拟真实布局。
+/// </summary>
+sealed class TempDir : IDisposable
+{
+    public string Path { get; }
+
+    public TempDir()
+    {
+        Directory.CreateDirectory(TempRoot.Dir);
+        Path = System.IO.Path.Combine(TempRoot.Dir, Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path);
+    }
+
+    public void Dispose()
+    {
+        try { Directory.Delete(Path, recursive: true); } catch { /* 句柄未及时释放时留给系统清理 */ }
+    }
+}

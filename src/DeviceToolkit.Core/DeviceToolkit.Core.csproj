@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Upstream: daitouniao/logcat-viewer @ a9856162
+       Files in Logcat/ and Diagnostics/ are copied VERBATIM (see ATTRIBUTION.md).
+       This csproj is the only new artifact, so the repository can build them
+       without pulling in the WinForms viewer they originally lived in.
+
+       Deliberately NOT net10.0-windows and NOT UseWindowsForms: the copied code
+       does not reference WinForms or System.Drawing, so pinning it to Windows
+       would be a restriction the code never needed. That also lets the tests run
+       on any CI host. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>logcat</RootNamespace>
+    <AssemblyName>DeviceToolkit.Core</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- LogDocument.cs and FilterEngine.cs use raw pointers over memory-mapped
+         files via SafeMemoryMappedViewHandle.AcquirePointer. Upstream enables
+         this at project level for exactly these two files. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <!-- The upstream viewer and toolbox mark every non-public testing seam with
+       InternalsVisibleTo("logcat.Tests"). The copied tests are generated from
+       that assembly, so it must exist here too. Keeping the upstream name
+       means the copied test sources need no edits at all. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>logcat.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+  </ItemGroup>
+
+</Project>
