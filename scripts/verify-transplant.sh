@@ -76,7 +76,7 @@ for f in LogParserTests LogDocumentTests LogDocumentZeroCopyTests LogDocumentPro
          FilterEngineTests FilterEngineBlockScanTests ChunkedEquivalenceTests CrashTests \
          TextProbeTests TestCultureBootstrap SidecarCacheTests FileProxyProtocolTests \
          FileProxyLoopbackTests FileProxyChannelStateTests FileProxyModeTests \
-         LegacySettingsDtoTests; do
+         LegacySettingsDtoTests FakeProxyServer; do
   check_identical "tests/logcat.Tests/$f.cs" "src/DeviceToolkit.Tests/$f.cs"
 done
 
