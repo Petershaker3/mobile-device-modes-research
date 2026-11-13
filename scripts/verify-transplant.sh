@@ -62,7 +62,7 @@ for f in FileProxyClient FileProxyMode FileProxyException ProxyChannel; do
   check_identical "logcat-viewer/Services/$f.cs" "src/DeviceToolkit.Core/Diagnostics/$f.cs"
 done
 check_identical "logcat-viewer/Services/LogcatSettings.cs" "src/DeviceToolkit.Core/Infrastructure/LogcatSettings.cs"
-for f in SettingsIO ConfigMigration; do
+for f in SettingsIO ConfigMigration LegacySettings; do
   check_identical "logcat-uicore/Services/$f.cs" "src/DeviceToolkit.Core/Infrastructure/$f.cs"
 done
 check_identical "logcat-uicore/Services/StartupLog.cs" "src/DeviceToolkit.Core/Infrastructure/StartupLog.cs"
@@ -72,7 +72,8 @@ done
 for f in LogParserTests LogDocumentTests LogDocumentZeroCopyTests LogDocumentProxiedTests \
          FilterEngineTests FilterEngineBlockScanTests ChunkedEquivalenceTests CrashTests \
          TextProbeTests TestCultureBootstrap SidecarCacheTests FileProxyProtocolTests \
-         FileProxyLoopbackTests FileProxyChannelStateTests FileProxyModeTests; do
+         FileProxyLoopbackTests FileProxyChannelStateTests FileProxyModeTests \
+         LegacySettingsDtoTests; do
   check_identical "tests/logcat.Tests/$f.cs" "src/DeviceToolkit.Tests/$f.cs"
 done
 
