@@ -4,6 +4,9 @@
        (dotnet build DeviceToolkit.slnx). Upstream uses the same format. -->
   <Folder Name="/src/">
     <Project Path="src/DeviceToolkit.Core/DeviceToolkit.Core.csproj" />
+    <Project Path="src/DeviceToolkit.Desktop/DeviceToolkit.Desktop.csproj" />
+    <Project Path="src/DeviceToolkit.Wpd/DeviceToolkit.Wpd.csproj" />
+    <Project Path="src/DeviceToolkit.Wpd.Worker/DeviceToolkit.Wpd.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="src/DeviceToolkit.Tests/DeviceToolkit.Tests.csproj" />

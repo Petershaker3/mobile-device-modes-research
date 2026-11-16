@@ -239,7 +239,7 @@ grep -rn "System.Windows.Forms\|System.Drawing\|DllImport" src/DeviceToolkit.Cor
 dotnet test DeviceToolkit.slnx
 ```
 
-**آخر تحديث:** 13 نوفمبر 2026.
+**آخر تحديث:** 14 نوفمبر 2026.
 
 ---
 
@@ -254,6 +254,9 @@ dotnet test DeviceToolkit.slnx
 | `scripts/verify-transplant.sh` | يثبت أن الملفات المنقولة متطابقة + قابلية النقل + البناء | upstream لا يملك آلية تحقق من النقل |
 | `scripts/check-subsequence.py` | يثبت أن `AdbManager.cs` هو upstream مع حذف مقاطع كاملة فقط | الفحص الحسابي («حُذف ٦٠ سطراً») يقبل تعديلاً خفياً |
 | `Adb/AdbShell.cs` | مهلة مفروضة على `adb shell` | **upstream نفسه لا يفعلها** — انظر §5.2 |
+| `Logcat/BoundedLogcatFileWriter.cs` | كتابة ملف Logcat بحد حجم وflush مضمون | مكوّن جديد لمسار التشخيص الحالي؛ لا يستبدل أو ينسخ parser upstream |
+| `Operations/OperationAuthorization.cs` | سياسة أثر وخطط وموافقات قصيرة العمر مرتبطة ببصمة الخطة | خدمة Core جديدة لحماية مسارات الكتابة الحالية؛ لم تُنسخ من upstream |
+| `Operations/AuditStore.cs` | سجل SQLite append-only وسلسلة SHA-256 والتحقق من سلامة الأحداث | خدمة Core جديدة؛ تستخدم `Microsoft.Data.Sqlite` المعتمدة في ADR-0001 |
 | `DeviceToolkit.Core/DeviceToolkit.Core.csproj` | تعريف المشروع | لا وجود له upstream بهذا الشكل (الكود كان داخل تطبيق WinForms) |
 | `DeviceToolkit.Tests/DeviceToolkit.Tests.csproj` | تعريف مشروع الاختبار | نفس السبب |
 | `Directory.Build.props`, `global.json`, `DeviceToolkit.slnx` | بناء الحل | بنية حل جديدة |
@@ -292,6 +295,18 @@ root probe وحده بسِباق يدوي ٨ ثوانٍ.
 واجهة upstream في ٢٥ موضعاً — لا يزال عرضة للتعليق. هذا مسجَّل هنا كدَين تقني معلوم،
 لا كمشكلة محلولة.
 
+## 6. اعتماد runtime: `MediaDevices`
+
+| البند | القيمة |
+|---|---|
+| الحزمة | NuGet `MediaDevices` `2.0.0` |
+| المصدر | [Bassman2/MediaDevices](https://github.com/Bassman2/MediaDevices) |
+| المصدر المثبت للمراجعة | tag `2.0.0`, commit `83e66e035dd417078cf40f5e1afbc18d90079acd` |
+| الترخيص | MIT، بحسب [ملف LICENSE upstream](https://github.com/Bassman2/MediaDevices/blob/main/LICENSE) |
+| الاستخدام | مرجع dependency من `src/DeviceToolkit.Wpd/DeviceToolkit.Wpd.csproj` لخدمة WPD read-only |
+| التعديلات على upstream | لم تُنسخ ملفات مصدر upstream ولم تُعدّل الحزمة؛ أضيف adapter محلي صغير في `src/DeviceToolkit.Wpd/WpdDeviceFileProvider.cs` |
+| التحقق على الهاتف | اكتشاف، اتصال read-only، وتعداد الجذر نجحت؛ تعداد مجلد التخزين علق لأكثر من دقيقتين، ولم يُتحقق تنزيل provider |
+
 ### 5.1 تعديل واحد على ملف منقول
 
 `src/DeviceToolkit.Tests/TestHelpers.cs` هو الملف الوحيد المنقول الذي **مُسّ**. التعديل محدود وبنيوي:
@@ -305,3 +320,7 @@ root probe وحده بسِباق يدوي ٨ ثوانٍ.
 ```bash
 diff /tmp/up/tests/logcat.Tests/TestHelpers.cs src/DeviceToolkit.Tests/TestHelpers.cs
 ```
+
+## 7. مراجعة أدوات Fastboot من GitHub
+
+راجعت ATA-GUI وADBFastbootGUI وDroidSpark وHaucet ومشاريع Huawei على commits ثابتة؛ التفاصيل والترخيص والاختبارات وقرار الاستخدام في [docs/25-FASTBOOT-SOURCE-REVALIDATION.md](docs/25-FASTBOOT-SOURCE-REVALIDATION.md). لم تُنسخ ملفات أو مقاطع كود من هذه المشاريع. محول Fastboot الجديد تنفيذ محلي فوق Android Platform Tools المثبتة. استرشد التنفيذ بنمط إدارة العمليات في ATA-GUI، مع قائمة أوامر محلية أشد تقييداً. لذلك لا توجد ملفات طرف ثالث جديدة تتطلب إدراجاً في قائمة الملفات المنقولة.

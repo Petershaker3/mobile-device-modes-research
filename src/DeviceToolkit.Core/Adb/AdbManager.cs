@@ -18,6 +18,7 @@ public class AdbManager : IDisposable
 {
     readonly AdbClient _client;
     readonly ILogger _logger;
+    readonly Func<IEnumerable<DeviceData>> _enumerateDeviceData;
 
     /// <summary>adb server 状态探测（生产实现走 <see cref="AdbServer.Instance"/> 的 GetStatus；测试可注入假实现）。</summary>
     readonly Func<bool> _statusProbe;
@@ -59,13 +60,15 @@ public class AdbManager : IDisposable
         Func<bool> statusProbe,
         Func<Task<int>> startServer,
         Action startupStart,
-        Func<IAdbSocket> socketFactory)
+        Func<IAdbSocket> socketFactory,
+        Func<IEnumerable<DeviceData>>? enumerateDeviceData = null)
     {
         _logger = logger;
         _client = new AdbClient();
         _statusProbe = statusProbe;
         _startServer = startServer;
         _socketFactory = socketFactory;
+        _enumerateDeviceData = enumerateDeviceData ?? _client.GetDevices;
         try
         {
             startupStart();
@@ -92,24 +95,23 @@ public class AdbManager : IDisposable
     // ── 设备枚举 ──
 
     /// <summary>
-    /// 枚举设备并逐台检测 root。root 探测走带超时的异步通道（见 <see cref="TryProbeAsync"/>），
-    /// 因此本方法天然异步——同步版本曾因 su 授权框挂起而卡死设备监控事件循环。
+    /// 枚举设备状态和基础元数据。V1 discovery 不运行 shell 命令或 root/su 探测；
+    /// root capability 保持 Unknown，直到存在单独授权且符合产品政策的能力。
     /// </summary>
-    public virtual async Task<List<DeviceInfo>> ListDevicesAsync()
+    public virtual Task<List<DeviceInfo>> ListDevicesAsync()
     {
         var result = new List<DeviceInfo>();
         try
         {
-            var devices = _client.GetDevices();
+            var devices = _enumerateDeviceData();
             foreach (var d in devices)
             {
-                if (d.State != DeviceState.Online) continue;
                 var info = new DeviceInfo
                 {
                     Serial = d.Serial ?? "",
                     Model = GetModel(d),
                     State = d.State.ToString(),
-                    RootMode = (await DetectRootCachedAsync(d)).Mode,
+                    RootMode = RootMode.Unknown,
                 };
                 result.Add(info);
             }
@@ -118,7 +120,7 @@ public class AdbManager : IDisposable
         {
             _logger.LogWarning("枚举设备失败: {0}", ex.Message);
         }
-        return result;
+        return Task.FromResult(result);
     }
 
     // ── adb server 自愈 ──
@@ -215,9 +217,9 @@ public class AdbManager : IDisposable
     internal static string BuildRootShellCmd(RootMode mode, string cmd) =>
         mode == RootMode.Su ? $"su -c {ShellQuote(cmd)}" : cmd;
 
-    /// <summary>查询设备的 root 形态；未检测过返回 <see cref="RootMode.None"/>。</summary>
+    /// <summary>查询缓存的 root 形态；未检测过返回 <see cref="RootMode.Unknown"/>。</summary>
     public RootMode GetRootMode(string serial) =>
-        GetRootDetectEntry(serial)?.Mode ?? RootMode.None;
+        GetRootDetectEntry(serial)?.Mode ?? RootMode.Unknown;
 
     /// <summary>查询设备的 root 检测缓存条目；未检测过返回 null。</summary>
     public RootDetectEntry? GetRootDetectEntry(string serial)

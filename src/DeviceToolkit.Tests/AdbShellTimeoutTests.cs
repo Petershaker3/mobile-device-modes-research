@@ -55,6 +55,22 @@ public class AdbShellTimeoutTests
         Assert.Contains("Android 14", output);
     }
 
+    [Fact]
+    public async Task رمزخروجغيرصفرييرميخطأويحتفظبالرمز()
+    {
+        var shell = new AdbShell((args, onLine, ct) =>
+        {
+            onLine?.Report("permission denied");
+            return Task.FromResult(13);
+        });
+
+        var error = await Assert.ThrowsAsync<AdbShellCommandException>(() =>
+            shell.RunAsync("SERIAL-1", "getprop", TimeSpan.FromSeconds(5)));
+
+        Assert.Equal(13, error.ExitCode);
+        Assert.Equal("SERIAL-1", error.Serial);
+    }
+
     /// <summary>
     /// The serial must reach adb as "-s &lt;serial&gt;", otherwise a machine with two
     /// devices attached answers from an arbitrary one. AdbArgs is upstream's own

@@ -101,8 +101,10 @@ public sealed class AdbShell
 
         try
         {
-            await _run(AdbManager.AdbArgs($"shell {command}", serial), sink, deadline.Token)
+            var exitCode = await _run(AdbManager.AdbArgs($"shell {command}", serial), sink, deadline.Token)
                 .ConfigureAwait(false);
+            if (exitCode != 0)
+                throw new AdbShellCommandException(serial, exitCode);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
@@ -123,4 +125,18 @@ public sealed class AdbShell
             lock (sink) sink.AppendLine(value);
         }
     }
+}
+
+/// <summary>Raised when the adb process completed but reported a non-zero exit code.</summary>
+public sealed class AdbShellCommandException : Exception
+{
+    public AdbShellCommandException(string serial, int exitCode)
+        : base($"adb shell exited with code {exitCode} on device {serial}.")
+    {
+        Serial = serial;
+        ExitCode = exitCode;
+    }
+
+    public string Serial { get; }
+    public int ExitCode { get; }
 }

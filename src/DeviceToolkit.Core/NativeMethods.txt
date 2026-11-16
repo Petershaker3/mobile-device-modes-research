@@ -1,0 +1,6 @@
+﻿SetupDiGetClassDevs
+SetupDiEnumDeviceInfo
+SetupDiGetDeviceInstanceId
+SetupDiGetDeviceRegistryProperty
+SetupDiDestroyDeviceInfoList
+CM_Get_DevNode_Status

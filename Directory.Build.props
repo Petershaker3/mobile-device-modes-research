@@ -9,6 +9,7 @@
     <!-- Reproducible builds: same input bytes -> same assembly bytes. -->
     <Deterministic>true</Deterministic>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 
   <!-- Everything under src/ targets net10.0 unless a project overrides it. -->

@@ -120,3 +120,11 @@
 - [ ] تحديد ما إذا كانت أداة GUI جاهزة تغطي هذه الوظائف أم أن الوحدة تحتاج تنفيذاً مستقلاً.
 
 **الحالة الحالية:** هذا تصميم بحثي ومتطلبات موثقة بالمصادر الرسمية، وليس ادعاءً بأن الإصلاح نُفّذ أو اختُبر على جهاز فعلي.
+
+**تحديث المضيف المحلي، 13 نوفمبر 2026:** نفّذ `pnputil /enum-devices /connected /deviceids` و`pnputil /enum-devices /problem /deviceids` على Windows build `26200` للقراءة فقط. خرج الأمران برمز `0`، وعُدّ `135` جهازاً حاضراً و`0` أجهزة بمشكلة؛ لم يظهر Android USB hardware ID لأن الهاتف كان متصلاً عبر Wi-Fi. هذا يثبت عمل استعلام PnP عام على المضيف فقط، ولا يختبر تعريف هاتف أو وضع USB.
+
+**قرار إعادة الاستخدام:** Driver Store Explorer/RAPR مرجع للواجهة والجرد، لكنه GPL-2.0 ويشمل عمليات تغيير وحذف Driver Store؛ لا يدمج في البرنامج. PnPUtil مناسب كأداة نظام للدعم اليدوي والاختبار، لكن اختلاف switches وتنسيق النص حسب إصدار Windows ولغته يمنع اعتماده عقد API للمنتج. تنفيذ المنتج التالي هو تعداد منظم عبر SetupAPI/Configuration Manager الموثقين من Microsoft، من دون Registry parsing أو إصلاح تلقائي.
+
+**تنفيذ أولي:** أضيفت `PnpDeviceInventory` إلى Core، مبنية على CsWin32 `0.3.371` وواجهات SetupAPI/Configuration Manager. تقرأ الأجهزة الحاضرة واسمها وinstance ID وHardware IDs وstatus flags وProblem Code؛ لا توجد عمليات تغيير حالة. رُبطت الخدمة بتبويب WPF `Windows drivers` بزر قراءة يدوي وفرز المشكلات أولاً ورسائل حالات البيانات.
+
+**Smoke محلي، 13 نوفمبر 2026:** خدمة SetupAPI أعادت `135` جهازاً حاضراً. تطابقت instance IDs مع `pnputil /enum-devices /connected /deviceids`: `135` في كل قائمة، `0` مفقودة، `0` زائدة. أبلغ `CM_Get_DevNode_Status` عن جهاز واحد برمز `22` وعلم `DN_HAS_PROBLEM`؛ WMI أعاد جهازاً واحداً برمز `22` أيضاً. لكن `pnputil /enum-devices /problem /deviceids` لم يرجع أي جهاز، والاستعلام المحدد عبر PnPUtil صنّف الجهاز `Disconnected` مع `IsPresent=TRUE` و`HasProblem=FALSE`. هذا تعارض بين واجهات Windows على المضيف، لا نساوي بين نتيجتيها. بناء Release نجح مع تحذيرين `CS9191` سابقين في `AdbManager.cs` و0 أخطاء. لم تُشغّل الخدمة من واجهة WPF ولم تُفحص الشاشة بصرياً؛ أداة Computer Use أعادت `Computer Use native pipe is unavailable`. تجربة USB غير منفذة.

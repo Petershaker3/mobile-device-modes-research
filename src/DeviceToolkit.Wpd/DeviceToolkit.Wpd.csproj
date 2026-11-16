@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>DeviceToolkit.Wpd</AssemblyName>
+    <RootNamespace>DeviceToolkit.Wpd</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="MediaDevices" Version="2.0.0" />
+    <ProjectReference Include="..\DeviceToolkit.Wpd.Worker\DeviceToolkit.Wpd.Worker.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <Target Name="CopyWpdWorkerToLibraryOutput" AfterTargets="Build">
+    <ItemGroup>
+      <WpdWorkerFile Include="..\DeviceToolkit.Wpd.Worker\bin\$(Configuration)\net10.0-windows\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(WpdWorkerFile)" DestinationFiles="@(WpdWorkerFile->'$(OutDir)WpdWorker\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

@@ -3,6 +3,8 @@
   "$id": "https://contracts.local/_common.schema.json",
   "title": "Common definitions shared by all device-toolkit contracts",
   "description": "Every other schema in this folder $refs into this file. Nothing here is a wire format by itself.",
+  "type": "object",
+  "additionalProperties": false,
   "$defs": {
     "uuid": {
       "type": "string",

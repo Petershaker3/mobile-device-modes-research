@@ -4,11 +4,11 @@
 >
 > ```bash
 > python contracts/tools/validate_contracts.py
-> # contracts: 45 checks over 7 schemas, 11 examples, 10 negative cases
+> # contracts: 48 checks over 7 schemas, 11 examples, 13 negative cases
 > # OK: all contracts hold
 > ```
 >
-> **ما يثبته هذا الملف:** العقود مُعرّفة، متسقة، وترفض الحالات الخطأ (10 حالات سلبية).
+> **ما يثبته هذا الملف:** العقود مُعرّفة، متسقة، وترفض الحالات الخطأ (13 حالة سلبية). مخطط العملية يربط كل نوع عملية بمستوى أثر ثابت، ويشترط موافقة لعمليات الكتابة المحلية، وتحققاً مستقلاً لنجاح عمليات الكتابة.
 > **ما لا يثبته:** لم يُنفَّذ أي كود C# يستهلكها، ولم تُختبر ضد جهاز.
 
 **التاريخ:** 13 نوفمبر 2026 — **يعتمد على:** [ADR-0001](17-adr-0001-stack-decision.md)، [18](18-ENGINEERING-DECISIONS.md)
@@ -125,7 +125,7 @@
 
 ```bash
 $ python contracts/tools/validate_contracts.py
-contracts: 45 checks over 7 schemas, 11 examples, 10 negative cases
+contracts: 48 checks over 7 schemas, 11 examples, 13 negative cases
 
 1 warning(s):
   - _common.schema.json: schema does not set additionalProperties=false at the top level
@@ -141,4 +141,4 @@ OK: all contracts hold
 EXIT=1
 ```
 
-**آخر تحديث:** 13 نوفمبر 2026. **الحالة:** العقود مُنفَّذة كمواصفة ومُتحقَّق منها بمدقّق يعمل ومُختبر ضد حالات سلبية؛ كود C# غير مكتوب بعد.
+**آخر تحديث:** 14 نوفمبر 2026. **الحالة:** العقود مُنفَّذة كمواصفة ومُتحقَّق منها بمدقّق صارم: 48 فحصاً على 7 مخططات و11 مثالاً و13 حالة سلبية، بلا تحذيرات. مخطط العملية يفرض تطابق نوع العملية مع مستوى الأثر، وموافقة عمليات الكتابة المحلية، وتحققاً مستقلاً قبل نجاح الكتابة. أضيفت أنواع C# و`ApprovalService` وارتبطت بتدفقات WPF الحالية للتثبيت والإزالة ونقل الملفات. أضيف `AuditStore` على SQLite وسجل الموافقات ودورة العمليات للكتابات الحالية وقراءات facts/apps/APK/Logcat/file listing؛ سجلات الأحداث لا تحتوي serial أو النتائج أو المسارات أو مدخلات الخطة. تمثيل بقية العقود و`OperationEngine` وتغطية discovery والاقتران وخدمات أخرى لم تكتمل بعد.

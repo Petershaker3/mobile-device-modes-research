@@ -4,7 +4,11 @@
 
 **تاريخ تثبيت مراجع المصدر:** 12 نوفمبر 2026  
 **المنصة المستهدفة:** Windows 10/11، وAndroid 7.0 / API 24 فأحدث.  
-**حالة المستودع:** بحث وتصميم؛ لا يوجد منتج منفذ أو اختبار Hardware معتمد.
+**حالة المستودع، 14 نوفمبر 2026:** أضيف تطبيق WPF/Core أولي يعيد استخدام AdvancedSharpAdbClient ومكوّنات Logcat الموثقة في 21. نُقلت قراءات معلومات الجهاز وجرد التطبيقات ونسخة التطبيق إلى `ReadOnlyDeviceService` داخل Core، وتفوض إليها واجهة WPF. provider WPD في `src/DeviceToolkit.Wpd/` يعيد استخدام MediaDevices 2.0.0 داخل worker process مع مهلات. اختُبر على هاتف فعلي: 58 مجلدًا في التخزين الداخلي، و25 مجلدًا في Download، وتنزيل ملف 8,602 بايت مع مطابقة SHA-256 والتنظيف. اختبار المهلة المنفصل لم يصل إلى تعداد الملفات لأن فتح جلسة WPD انتهى بمهلة حتى عند 120 ثانية؛ لا يُعد هذا الاختبار ناجحًا. فحص الواجهة المرئي وMCP وBackup والـfirmware غير مكتمل. هذا منتج جزئي، لا اعتماد شامل لكل المحاور.
+
+**آخر تحقق WPD USB، 14 نوفمبر 2026:** عند إعادة الاختبار بعد وضع الملفات في الهاتف، ظهر جهاز WPD واحد ونجحت جلسة القراءة فقط. وجد الجرد 74 ملفًا في `Download`؛ وأكمل تعداد `DCIM` و`Pictures` و`Download` و`Documents` و`Movies` و`Music` ضمن مهلة العملية البالغة 8 ثوانٍ، فلم تحدث مهلة فعلية. انتهت الجلسة ولم تبق عمليات worker. اختبار timeout/cancellation/disposal ما زال مثبتًا بالعامل الوهمي فقط، وليس على هاتف حقيقي.
+
+**متابعة نقل WPD على الهاتف، 14 نوفمبر 2026:** ظهر 65 اسماً يحوي Unicode من أصل 74 في `Download`؛ أكبر ملف معروف 67,588,123 بايت. نُزّل ملف Unicode إلى مسار محلي مؤقت، وطابق الحجم 9,971,441 بايت ثم حُذف. أُلغي تنزيل الملف الأكبر بعد 250 ms؛ توقف worker، ورفضت الجلسة طلباً تالياً، ولم تبق ملفات مؤقتة. نجح فتح جلسة جديدة وتعداد 74 ملفاً. لم يُختبر فصل كابل USB أثناء النقل أو reconnect تلقائي.
 
 **تقدم Source Revalidation:** اكتمل على **جولتين**. الجولة الأولى: AdvancedSharpAdbClient وADB-Explorer وAdbGui في [13](13-source-revalidation-adb-file-core.md)، bundletool وapkfile وPacMan-APK وxapkInstaller في [14](14-source-revalidation-app-installers.md)، adb-mcp وus-all/android-mcp-server في [15](15-source-revalidation-mcp-codex.md)، payload-dumper-go وlucky-arch وlpunpack_cyth وchen3feng/android-backup في [16](16-source-revalidation-firmware-storage-backup.md). **الجولة الثانية** في [20](20-source-revalidation-round2.md) بعد قرار الستاك: logcat-viewer، APK-Installer، AdbFileManager، WinDroidFS، LogCater، Bugreport_analyzer — وأنتجت أربعة تصحيحات لوثائق قائمة.
 
@@ -23,7 +27,7 @@
 - Windows APIs منفصلة لاكتشاف USB/PnP وMTP/WPD وتشخيص التعريفات.
 - أدوات خارجية موثقة ومثبتة الإصدار تُشغّل عبر wrappers آمنة عند الحاجة، ولا تُدمج نسخ كاملة من برامج أخرى دون ضرورة.
 
-**لا نختار بعد إطار الواجهة أو runtime النهائي.** أقوى فرضية حالية للاختبار هي .NET 10 Host Core بسبب وجود AdvancedSharpAdbClient ومرشحين Windows/C#، مع مقارنة Tauri 2/Rust في PoC محدود قبل تثبيت القرار. لا نبدأ Hybrid Tauri + .NET إلا إذا أثبتت التجربة أن فائدته تبرر تكلفة IPC والتغليف والتحديث.
+**الاختيار محسوم: .NET 10 Host Core وWPF** وفق [ADR-0001](17-adr-0001-stack-decision.md). أُغلقت مقارنة Tauri 2/Rust، وأي عمل جديد يختبر تنفيذ الستاك المعتمد بدل إعادة فتح المقارنة. تبقى قرارات تكامل MTP وSQLite وMCP وتوزيع الاعتماديات محكومة بالتفاصيل في [18](18-ENGINEERING-DECISIONS.md).
 
 ## 2. ما الذي نعيد استخدامه؟
 
@@ -43,7 +47,7 @@
 | Backup files | [chen3feng/android-backup](https://github.com/chen3feng/android-backup) | scan/sync، include/exclude، hardlink snapshots، Windows Unicode workaround | auto-all-devices، size/mtime-only، exclude-after-pull، لا restore/tests واضحة | Source revalidated في [16](16-source-revalidation-firmware-storage-backup.md)؛ patterns فقط |
 | Legacy .ab | [Android Backup Extractor](https://github.com/nelenkov/android-backup-extractor) | import/unpack legacy .ab | لا ينشئ backup حديثاً ولا يتجاوز Android 12 restrictions | ميزة استيراد اختيارية P2 |
 | MCP/ADB | [iksnerd/adb-mcp](https://github.com/iksnerd/adb-mcp) و[us-all/android-mcp-server](https://github.com/us-all/android-mcp-server) | typed ADB client، stdio، tool schemas، context lifecycle، validators، categories | annotations ليست approval؛ auto-single-device مرفوض؛ generic shell/write flags غير معتمدة | Source revalidated في [15](15-source-revalidation-mcp-codex.md)؛ Read-only V1 فقط |
-| Windows PnP/Drivers | Windows PnP/SetupAPI/Configuration Manager وPnPUtil، ومصادر Microsoft/Google/OEM | APIs الرسمية للتشخيص والمطابقة | لا تثبيت/إزالة driver تلقائياً دون exact Hardware ID وpreview/approval/rollback | تصميم في 04؛ يحتاج PoC Windows |
+| Windows PnP/Drivers | Windows PnP/SetupAPI/Configuration Manager وPnPUtil، ومصادر Microsoft/Google/OEM | APIs الرسمية للتشخيص والمطابقة | لا تثبيت/إزالة driver تلقائياً دون exact Hardware ID وpreview/approval/rollback | خدمة Core read-only عبر CsWin32؛ smoke طابق 135 IDs مع PnPUtil /connected. يوجد اختلاف Problem Code بين CM/WMI وPnPUtil؛ لا إصلاح تلقائي |
 | مصادر التطبيقات | F-Droid signed indexes؛ APKPure/APKMirror provider pages | تكامل فهرس موثق لـF-Droid، وProvider Adapter للمصادر الأخرى | لا تجاوز CAPTCHA/Cloudflare أو APIs غير موثقة أو مشاركة cookies | F-Droid أولاً؛ APKPure/APKMirror تدفق آمن محدود |
 
 **مبدأ الدمج:** كل مرشح له مصدر أصلي واحد داخل 02 أو وثيقة المجال. هذا الجدول لا يستبدل مراجعة الكود ولا يعيد نشر كل تفاصيلها.
@@ -85,7 +89,7 @@
 |---|---|---|
 | ADB/File/Logcat | [13](13-source-revalidation-adb-file-core.md) عند SHAs محددة | PoC .NET/Tauri، build/tests، USB/Wireless/Hardware |
 | APK/APKM/XAPK/APKS | [14](14-source-revalidation-app-installers.md) عند SHAs محددة | archive corpus، apksigner verification، PoC Python sidecar مقابل adapters، install session failure tests |
-| Drivers | مصادر Windows الرسمية وتصميم 04 | PoC Windows PnP/driver diagnosis/rollback |
+| Drivers | مصادر Windows الرسمية وتصميم 04، وخدمة Core read-only وsmoke على المضيف | تشغيل/فحص التبويب بصرياً، تكرار الاختبار مع هاتف USB؛ لا يوجد repair scope في V1 |
 
 ## 3.2 تقدم Source Revalidation — OTA/Partitions/Backup
 
@@ -192,7 +196,7 @@ Desktop UI                         MCP Server (local STDIO)
 | ~~ADB~~ | **محسوم: AdvancedSharpAdbClient 3.6.16+** (مع `adb.exe` كمسار احتياطي) | — | [ADR-0001](17-adr-0001-stack-decision.md) |
 | MTP | Windows WPD COM/API wrapper | ADB-only first ثم WPD provider | enumeration، Unicode، large files، Android API/OEM differences |
 | Local persistence | SQLite | JSON/flat files | transactions، schema migration، audit retention، corruption recovery |
-| MCP | .NET MCP SDK أو TS SDK عبر STDIO | MCP host منفصل يتصل بـApplication API محلية | Codex handshake، tool schemas، user ACL، approval flow، process lifecycle |
+| MCP | .NET MCP SDK الرسمي عبر STDIO | MCP host مستقل فوق خدمات Core المشتركة | device_id محلي، ADB runtime lifecycle، Codex handshake، tool schemas، process lifecycle |
 | Dependency delivery | bundled pinned tools | managed install/update of signed official tools | offline-first، integrity/hash، rollback، Windows Defender/SmartScreen behavior |
 
 ### PoC المطلوب قبل بدء تنفيذ النواة (الستاك محسوم)
@@ -210,18 +214,18 @@ Desktop UI                         MCP Server (local STDIO)
 
 ## 7. خطة ترتيب البناء بعد موافقة تنفيذ مستقلة
 
-| المرحلة | الناتج | شروط الخروج |
-|---|---|---|
-| 0 — Source Revalidation | تثبيت commits النهائية، فروق المصدر، الاعتماديات، build instructions، security review | لا توجد فجوة حرجة مجهولة في المرشح المختار |
-| 1 — Host Core PoC | Device Registry، explicit DeviceHandle، ADB discovery، typed command execution | USB/Wireless/multi-device/cancel/disconnect tests |
-| 2 — Shared Contracts | Device/Capability/Operation/Result/Audit schemas | عقود موحدة ومختبرة ومصدّرة لـGUI وMCP |
-| 3 — Read-only Device Intelligence | System info، mode detection، software inventory، storage/partition metadata | corpus fixtures وAPI 24+ tests وsource provenance |
-| 4 — Application Management & Installer | app inventory، format adapters، package inspection، APK/APKS ثم APKM/XAPK | format corpus، signature/split checks، device install verification |
-| 5 — File & Backup | ADB file manager، MTP provider، file backup/restore | path safety، hash verification، cancellation/recovery |
-| 6 — Diagnostics | Logcat، Bugreport، dumpsys، Perfetto integration | privacy/ZIP limits، streaming/retention tests |
-| 7 — Network & Drivers | DNS preview/apply/verify/restore؛ Windows driver diagnosis/repair | جهاز/Windows test matrix، rollback، official source verification |
-| 8 — MCP | tools/resources فوق Application Services | Codex integration، explicit target، approval، injection/security tests |
-| 9 — Hardening | Offline packaging، migrations، update/rollback، performance، accessibility | CI + runtime matrix + documented release gates |
+| المرحلة | الناتج | شروط الخروج | الحالة الحالية، 14 نوفمبر 2026 |
+|---|---|---|---|
+| 0 — Source Revalidation | تثبيت commits النهائية، فروق المصدر، الاعتماديات، build instructions، security review | لا توجد فجوة حرجة مجهولة في المرشح المختار | **مكتملة للمرشحين المسجلين** في الجولتين؛ إعادة التحقق مطلوبة عند اختيار مكوّن جديد |
+| 1 — Host Core PoC | Device Registry، explicit DeviceHandle، ADB discovery، typed command execution | USB/Wireless/multi-device/cancel/disconnect tests | **جزئية**: WPF وCore وADB discovery والاتصال اللاسلكي موجودة؛ `device_id` محلي وDevice Registry موحد واختبارات فصل/تعدد الأجهزة غير مكتملة |
+| 2 — Shared Contracts | Device/Capability/Operation/Result/Audit schemas | عقود موحدة ومختبرة ومصدّرة لـGUI وMCP | **جزئية**: 7 schemas ومدقّق صارم (48 فحصاً و13 حالة سلبية)، مع `OperationPlan` و`ApprovalService` و`AuditStore` على SQLite؛ يغطي الآن تدفقات الكتابة الأربع وقراءات facts/apps/APK/Logcat/file listing وADB/mDNS discovery وWindows PnP والاقتران؛ بقية الخدمات وأنواع العقود و`OperationEngine` ما زالت غير مكتملة |
+| 3: Read-only Device Intelligence | System info، mode detection، software inventory، storage/partition metadata | corpus fixtures وAPI 24+ tests وsource provenance | **جزئية**: قراءة ADB وFastboot العامة صارت allowlisted. أضيف profile Huawei تجريبي لاستعلامي getvar وقراءة موديل OEM ثابتة، مع بقاء توافقه مع موديل محدد غير مثبت، ولا تزال تجربة Fastboot على Huawei وفحص الواجهة بصرياً معلقين. اكتشاف الأوضاع وبيانات الأقسام الشاملة غير مكتملة. راجع [24](24-DEVICE-MODE-READ-INFO.md) و[25](25-FASTBOOT-SOURCE-REVALIDATION.md). |
+| 4 — Application Management & Installer | app inventory، format adapters، package inspection، APK/APKS ثم APKM/XAPK | format corpus، signature/split checks، device install verification | **جزئية**: جرد ومعاينة APK وتثبيت/إزالة تطبيق مستخدم مع تحقق بعدي وموافقة مرتبطة بالخطة؛ لم يُعَد اختبار الهاتف بعد ربط الموافقة، وصيغ الحزم المتعددة والتوقيع ناقصة |
+| 5 — File & Backup | ADB file manager، MTP provider، file backup/restore | path safety، hash verification، cancellation/recovery | **جزئية**: ADB files قائم، وأضيف تبويب WPF `MTP storage` للتصفح read-only وتنزيل محلي بمعاينة وموافقة وتدقيق. على الهاتف عبر USB نجح تعداد 74 ملفًا، ومسار Unicode، تنزيل 9,971,441 بايت مع تحقق الحجم، وإلغاء تنزيل أكبر ملف (67,588,123 بايت) مع إنهاء العامل ورفض الجلسة طلبات جديدة؛ نجحت جلسة جديدة بعدها. fake-worker يغطي timeout/cancellation/disposal؛ فشل فصل USB الفعلي وإعادة الاتصال تلقائياً وفحص الواجهة المرئي لم يُختبرا. النسخ الاحتياطي/الاستعادة غير منفذين |
+| 6 — Diagnostics | Logcat، Bugreport، dumpsys، Perfetto integration | privacy/ZIP limits، streaming/retention tests | **جزئية**: تحليل والتقاط Logcat بحدود دقيقتين و64 MiB؛ الكاتب الجديد يضمن flush واجتاز اختبارات الوحدة. اختبار الهاتف الأخير على SM-N976N أكمل 30 ثانية وقرأ 1,299 سطراً دون crash events/groups؛ Bugreport وPerfetto غير منفذين |
+| 7 — Network & Drivers | DNS preview/apply/verify/restore؛ Windows driver diagnosis/repair | جهاز/Windows test matrix، rollback، official source verification | **جزئية**: قراءة Private DNS وتشخيص PnP فقط؛ تغيير DNS وإصلاح التعريفات خارج V1 الحالي |
+| 8 — MCP | tools/resources فوق Application Services | Codex integration، explicit target، approval، injection/security tests | **لم تبدأ**: لا يوجد MCP host؛ العقود ومراجعة المرشحين فقط |
+| 9 — Hardening | Offline packaging، migrations، update/rollback، performance، accessibility | CI + runtime matrix + documented release gates | **جزئية**: CI strict وlockfiles مقفلة واختبارات .NET؛ لا تغليف إصدار أو مصفوفة runtime أو فحص واجهة شامل |
 
 **المراحل متداخلة عند وجود اعتماديات واضحة، لكن لا يتم بناء كل محور كبرنامج مستقل.** لا نؤجل المحاور التي طلبها المستخدم لمجرد أن APK installer أسهل؛ نربطها بالنواة المشتركة.
 
@@ -237,7 +241,22 @@ Desktop UI                         MCP Server (local STDIO)
 
 كل دليل يحمل: source URL، source SHA، review date، tool version، OS build، Android API/model عند hardware test، خطوات قابلة للتكرار، output redacted، evidence grade.
 
-## 9. قرارات المنتج التي نثبتها ولا نعيد فتحها في هذه الخطة
+## 9. إصلاحات مراجعة الحالة الحالية — 14 نوفمبر 2026
+
+تُنفّذ هذه الإصلاحات على الكود الحالي قبل توسيع خدمات Android، مع فصل النتائج المؤكدة من التقرير عن البنود التي تحتاج إعادة تحقق. معيار القبول هو السلوك والاختبارات، لا وجود التوثيق أو مخطط JSON وحده.
+
+| الأولوية | الإصلاح | الحالة والدليل المطلوب |
+|---|---|---|
+| P0 | منع أي فحص `su` تلقائي أو ضمني أثناء تعداد الأجهزة؛ الحالة غير المفحوصة لا تُعرض كأنها نفي مؤكد لـroot. إبقاء اختيار الجهاز صريحًا وعرض الحالات غير المتصلة بدل إسقاطها. | مطبق في `AdbManager.ListDevicesAsync`؛ الاختبار يثبت أن التعداد لا يرسل أوامر shell ويحتفظ بحالات الأجهزة. |
+| P0 | جعل بوابة Linux تفشل عند نتائج اختبار مفقودة أو غير قابلة للتحليل أو فشل غير مسموح؛ السماح يطابق فقط أسماء الفروق المعروفة، والمدخلات المفقودة لا تُعامل نجاحًا. | مطبق: Linux يستدعي التقرير بـ`--strict`، والتقرير يرفض النتائج المفقودة أو غير القابلة للتحليل والفشل غير المعروف؛ فحوص الحالات السلبية مضافة. |
+| P1 | اعتبار exit code غير الصفري من `adb shell` فشلًا صريحًا مع حفظ رمز الخروج للجهة المستدعية. | مطبق في `AdbShell.RunAsync`؛ اختبارات exit code 0 وغير الصفري والمهلة والإلغاء. |
+| P1 | حماية إلغاء Logcat من فقد آخر دفعة، والحفاظ على حدود جلسة/حجم، وعدم تسجيل serial الجهاز. | مسار WPF الفعلي يفرض حتى دقيقتين و64 MiB باستخدام `-T 1`؛ فصلت الكتابة المحدودة إلى Core وأضيف flush مضمون واختبارات إلغاء/حجم/بانر. `LogcatStream` المنقول لا يستعمله المسار الحالي، لكنه ما زال يسجل serial ولا يملك حد جلسة/حجم أو اختباراً؛ يبقى مستبعداً من مسار المنتج حتى تكتمل حماية المصدر وتحديث attribution/gate. |
+| P1 | ربط operation schema بسياسة تنفيذ typed تفرض موافقة مناسبة للعملية والتحقق بعد الكتابة، بدل الثقة في قيم يرسلها المستدعي. | المخطط يربط نوع العملية بأثر ثابت، ويطلب موافقة LocalWrite، ويتطلب تحققاً مستقلاً للنجاح بعد الكتابة؛ المدقّق الصارم يمر على 48 فحصاً و13 حالة سلبية. أضيف `OperationImpactPolicy` و`OperationPlan` و`ApprovalService`؛ وُصلت الموافقة بخطط تثبيت/إزالة التطبيقات ورفع/تنزيل الملفات، مع هدف صريح ومدخلات ثابتة وخطوة تحقق ورمز أحادي الاستخدام لخمس دقائق. أضيف `AuditStore`، وسُجل `ApprovalGranted` ثم `OperationStarted` والنجاح/الفشل/الإلغاء للتدفقات الأربع؛ فشل تسجيل البداية يمنع التنفيذ، وفشل تسجيل النتيجة يوضح أن الحالة تحتاج مراجعة. بقية الخدمات و`OperationEngine` غير مربوطة بعد، ولا يوجد تحقق ميداني لهذه التدفقات في هذه المتابعة. |
+| P2 | تسوية تعارضات الحالة بين README والخطة والـhandoff، والتحقق من أرقام الترجمة وقرار lockfile. | README حُدث إلى 46/46 مفتاحاً و545/545 في آخر تشغيل محلي كامل. أُنشئت lockfiles للمشاريع الخمسة ونجح `dotnet restore --locked-mode`، وأصبح CI يستخدم الوضع المقفل. ملخص handoff والخطوة التالية حُدّثا؛ بقيت بعض أرقام التشغيل التاريخية ومصفوفة الحالة القديمة تشير إلى `docs/23-DESKTOP-APP.md` و`TODO.md`. |
+
+**حالة التنفيذ والترتيب التالي:** اكتمل منع فحص root التلقائي وإصلاح بوابة Linux وتمرير أخطاء أوامر ADB؛ كما أضيفت كتابة Logcat محدودة تضمن flush عند الإلغاء أو بلوغ حد الحجم. أُغلقت ثغرتا مخطط العقود، وفُرضت موافقات مرتبطة بالخطة على تدفقات التثبيت والإزالة ونقل الملفات. أضيف `AuditStore` على SQLite ووُصل بتدفقات الكتابة الأربع وقراءات facts/apps/APK/Logcat وقائمة الملفات، واكتشاف ADB وmDNS وقراءة Windows PnP. أصبح الاقتران اللاسلكي عملية `DeviceWrite` مستهدفة بعنوان خدمة الاقتران؛ نجح زر WPF على SM-N976N بعد رفع انتظار خدمة Connect إلى 20 ثانية، وأكد AuditStore بدء ونجاح الاقتران ثم discovery. رمز الاقتران لا يدخل السجل. أضيف نوعا discovery والاقتران إلى schema. فحص العقود الصارم مرّ بـ48 فحصاً و13 حالة سلبية. الاختبارات المحلية الكاملة: 548 ناجحاً؛ وبناء WPF: 0 تحذيرات و0 أخطاء. smoke قراءة الهاتف أكمل facts والتقاط Logcat لمدة 30 ثانية، 1,299 سطراً دون crash events/groups. اختُبر WPD worker محلياً بعامل وهمي: عملية واحدة عبر connect/list/download، مسار Unicode، تنزيل 16 MiB، وإنهاء العامل عند timeout والإلغاء والتخلص من الجلسة؛ أضيف هذا إلى CI على Windows. تعداد WPD الفعلي الأخير أعاد 0 أجهزة؛ الهاتف حاضر عبر Wi-Fi فقط، لذلك اختبار USB/MTP البطيء ما زال غير مثبت. **الخطوة التالية:** وصل الهاتف عبر USB واختيار File Transfer/MTP، ثم إعادة اختبار WPD الحقيقي داخل جلسة مفتوحة وقراءة مجلد بطيء والتحقق من قتل العامل؛ بعدها اختبر انقطاع النقل وأحجام/أسماء واقعية، ثم اربط provider بواجهة WPF. تظل Device Registry و`device_id` المحلي و`OperationEngine` وMCP مراحل لاحقة. يبقى `LogcatStream` المنقول خارج مسار المنتج حتى تُحل حدوده وتسجيل serial دون كسر بوابة attribution. لا تُعتبر أي مرحلة مكتملة قبل فحوصها المحددة.
+
+## 10. قرارات المنتج التي نثبتها ولا نعيد فتحها في هذه الخطة
 
 - Windows 10 وWindows 11.
 - Android 7.0/API 24 فأحدث، مع capability checks لكل ميزة.
@@ -251,14 +270,20 @@ Desktop UI                         MCP Server (local STDIO)
 - إعادة استخدام مشاريع GitHub الجاهزة قبل كتابة بديل، مع مراجعة الكود والأمان والاختبارات.
 - لا تعتبر مراجعة المصدر أو CI أو README دليلاً على Runtime/Hardware.
 
-## 10. ما لم يتم إثباته بعد
+## 11. ما لم يتم إثباته بعد
 
-- لم يتم بناء PoC .NET أو Tauri للمقارنة.
-- لم يتم بناء أو تشغيل أي مرشح ضمن بيئة Windows 10/11 في هذه الجولة.
-- لم يتم توصيل هاتف حقيقي أو اختبار USB/Wireless/MTP/Fastboot.
-- لم يتم تشغيل تثبيت APK/APKS/APKM/XAPK على جهاز حقيقي.
-- لم يتم تنفيذ Backup/Restore أو DNS change أو Driver repair.
-- لم يتم ربط MCP بـCodex.
-- لم يتم اعتماد أي مشروع أو dependency للدمج النهائي.
+- مقارنة Tauri/Rust ألغيت عند اعتماد .NET 10 + WPF؛ PoC المطلوب الآن يثبت التنفيذ المختار فقط.
+- لم يُختبر زر التطبيق أو واجهة WPF بصرياً؛ أداة Computer Use غير متاحة حالياً.
+- لا يوجد تحقق USB فعلي من تعريف هاتف. smoke خدمة PnP على المضيف ليس اختباراً لهاتف.
+- أضيف provider WPD read-only فوق MediaDevices 2.0.0 داخل worker process مستقل. تحقق تعداد المجلدات وتنزيل ملف صغير على هاتف فعلي. اختبار Unicode والملفات الكبيرة والانقطاع، وفحص مهلة عملية بطيئة بعد فتح الجلسة، ما زالت لاحقاً.
+- Backup/Restore الكامل غير منفذ، ولا نعد بنسخ بيانات التطبيقات الخاصة. `chen3feng/android-backup` مرجع خوارزمية فقط بسبب auto-all-devices والتحقق الضعيف؛ لا يُنسخ كما هو.
+- OTA/partition metadata لا يزال غير منفذ. `payload-dumper-go` مرشح list-only مع حدود manifest/signature موثقة؛ `lucky-arch` يحتاج hardening واختبارات، و`lpunpack_cyth` لا يحقق metadata-only على sparse input بأمان.
+- MCP لم يُربط بـCodex. مراجع `adb-mcp` و`android-mcp-server` ليست خوادم جاهزة للدمج؛ القرار استخدام .NET MCP SDK فوق Application Services نفسها مع read-only tools وtarget صريح. `ReadOnlyDeviceService` يغطي الآن facts وapp inventory/version فقط؛ device_id/runtime binding وstdio host لم تُنفذ.
+- مصادر التطبيقات وF-Droid ليست مدمجة؛ الأولوية الموثقة هي signed-index integration، بينما APKPure/APKMirror يظلان تدفق صفحات/تنزيل محدوداً.
+- يجب إعادة فحص المصدر والرخصة والصيانة وtests عند اختيار أي مرشح لتنفيذ جديد؛ مراجعة SHA في 13–16 و20 ليست اعتماداً نهائياً أو دليل تشغيل.
 
-**الحالة:** خطة إعادة الاستخدام والمعمارية وترتيب البناء موثقة. الخطوة التالية البحثية هي Source Revalidation للمرشحين الأعلى أولوية ثم PoC مقارنة Host Core، قبل أي قرار Stack أو بدء تنفيذ. هذه الوثيقة لا تمنح موافقة تنفيذ على البرنامج أو الجهاز.
+**الحالة:** الستاك والعقود الأساسية مغلقة، وبعض خدمات Android وPnP نُفذت واختُبرت. WPD worker حقق تعداد المجلدات وتنزيل ملف مع التحقق على هاتف فعلي؛ اختبار مهلة عملية داخل جلسة لم يُحسم لأن فتح الجلسة نفسه انتهى بمهلة. لا تبدأ محور MCP أو Backup/firmware حتى يكتمل هذا الفحص أو يتغير ترتيب الأولويات. لا تعتبر هذه الوثيقة موافقة لتغيير حالة جهاز أو Windows.
+
+**تحديث حالة WPD بعد النقل والإلغاء على الهاتف:** اكتمل تنزيل ملف Unicode بحجم 9,971,441 بايت إلى مجلد محلي مؤقت مع تطابق الحجم، ثم حُذف. أُلغي طلب تنزيل أكبر ملف معروف (67,588,123 بايت) بعد 250 ms؛ توقف worker ورفضت جلسته طلباً جديداً ولم تبق ملفات مؤقتة. نجحت جلسة جديدة وأعادت تعداد 74 ملفاً. لا يزال فصل USB أثناء النقل واختبار timeout فعلي على الهاتف غير متحققين. لا تُعدّل ملفات الهاتف لأجل الاختبار.
+
+**تحديث تكامل WPD بسطح المكتب:** أضيف `WpdBrowserViewModel` وخدمة WPD المدققة إلى تبويب `MTP storage`؛ الاختيار صريح، والقراءة لا تعرض إلا البيانات الوصفية، والتنزيل المحلي لا يبدأ إلا بعد مراجعة معاينة والضغط على التأكيد. تُسجل القراءات بـ`file.list` والتنزيلات بـ`file.pull`. بناء المشروع في مجلد تحقق معزول نجح بـ0 تحذيرات و0 أخطاء، والمجموعة الكاملة مرّت بـ548 اختباراً. العرض الفعلي والنقر لم يُتحققا لأن Computer Use فشل في تهيئة kernel ولأن exe الحالي مفتوح.

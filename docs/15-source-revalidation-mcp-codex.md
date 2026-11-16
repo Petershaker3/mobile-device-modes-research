@@ -2,7 +2,7 @@
 
 > **الغرض:** إعادة فحص مرشحي MCP اللذين سبق إدراجهما في البحث، وتحديد ما يمكن إعادة استخدامه في ربط Codex بالبرنامج دون كشف generic shell أو السماح للـAI بتجاوز سياسات الموافقة.
 
-**تاريخ المراجعة:** 12 نوفمبر 2026  
+**تاريخ المراجعة:** 13 نوفمبر 2026
 **المستودع المستهدف:** mobile-device-modes-research  
 **الحالة:** Source Revalidation — لا MCP server تم بناؤه أو ربطه بـCodex.
 
@@ -14,6 +14,17 @@
 | [us-all/android-mcp-server](https://github.com/us-all/android-mcp-server/tree/bacd6eac34273e7bbaef666954ee399bdf1de1e3) | TypeScript MCP SDK، stdio، 76 tool، categories، resources/prompts، execFile، timeouts، separate write/shell gates، input validators | write gate global environment flag وليس approval لكل عملية؛ serial اختياري/auto؛ generic shell متاح عند تفعيل flag؛ بعض أوامر shell تتطلب مراجعة كل input | مرجع لتقسيم الأدوات والـschemas والـdiscovery، لا نفعّل write/shell flags في المنتج |
 
 **القرار:** MCP يجب أن يكون واجهة فوق Application Services نفسها، وليس ADB client موازياً. نبدأ Read-only tools فقط، ونفرض DeviceHandle صريحاً في كل tool يستهدف جهازاً. لا نعتمد MCP annotations أو system prompt كبديل لبوابة موافقة داخلية.
+
+## 1.1 مواءمة المرشح مع قرار الستاك الحالي
+
+حُسم في [ADR-0001](17-adr-0001-stack-decision.md) أن Host Core هو .NET 10 وأن MCP يستخدم .NET SDK؛ لذلك الملاحظة القديمة في §7 عن انتظار مقارنة Go/TypeScript لم تعد سارية. أُعيد فحص مصدر SDK الرسمي عند tag `v2.4.0`، commit `4cbf42ef107763f0bc75c358af8cb2dfe47a769a`، بتاريخ 13 نوفمبر 2026:
+
+- `ModelContextProtocol` هو حزمة الاستضافة وdependency injection وstdio tools المناسبة كبداية؛ target frameworks في csproj تتضمن `net10.0`.
+- SDK الرسمي منشور من `modelcontextprotocol/csharp-sdk` ويُصان بالتعاون مع Microsoft. الإصدار `2.4.0` صدر في 7 نوفمبر 2026، وملاحظاته تشمل تغييرات واعتمادية tests. المستودع يحتوي test projects وCI workflow، لكننا لم نشغّلها.
+- الحزمة NuGet تعلن Apache-2.0. ملف LICENSE في source يوضح انتقالاً من MIT إلى Apache-2.0 وأن بعض المساهمات القديمة تظل MIT؛ لذلك استخدم الحزمة المنشورة دون نسخ مصدر SDK، وأعد فحص notices والاعتماديات عند تثبيت الإصدار.
+- يوجد اختلاف بين README/LICENSE التي تعلن Apache-2.0 ووثيقة صفحة v2 العامة التي ما زالت تعرض MIT. نعتمد license metadata للحزمة وLICENSE عند tag فقط بعد فحصها مع الإصدار الذي سيُثبت فعلياً.
+
+هذا تحديث تحقق المرشح والإصدار، وليس قراراً بإضافة dependency أو إكمال مراجعة أمنية لكل transport. نُقلت قراءة معلومات الجهاز وجرد التطبيقات ونسخة التطبيق الآن إلى `DeviceToolkit.Core.Services.ReadOnlyDeviceService`، بينما بقي `DeviceToolkit.Desktop.Services.DeviceWorkflow` يجمع عمليات القراءة والكتابة وينفذ تنظيف captures عند الإنشاء؛ لذلك لا يُسجّل كما هو في host MCP. قبل بناء host، يلزم device_id محلي يحل إلى جهاز ADB محدد من دون كشف serial، وتحديد bootstrap/runtime لـADB. يبقى stdio محلياً، والأدوات allowlisted، ولا generic shell أو write tools.
 
 ## 2. iksnerd/adb-mcp — مراجعة Go MCP
 
@@ -177,7 +188,7 @@ https://github.com/us-all/android-mcp-server/tree/bacd6eac34273e7bbaef666954ee39
 
 ## 7. القرار
 
-- نستخدم Go MCP SDK أو TypeScript MCP SDK وفق Host Core PoC؛ لا نختار اللغة قبل قرار Host/Core.
+- نستخدم .NET MCP SDK الرسمي داخل host .NET 10 وفق [ADR-0001](17-adr-0001-stack-decision.md)، مع pin لإصدار محدد بعد مراجعة source/license/CI. لا ننسخ SDK أو أدوات المرشحين.
 - أفضل patterns من adb-mcp: typed client per serial، exec.CommandContext، shell quoting tests، annotation completeness tests، cleanup lifecycle.
 - أفضل patterns من us-all: tool categories، schema trimming/search-tools، separate read/write/shell policy layers، validation helpers.
 - نرفض auto-device selection في كلتا الحالتين.
@@ -194,4 +205,4 @@ https://github.com/us-all/android-mcp-server/tree/bacd6eac34273e7bbaef666954ee39
 - لم نختبر approval token flow أو adversarial tool calls.
 - لم يتم تشغيل أي command على هاتف عبر هذه المراجعة.
 
-**الحالة:** Source Revalidation مكتمل للمرشحين عند commits أعلاه. adb-mcp هو المرجع الأقوى لبنية Go/typed ADB/context lifecycle، وus-all مرجع قوي لتقسيم أدوات TypeScript/validation. كلاهما يحتاج إعادة تصميم targeting/approval قبل أي اعتماد؛ لا يوجد Codex/Runtime/Hardware evidence.
+**الحالة:** تمت إعادة فحص metadata/source عند commits مثبتة للمرشحين السابقين و.NET SDK `v2.4.0`. SDK هو الخيار الموافق للستاك، لكن لا يوجد MCP server أو Codex/Runtime/Hardware evidence. لا تُعد هذه المراجعة تشغيلًا لاختبارات SDK أو مراجعة أمنية شاملة. adb-mcp وus-all يظلان مراجع patterns فقط، ولا يُنسخ منهما code أو targeting behavior.

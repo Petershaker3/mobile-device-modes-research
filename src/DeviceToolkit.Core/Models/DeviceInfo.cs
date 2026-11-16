@@ -13,6 +13,8 @@ public enum RootMode
     Su = 1,
     /// <summary>adbd 以 uid=0 运行（adb root 生效）：shell 命令天然 root，禁止再加 su 包裹。</summary>
     Adbd = 2,
+    /// <summary>Root capability has not been checked; V1 discovery never probes or requests it.</summary>
+    Unknown = 3,
 }
 
 /// <summary>root 检测结果缓存条目：root 形态 + 「su 阶段未确认」子状态。</summary>
@@ -31,10 +33,10 @@ public class DeviceInfo
     public string State { get; set; } = "device";
 
     /// <summary>设备的 root 形态。su 可用与 adbd root 都算「有 root」，但提权包裹策略不同。</summary>
-    public RootMode RootMode { get; set; } = RootMode.None;
+    public RootMode RootMode { get; set; } = RootMode.Unknown;
 
     /// <summary>是否具备 root 能力（su 可用或 adbd 已 root）。</summary>
-    public bool IsRoot => RootMode != RootMode.None;
+    public bool IsRoot => RootMode is RootMode.Su or RootMode.Adbd;
 
     public override string ToString()
     {

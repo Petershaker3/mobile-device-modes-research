@@ -1,6 +1,8 @@
 using System.Net.Sockets;
 using AdvancedSharpAdbClient;
+using AdvancedSharpAdbClient.Models;
 using logcat.Services;
+using logcat.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -22,14 +24,34 @@ public class AdbManagerServerSelfHealTests
         Func<bool>? statusProbe = null,
         Func<Task<int>>? startServer = null,
         Action? startupStart = null,
-        Func<IAdbSocket>? socketFactory = null)
+        Func<IAdbSocket>? socketFactory = null,
+        Func<IEnumerable<AdvancedSharpAdbClient.Models.DeviceData>>? enumerateDeviceData = null)
         => new(NullLogger<AdbManager>.Instance,
             statusProbe ?? (() => true),
             startServer ?? (() => Task.FromResult(0)),
             startupStart ?? (() => { }),
-            socketFactory ?? ThrowOnUse);
+            socketFactory ?? ThrowOnUse,
+            enumerateDeviceData);
 
     static IAdbSocket ThrowOnUse() => throw new NotSupportedException("本用例不应创建设备监控");
+
+    [Fact]
+    public async Task 设备枚举保留离线状态且不探测root()
+    {
+        var devices = new[]
+        {
+            new DeviceData { Serial = "online-1", Model = "Pixel_8", State = DeviceState.Online },
+            new DeviceData { Serial = "offline-1", Model = "Pixel_7", State = DeviceState.Offline }
+        };
+        using var manager = NewManager(enumerateDeviceData: () => devices);
+
+        var result = await manager.ListDevicesAsync();
+
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, device => device.Serial == "offline-1" && device.State == "Offline");
+        Assert.All(result, device => Assert.Equal(RootMode.Unknown, device.RootMode));
+        Assert.All(result, device => Assert.False(device.IsRoot));
+    }
 
     // ── EnsureServerRunningAsync ──
 

@@ -12,6 +12,8 @@
       "type": "string",
       "enum": [
         "device.discover",
+        "device.wireless_discover",
+        "device.wireless_pair",
         "device.read_info",
         "device.mode_transition",
         "app.list",
@@ -130,7 +132,7 @@
     {
       "description": "Any operation that can change device or system state must carry a plan and an approval token before it may run.",
       "if": {
-        "properties": { "impactLevel": { "enum": ["DeviceWrite", "WindowsSystemChange", "Destructive"] } },
+        "properties": { "impactLevel": { "enum": ["LocalWrite", "DeviceWrite", "WindowsSystemChange", "Destructive"] } },
         "required": ["impactLevel"]
       },
       "then": {
@@ -142,10 +144,61 @@
       }
     },
     {
-      "description": "Device-touching operation types must name a device.",
+      "description": "Each operation type has one fixed minimum impact level; callers cannot downgrade it.",
+      "oneOf": [
+        {
+          "properties": {
+            "operationType": { "enum": ["device.discover", "device.wireless_discover", "device.read_info", "app.list", "app.details", "file.list", "diagnostics.logcat_capture", "diagnostics.bugreport", "diagnostics.dumpsys", "storage.read_usage", "firmware.inspect_package", "firmware.inspect_image", "network.dns_read", "drivers.diagnose", "package.inspect"] },
+            "impactLevel": { "const": "ReadOnly" }
+          },
+          "required": ["operationType", "impactLevel"]
+        },
+        {
+          "properties": {
+            "operationType": { "enum": ["app.export_apk", "file.pull", "backup.create", "package.download"] },
+            "impactLevel": { "const": "LocalWrite" }
+          },
+          "required": ["operationType", "impactLevel"]
+        },
+        {
+          "properties": {
+            "operationType": { "enum": ["device.wireless_pair", "device.mode_transition", "app.install", "app.uninstall", "app.disable", "app.enable", "file.push", "file.delete", "file.rename", "backup.restore", "network.dns_apply"] },
+            "impactLevel": { "const": "DeviceWrite" }
+          },
+          "required": ["operationType", "impactLevel"]
+        }
+      ]
+    },
+    {
+      "description": "A successful local or device write must include a completed independent verification.",
       "if": {
         "properties": {
-          "operationType": { "not": { "enum": ["package.inspect", "firmware.inspect_package", "firmware.inspect_image"] } }
+          "impactLevel": { "enum": ["LocalWrite", "DeviceWrite", "WindowsSystemChange"] },
+          "state": { "const": "Succeeded" }
+        },
+        "required": ["impactLevel", "state"]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "verification": {
+                "type": "object",
+                "properties": { "performed": { "const": true }, "verified": { "const": true } },
+                "required": ["performed", "verified"]
+              }
+            },
+            "required": ["verification"]
+          }
+        },
+        "required": ["result"]
+      }
+    },
+    {
+      "description": "Device-touching operation types name a stable device identity. Wireless pairing may use a null device ID before the phone's stable identity is created; its plan targets the advertised pairing endpoint instead.",
+      "if": {
+        "properties": {
+          "operationType": { "not": { "enum": ["package.inspect", "firmware.inspect_package", "firmware.inspect_image", "device.wireless_pair"] } }
         },
         "required": ["operationType"]
       },

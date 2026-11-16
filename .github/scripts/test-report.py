@@ -29,14 +29,13 @@ entry fails loudly and someone must delete the line.
 
 Usage:
     test-report.py TestResults --strict
-    test-report.py TestResults --allow ci/known-linux-diffs.txt
+    test-report.py TestResults --allow ci/known-linux-diffs.txt --strict
 
 Exit status
 -----------
-0 always, unless --strict is given, in which case any unexplained failure exits
-non-zero. The default is deliberately 0: this script is a reporter, and a bug in
-it must not be mistaken for, or mask, the real test result. --strict is used on
-Windows, where "any failure at all" is by definition unexplained.
+--strict makes unexplained failures and stale allow-list entries fatal. Missing
+or malformed test results are always fatal because the reporter cannot establish
+that the test step produced usable evidence.
 """
 
 from __future__ import annotations
@@ -69,7 +68,7 @@ def load_allow_list(path: Path | None) -> set[str]:
     if path is None:
         return set()
     names: set[str] = set()
-    for raw in path.read_text(encoding="utf-8").splitlines():
+    for raw in path.read_text(encoding="utf-8-sig").splitlines():
         line = raw.strip()
         if line and not line.startswith("#"):
             names.add(line)
@@ -79,6 +78,8 @@ def load_allow_list(path: Path | None) -> set[str]:
 def parse_trx(path: Path) -> tuple[int, int, int, list[tuple[str, str]]]:
     root = ET.parse(path).getroot()
     results = find_all(root, "UnitTestResult")
+    if not results:
+        raise ValueError("no UnitTestResult entries found")
     passed = sum(1 for r in results if r.get("outcome") == "Passed")
     failed = sum(1 for r in results if r.get("outcome") == "Failed")
     skipped = sum(1 for r in results if r.get("outcome") in ("NotExecuted", "Inconclusive"))
@@ -114,15 +115,19 @@ def main(argv: list[str]) -> int:
 
     if not trx_files:
         emit("error", f"no .trx files under {results_dir}; the test step never ran")
-        return 0
+        return 1
 
     passed = failed = skipped = 0
     failures: list[tuple[str, str]] = []
+    invalid_results: list[tuple[Path, str]] = []
     for trx in trx_files:
         try:
             p, f, s, fails = parse_trx(trx)
         except ET.ParseError as exc:
-            emit("warning", f"{trx.name} is not parseable: {exc}")
+            invalid_results.append((trx, f"not parseable: {exc}"))
+            continue
+        except (OSError, ValueError) as exc:
+            invalid_results.append((trx, str(exc)))
             continue
         passed += p
         failed += f
@@ -138,12 +143,16 @@ def main(argv: list[str]) -> int:
 
     for name, detail in unexpected:
         emit("error", f"{name} - {detail}")
+    for trx, detail in invalid_results:
+        emit("error", f"{trx.name} is not usable test evidence: {detail}")
     for name, detail in expected:
         emit("warning", f"known platform difference, not a regression: {name} - {detail}")
     for name in stale:
         emit("error", f"{name} is on the allow-list but passed - delete the stale entry")
 
-    if unexpected or stale:
+    if invalid_results:
+        emit("error", f"test results are incomplete: {len(invalid_results)} unusable result file(s)")
+    elif unexpected or stale:
         emit(
             "error",
             f"{failed} of {total} tests failed: {len(unexpected)} unexpected, "
@@ -159,7 +168,7 @@ def main(argv: list[str]) -> int:
     else:
         emit("notice", f"all {passed} tests passed ({skipped} skipped)")
 
-    if strict and (unexpected or stale):
+    if invalid_results or (strict and (unexpected or stale)):
         return 1
     return 0
 

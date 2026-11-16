@@ -27,12 +27,16 @@
 * **قراءة حالة القفل التفصيلية:** `fastboot oem device-info` لمعرفة حالة `Device unlocked` و `Device critical unlocked` ([Android Open Source Project](https://source.android.com/docs/setup/test/running)).
 
 ### ج. وضع فاستبوت هواوي وهونر (Huawei & Honor Fastboot)
-تعتمد أجهزة هواوي وهونر على أوامر `OEM` مخصصة داخل البوتلودر ([HardReset Huawei](https://www.hardreset.info/devices/huawei/huawei-mate-30/faq/read-info-fastboot/fastboot-mode-read-info-huawei/)، [XDA Huawei Fastboot](https://xdaforums.com/t/huawei-fastboot-commands.3850123/)):
+هذا مسار مستقل عن قائمة AOSP العامة. هدف الأمان الرسمي لسلسلة P40 مع EMUI 11 يقول إن Fastboot مبني على Google Android Fastboot مع تحسينات Huawei، وهذا دليل على وجود امتدادات، لا عقداً موحداً لكل موديلات Huawei/Honor. كما تجعل Huawei إصلاح النظام في HiSuite مشروطاً بقائمة موديلات مدعومة، وتشرح طريقة دخول قد تختلف حسب الجهاز. لذلك لا نعمم أوامر OEM بين الموديلات ولا نعتبر VID/PID أو كلمة Huawei في الاسم دليلاً كافياً على توافق أمر. راجع [هدف الأمان الرسمي لـP40](https://www.commoncriteriaportal.org/files/epfiles/st_huawei_p40_emui11_v1.11.pdf) و[تعليمات Huawei الرسمية لإصلاح النظام](https://consumer.huawei.com/cn/support/content/zh-cn16005208/).
+
+الأمثلة المنشورة أدناه من مراجع ثانوية للتوجيه البحثي فقط وليست allowlist تنفيذية:
 * **قراءة الموديل:** `fastboot oem get-product-model` ([HardReset Huawei](https://www.hardreset.info/devices/huawei/huawei-mate-30/faq/read-info-fastboot/fastboot-mode-read-info-huawei/)).
 * **قراءة رقم الإصدار (Build Number):** `fastboot oem get-build-number` ([HardReset Honor](https://www.hardreset.info/devices/honor/honor-viewpad-6/faq/read-info-fastboot/fastboot-mode-read-info-huawei/)).
 * **قراءة السيريال والـ IMEI:** `fastboot oem get-psid` ([HardReset Huawei](https://www.hardreset.info/devices/huawei/huawei-mate-30/faq/read-info-fastboot/fastboot-mode-read-info-huawei/)، [XDA Huawei Codes](https://xdaforums.com/t/guide-get-imei-and-other-useful-codes-from-fastboot.3771336/)).
 * **قراءة حالة البوتلودر (Locked / Unlocked):** `fastboot oem get-bootinfo` ([HardReset Huawei](https://www.hardreset.info/devices/huawei/huawei-mate-30/faq/read-info-fastboot/fastboot-mode-read-info-huawei/)).
 * **قراءة التوجيه والدولة (Cust & Vendor/Country):** `fastboot getvar vendorcountry` و `fastboot oem oeminforead-CUSTOM_VERSION` ([XDA Huawei Fastboot](https://xdaforums.com/t/huawei-fastboot-commands.3850123/)).
+
+أضيف اختيار profile منفصل وتجريبي لـHuawei: يقرأ المتغيرات العامة، ويضيف `getvar rescue_version` و`getvar vendorcountry` كاستعلامين منفردين، إضافة إلى استعلام ثابت واحد `oem get-product-model`. الأسماء وصيغة الرد مستوحاة من أمثلة أدوات GitHub المثبتة في [25](25-FASTBOOT-SOURCE-REVALIDATION.md)، وليست عقد دعم رسمي؛ لا يوجد جهاز Huawei محدد لاختبارها. لا يرسل مسار المنتج أوامر OEM عامة، ولا يستعلم PSID/IMEI أو معلومات الهاتف الخاصة، ولا ينفذ خدمة/فتح/قفل. تظهر القيم الغائبة أو المرفوضة دون تحويلها إلى فشل اتصال عام، ويظل التوافق الميداني غير مثبت.
 
 ### د. وضع الـ MTP العام ومودم سامسونج (Generic MTP & Samsung MTP)
 * **وضع MTP العام (WPD API):** استخدام Windows Portable Devices لاكتشاف الجهاز وقراءة خصائص MTP القياسية التي يتيحها الهاتف. لا يضمن WPD استخراج إصدار Android أو IMEI أو حالة Bootloader؛ هذه البيانات تعتمد على ما يعلنه الجهاز وخدمات الشركة. مشروع FC.SDK مرجع لفهم WPD/PTP وليس SDK عامة لقراءة معلومات هواتف Android.
@@ -137,7 +141,7 @@
 
 هذه أوامر مرتبطة بتنفيذات Bootloader محددة وليست واجهة موحدة لكل Huawei/Honor. يجب حفظ الأمر والرد والموديل الذي اختُبر عليه كل أمر، وعدم افتراض أن كل حقل مثل IMEI أو Serial متاح من هذه الأوامر.
 
-**قرار التصميم:** HuaweiFastbootExtension اختياري فوق محول Fastboot العام، ويُفعّل فقط عند اكتشاف دعم الأمر أو وجود قاعدة توافق موثقة للموديل.
+**قرار التنفيذ الحالي:** يوجد اختيار يدوي لملف Huawei تجريبي فوق Fastboot العام، ولا يُستنتج دعم الشركة تلقائياً من VID/PID أو product. الملف يرسل متغيري `getvar rescue_version` و`getvar vendorcountry` وأمر `oem get-product-model` الثابت فقط، مع allowlist AOSP العامة. الأوامر مستوحاة من أدوات وقوائم مجتمع، وليست عقد توافق أوامر لكل موديل. لا ترسل الأداة أي OEM آخر.
 
 ### 5.6 Motorola
 
@@ -169,7 +173,7 @@
 | Samsung | AT Modem | COM / Serial | DEVCONINFO والحقول التي يعيدها المودم | مشروط بالموديل والواجهة |
 | Samsung | Download Mode | Samsung CDC / Odin-Loke | DVIF وبعض بيانات firmware/CSC وPIT | موثق للموديلات والبروتوكولات المدعومة |
 | Xiaomi | Mi Assistant | USB + libusb + ADB packet framing | device/version/region/branch/serial وغيرها حسب الاستجابة | تنفيذ مرجعي؛ التوافق الفعلي يحتاج اختبار |
-| Huawei / Honor | Fastboot OEM | Fastboot USB | model/build/bootinfo/vendorcountry حسب الجهاز | مشروط بالموديل |
+| Huawei / Honor | Fastboot profile تجريبي | Fastboot USB | القيم العامة، `rescue_version` و`vendorcountry` والموديل إن أبلغه الأمر الثابت | أمثلة مجتمع؛ لا اختبار Huawei فعلي |
 | Motorola | Fastboot | Fastboot USB | المتغيرات التي يعلنها Bootloader | واجهة عامة موثقة؛ التغطية حسب الجهاز |
 | OPPO / vivo / OnePlus / Realme | ADB/MTP/Fastboot | البروتوكولات القياسية عند توفرها | البيانات التي يسمح بها الوضع | دعم أساسي مشروط؛ امتدادات الشركة غير مثبتة |
 

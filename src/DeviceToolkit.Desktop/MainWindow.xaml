@@ -1,0 +1,775 @@
+<Window x:Class="DeviceToolkit.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Android Software Technician" Width="{DynamicResource WindowWidth}" Height="{DynamicResource WindowHeight}"
+        MinWidth="{DynamicResource MinimumWindowWidth}" MinHeight="{DynamicResource MinimumWindowHeight}" Background="{DynamicResource CanvasBrush}"
+        Foreground="{DynamicResource InkBrush}" FontSize="{DynamicResource BodySize}"
+        AutomationProperties.Name="Android software technician assistant">
+    <Grid Margin="{DynamicResource PagePadding}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+            <StackPanel>
+                <TextBlock Text="Android service desk" FontSize="{DynamicResource DisplaySize}"
+                           FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" />
+                <TextBlock Text="Device status, installed apps, and diagnostics" Margin="{DynamicResource HeaderSubtitle}"
+                           Foreground="{DynamicResource MutedBrush}" />
+            </StackPanel>
+            <Border HorizontalAlignment="Right" VerticalAlignment="Center" CornerRadius="{DynamicResource PillCorner}"
+                    Background="{DynamicResource AccentSoftBrush}" Padding="{DynamicResource StatusPill}">
+                <TextBlock Text="TECHNICIAN TOOLS" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="1" Margin="{DynamicResource DevicePanel}" Padding="{DynamicResource DevicePanelPadding}" CornerRadius="{DynamicResource PanelCorner}"
+                Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
+            <Grid>
+                <StackPanel Margin="{DynamicResource DeviceSelector}">
+                    <TextBlock Text="Selected phone" FontWeight="SemiBold" />
+                    <ComboBox Margin="{DynamicResource DeviceCombo}" ItemsSource="{Binding Devices}" SelectedItem="{Binding SelectedDevice, Mode=TwoWay}"
+                              DisplayMemberPath="DisplayName" AutomationProperties.Name="Select the Android phone for this operation" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="{DynamicResource NavigationRailWidth}" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="{DynamicResource UtilityRailWidth}" />
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Margin="{DynamicResource RailPanelMargin}" Padding="{DynamicResource RailPanelPadding}"
+                    Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                    CornerRadius="{DynamicResource PanelCorner}">
+                <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Top" Text="MAIN AREAS" FontWeight="Bold"
+                               Margin="{DynamicResource NavigationHeading}" />
+                    <StackPanel x:Name="WorkAreaNavigation" AutomationProperties.Name="Main work areas">
+                        <Button Content="Device overview" Tag="0" Click="SelectWorkArea_Click" Style="{StaticResource NavigationButton}" />
+                        <Button Content="Applications" Tag="2" Click="SelectWorkArea_Click" Style="{StaticResource NavigationButton}" />
+                        <Button Content="ADB files" Tag="3" Click="SelectWorkArea_Click" Style="{StaticResource NavigationButton}" />
+                        <Button Content="MTP storage" Tag="4" Click="SelectWorkArea_Click" Style="{StaticResource NavigationButton}" />
+                        <Button Content="Windows devices" Tag="1" Click="SelectWorkArea_Click" Style="{StaticResource NavigationButton}" />
+                        <Button Content="Wireless ADB" Tag="5" Click="SelectWorkArea_Click" Style="{StaticResource NavigationButton}" />
+                        <Button Content="Fastboot info" Tag="6" Click="SelectWorkArea_Click" Style="{StaticResource NavigationButton}" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <TabControl x:Name="WorkAreaTabs" Grid.Column="1" Margin="{DynamicResource WorkspaceMargin}"
+                        AutomationProperties.Name="Selected technician work area">
+                <TabControl.Template>
+                    <ControlTemplate TargetType="TabControl">
+                        <ContentPresenter ContentSource="SelectedContent" />
+                    </ControlTemplate>
+                </TabControl.Template>
+            <TabItem Header="Device and diagnostics">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="2.2*" />
+                <RowDefinition Height="1*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Padding="{DynamicResource ContentPanel}" CornerRadius="{DynamicResource PanelCorner}" Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="Device overview" FontSize="{DynamicResource SectionSize}" FontWeight="SemiBold" />
+                        <TextBlock Text="Allowlisted Android properties from the selected device" Margin="{DynamicResource OverviewCaption}"
+                                   Foreground="{DynamicResource MutedBrush}" />
+                    </StackPanel>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                  AutomationProperties.Name="Allowlisted device information">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="{DynamicResource LabelColumn}" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="{DynamicResource FactRowHeight}" />
+                            <RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="{DynamicResource FactRowHeight}" />
+                            <RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="{DynamicResource FactRowHeight}" />
+                            <RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="{DynamicResource FactRowHeight}" />
+                            <RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="{DynamicResource FactRowHeight}" />
+                            <RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="{DynamicResource FactRowHeight}" /><RowDefinition Height="{DynamicResource FactRowHeight}" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="Model" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Facts.Model, TargetNullValue=Not read}" />
+                        <TextBlock Grid.Row="1" Text="Manufacturer" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Facts.Manufacturer, TargetNullValue=Not read}" />
+                        <TextBlock Grid.Row="2" Text="Brand" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Facts.Brand, TargetNullValue=Not read}" />
+                        <TextBlock Grid.Row="3" Text="Product / device" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Facts.Product, TargetNullValue=Not read}" />
+                        <TextBlock Grid.Row="4" Text="Android version" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Facts.Android, TargetNullValue=Not read}" />
+                        <TextBlock Grid.Row="5" Text="API level" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Facts.Api, TargetNullValue=Not read}" />
+                        <TextBlock Grid.Row="6" Text="Build ID" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Facts.BuildId, TargetNullValue=Not read}" />
+                        <TextBlock Grid.Row="7" Text="Build display" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Facts.BuildDisplay, TargetNullValue=Not read}" />
+                        <TextBlock Grid.Row="8" Text="Security patch" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Facts.SecurityPatch, TargetNullValue=Not reported}" />
+                        <TextBlock Grid.Row="9" Text="Primary ABI" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding Facts.Abi, TargetNullValue=Not read}" />
+                        <TextBlock Grid.Row="10" Text="Supported ABIs" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding Facts.SupportedAbis, TargetNullValue=Not reported}" />
+                        <TextBlock Grid.Row="11" Text="Boot mode property" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="11" Grid.Column="1" Text="{Binding Facts.BootMode, TargetNullValue=Not reported}" />
+                        <TextBlock Grid.Row="12" Text="Bootloader" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="12" Grid.Column="1" Text="{Binding Facts.Bootloader, TargetNullValue=Not reported}" />
+                        <TextBlock Grid.Row="13" Text="Baseband" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="13" Grid.Column="1" Text="{Binding Facts.Baseband, TargetNullValue=Not reported}" />
+                        <TextBlock Grid.Row="14" Text="Private DNS mode" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="14" Grid.Column="1" Text="{Binding Facts.PrivateDns.Mode, TargetNullValue=Not read}" />
+                        <TextBlock Grid.Row="15" Text="Provider hostname" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="15" Grid.Column="1" Text="{Binding Facts.PrivateDns.ProviderHostname, TargetNullValue=Not set}" />
+                        <TextBlock Grid.Row="16" Text="CSC / sales code" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="16" Grid.Column="1" Text="{Binding Facts.SamsungCsc, TargetNullValue=Not reported}" />
+                        <TextBlock Grid.Row="17" Text="Bootloader lock reported" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="17" Grid.Column="1" Text="{Binding Facts.SamsungBootloaderLocked, TargetNullValue=Not reported}" />
+                        <TextBlock Grid.Row="18" Text="Verified Boot state" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="18" Grid.Column="1" Text="{Binding Facts.SamsungVerifiedBootState, TargetNullValue=Not reported}" />
+                        <TextBlock Grid.Row="19" Text="Knox warranty bit" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="19" Grid.Column="1" Text="{Binding Facts.SamsungWarrantyBit, TargetNullValue=Not reported}" />
+                        <TextBlock Grid.Row="20" Text="Verified Boot verity" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="20" Grid.Column="1" Text="{Binding Facts.SamsungVerityMode, TargetNullValue=Not reported}" />
+                        <TextBlock Grid.Row="21" Text="SELinux mode" Foreground="{DynamicResource MutedBrush}" />
+                        <TextBlock Grid.Row="21" Grid.Column="1" Text="{Binding Facts.SelinuxMode, TargetNullValue=Not reported}" />
+                        <TextBlock Grid.Row="22" Grid.ColumnSpan="2" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"
+                                   Text="Reported boot properties can be missing or altered on modified firmware. They are diagnostic signals, not a security or warranty guarantee." />
+                        <TextBlock Grid.Row="23" Grid.ColumnSpan="2" Margin="{DynamicResource OverviewCaption}"
+                                   Visibility="{Binding SamFwFirmwareAvailable, Converter={StaticResource BooleanToVisibility}}">
+                            <Hyperlink NavigateUri="{Binding SamFwFirmwareUri}" RequestNavigate="OpenSamFwFirmware_Click">Open Samsung firmware listing on SamFW</Hyperlink>
+                        </TextBlock>
+                    </Grid>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" Margin="{DynamicResource SectionGap}" Padding="{DynamicResource ContentPanel}" CornerRadius="{DynamicResource PanelCorner}" Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Crash diagnostics" FontSize="{DynamicResource SectionSize}" FontWeight="SemiBold" />
+                    <TextBlock Grid.Row="1" Text="Capture a recent log window and count crash events" Margin="{DynamicResource DiagnosticsCaption}"
+                               Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" />
+                    <Button Content="Capture 30 seconds" Command="{Binding CaptureCommand}"
+                            Grid.Row="2" HorizontalAlignment="Left"
+                            AutomationProperties.Name="Capture logcat for 30 seconds and analyze crashes" />
+                    <ScrollViewer Grid.Row="3" Margin="{DynamicResource Result}"
+                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                  AutomationProperties.Name="Crash diagnostic results">
+                        <TextBlock Text="{Binding Result}" TextWrapping="Wrap" FontWeight="SemiBold"
+                                   AutomationProperties.LiveSetting="Polite" />
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+            </TabItem>
+            <TabItem Header="Windows drivers">
+                <Grid Margin="{DynamicResource ContentPanel}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <DockPanel Grid.Row="0" LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Text="Windows device inventory" FontSize="{DynamicResource SectionSize}" FontWeight="SemiBold" />
+                            <TextBlock Text="Present devices and reported driver problem codes. This view is read-only."
+                                       Margin="{DynamicResource OverviewCaption}" Foreground="{DynamicResource MutedBrush}" />
+                        </StackPanel>
+                        <Button DockPanel.Dock="Right" Content="Refresh inventory"
+                                Command="{Binding RefreshWindowsDevicesCommand}"
+                                Style="{StaticResource DriverInventoryPrimaryButton}"
+                                AutomationProperties.Name="Read the present Windows device and driver problem inventory" />
+                    </DockPanel>
+                    <Grid Grid.Row="1" Margin="{DynamicResource DiagnosticsCaption}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding WindowsInventorySummary}" FontWeight="SemiBold"
+                                   AutomationProperties.LiveSetting="Polite" />
+                        <TextBlock Grid.Column="1" Text="{Binding WindowsInventoryFreshness}"
+                                   Foreground="{DynamicResource MutedBrush}" />
+                    </Grid>
+                    <TextBlock Grid.Row="2" Text="{Binding WindowsInventoryError}"
+                               Visibility="{Binding WindowsInventoryError, Converter={StaticResource NullToVisibility}}"
+                               Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap"
+                               AutomationProperties.LiveSetting="Assertive" />
+                    <Grid Grid.Row="3" Margin="{DynamicResource ControlGap}">
+                        <ListView ItemsSource="{Binding WindowsDevices}"
+                                  VirtualizingPanel.IsVirtualizing="True" ScrollViewer.CanContentScroll="True"
+                                  AutomationProperties.Name="Present Windows devices with hardware IDs and problem codes">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="MinHeight" Value="{DynamicResource DeviceInventoryRowHeight}" />
+                                    <Setter Property="VerticalContentAlignment" Value="Center" />
+                                    <Setter Property="Padding" Value="{DynamicResource ComboPadding}" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="Device" DisplayMemberBinding="{Binding Name}"
+                                                    Width="{DynamicResource DeviceNameColumn}" />
+                                    <GridViewColumn Header="Instance ID" DisplayMemberBinding="{Binding InstanceId}"
+                                                    Width="{DynamicResource DeviceInstanceColumn}" />
+                                    <GridViewColumn Header="Hardware IDs" Width="{DynamicResource DeviceHardwareColumn}">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding HardwareIdsText}" TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding HardwareIdsText}" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="Status flags" DisplayMemberBinding="{Binding StatusFlagsText}"
+                                                    Width="{DynamicResource DeviceStatusColumn}" />
+                                    <GridViewColumn Header="Problem code" Width="{DynamicResource DeviceProblemColumn}">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding ProblemCodeText}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasProblem}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                        <Border Padding="{DynamicResource ContentPanel}" Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource LineBrush}" BorderThickness="{DynamicResource Hairline}"
+                                Visibility="{Binding WindowsInventoryEmptyMessage, Converter={StaticResource NullToVisibility}}"
+                                IsHitTestVisible="False">
+                            <TextBlock Text="{Binding WindowsInventoryEmptyMessage}" Foreground="{DynamicResource MutedBrush}"
+                                       TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Application management">
+                <Grid Margin="{DynamicResource ContentPanel}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <DockPanel Grid.Row="0" LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Text="Installed applications" FontSize="{DynamicResource SectionSize}" FontWeight="SemiBold" />
+                            <TextBlock Text="Read-only package inventory for the selected phone" Margin="{DynamicResource OverviewCaption}"
+                                       Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock Text="{Binding AppInventorySummary}" Foreground="{DynamicResource AccentBrush}"
+                                       FontWeight="SemiBold" />
+                        </StackPanel>
+                        <Button DockPanel.Dock="Right" Content="Load app inventory" Command="{Binding RefreshAppsCommand}"
+                                Style="{StaticResource SecondaryButton}" MinWidth="{DynamicResource AppInventoryActionWidth}"
+                                VerticalAlignment="Top"
+                                AutomationProperties.Name="Load installed package inventory from the selected phone" />
+                    </DockPanel>
+                    <Grid Grid.Row="1" Margin="{DynamicResource DiagnosticsCaption}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <TextBlock Text="Search package ID or APK path" VerticalAlignment="Center" Margin="{DynamicResource FilterLabel}"
+                                   Foreground="{DynamicResource MutedBrush}" />
+                        <TextBox Grid.Column="1" Text="{Binding AppFilter, UpdateSourceTrigger=PropertyChanged}"
+                                 MinHeight="{DynamicResource ControlHeight}" Padding="{DynamicResource ComboPadding}"
+                                 AutomationProperties.Name="Filter installed applications by package ID or APK path" />
+                    </Grid>
+                    <Grid Grid.Row="2" Margin="{DynamicResource ControlGap}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding SelectedApp.PackageId, TargetNullValue=Select a package to inspect its version}"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding SelectedAppVersion.VersionName}" Margin="{DynamicResource FilterLabel}" />
+                            <TextBlock Text="{Binding SelectedAppVersion.VersionCode}" Foreground="{DynamicResource MutedBrush}" />
+                        </StackPanel>
+                        <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                            <Button Content="Read version" Command="{Binding ReadAppVersionCommand}"
+                                    Style="{StaticResource SecondaryButton}" Margin="{DynamicResource ActionButton}"
+                                    AutomationProperties.Name="Read version information for the selected package" />
+                            <Button Content="Preview removal" Command="{Binding PreviewRemovalCommand}"
+                                    Style="{StaticResource SecondaryButton}" Margin="{DynamicResource ActionButton}"
+                                    AutomationProperties.Name="Preview removal of the selected user app" />
+                            <Button Content="Install APK..." Click="ChooseApk_Click"
+                                    AutomationProperties.Name="Choose an APK file to inspect and preview installation" />
+                        </WrapPanel>
+                    </Grid>
+                    <Border Grid.Row="3" Margin="{DynamicResource ControlGap}" Padding="{DynamicResource ContentPanel}"
+                            BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="{DynamicResource PanelCorner}"
+                            Background="{DynamicResource SurfaceBrush}"
+                            Visibility="{Binding InstallPreview, Converter={StaticResource NullToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Text="Install preview" FontSize="{DynamicResource SectionSize}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding SelectedDevice.DisplayName}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding InstallPreview.FileName}" />
+                            <TextBlock Text="{Binding InstallPreview.PackageId}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding InstallPreview.VersionName}" />
+                            <TextBlock Text="{Binding InstallPreview.VersionCode}" />
+                            <TextBlock Text="{Binding InstallPreview.SizeBytes, StringFormat='Size: {0:N0} bytes'}" />
+                            <TextBlock Text="{Binding InstallPreview.Sha256, StringFormat='SHA-256: {0}'}" TextWrapping="Wrap" />
+                            <TextBlock Text="The package is already installed. Install is disabled." Visibility="{Binding InstallPreview.AlreadyInstalled, Converter={StaticResource BooleanToVisibility}}" />
+                            <Button Content="Install this APK on the selected phone" Command="{Binding InstallApkCommand}"
+                                    Visibility="{Binding InstallPreview.AlreadyInstalled, Converter={StaticResource InverseBooleanToVisibility}}"
+                                    AutomationProperties.Name="Confirm installation of the previewed APK on the selected phone" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Row="3" Margin="{DynamicResource ControlGap}" Padding="{DynamicResource ContentPanel}"
+                            BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="{DynamicResource PanelCorner}"
+                            Background="{DynamicResource SurfaceBrush}"
+                            Visibility="{Binding RemovalPreview, Converter={StaticResource NullToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Text="Removal preview" FontSize="{DynamicResource SectionSize}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding RemovalPreview.DeviceModel}" />
+                            <TextBlock Text="{Binding RemovalPreview.DeviceSerial}" />
+                            <TextBlock Text="{Binding RemovalPreview.PackageId}" FontWeight="SemiBold" />
+                            <TextBlock Text="This removes the selected user app from this phone." />
+                            <Button Content="Remove package from this phone" Command="{Binding RemoveAppCommand}"
+                                    Style="{StaticResource DestructiveButton}"
+                                    AutomationProperties.Name="Confirm removal of the previewed user app from the selected phone" />
+                        </StackPanel>
+                    </Border>
+                    <ListView Grid.Row="4" ItemsSource="{Binding AppsView}" SelectedItem="{Binding SelectedApp, Mode=TwoWay}"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                              AutomationProperties.Name="Installed application inventory">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Package ID" DisplayMemberBinding="{Binding PackageId}"
+                                                Width="{DynamicResource AppIdColumn}" />
+                                <GridViewColumn Header="Kind" DisplayMemberBinding="{Binding AppKind}"
+                                                Width="{DynamicResource AppKindColumn}" />
+                                <GridViewColumn Header="APK path" DisplayMemberBinding="{Binding ApkPath}"
+                                                Width="{DynamicResource AppPathColumn}" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Files">
+                <Grid Margin="{DynamicResource ContentPanel}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0">
+                        <StackPanel>
+                            <TextBlock Text="Shared storage" FontSize="{DynamicResource SectionSize}" FontWeight="SemiBold" />
+                            <TextBlock Text="Browse shared storage, then review a single-file transfer before starting it. Double-click a folder to open it."
+                                       Margin="{DynamicResource OverviewCaption}" Foreground="{DynamicResource MutedBrush}" />
+                        </StackPanel>
+                        <WrapPanel Margin="{DynamicResource ControlGap}">
+                            <Button Content="Open shared storage" Command="{Binding LoadSharedStorageCommand}"
+                                    Margin="{DynamicResource ActionButton}"
+                                    AutomationProperties.Name="List the selected phone's shared-storage root" />
+                            <Button Content="Up one level" Command="{Binding ParentFolderCommand}"
+                                    Style="{StaticResource SecondaryButton}" Margin="{DynamicResource ActionButton}"
+                                    AutomationProperties.Name="Open the parent folder within shared storage" />
+                            <Button Content="Refresh folder" Command="{Binding RefreshFolderCommand}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    AutomationProperties.Name="Refresh the current shared-storage listing" />
+                            <Button Content="Download selected" Click="DownloadSelectedFile_Click"
+                                    Style="{StaticResource SecondaryButton}" Margin="{DynamicResource ActionButton}"
+                                    IsEnabled="{Binding CanChooseDownload}"
+                                    AutomationProperties.Name="Prepare a preview to download the selected regular file" />
+                            <Button Content="Upload file" Click="UploadFile_Click"
+                                    Style="{StaticResource SecondaryButton}" Margin="{DynamicResource ActionButton}"
+                                    IsEnabled="{Binding CanChooseUpload}"
+                                    AutomationProperties.Name="Choose one local file and prepare an upload preview" />
+                        </WrapPanel>
+                    </StackPanel>
+                    <Border Grid.Row="1" Margin="{DynamicResource ControlGap}" Padding="{DynamicResource StatusPanelPadding}"
+                            CornerRadius="{DynamicResource StatusCorner}" Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
+                        <TextBlock Text="{Binding RemoteFileDirectoryDisplay}" FontWeight="SemiBold"
+                                   AutomationProperties.Name="Current Android shared-storage directory" />
+                    </Border>
+                    <TextBlock Grid.Row="2" Text="{Binding RemoteFileListingSummary}"
+                               Margin="{DynamicResource DiagnosticsCaption}" Foreground="{DynamicResource MutedBrush}"
+                               AutomationProperties.LiveSetting="Polite" />
+                    <ListView Grid.Row="3" ItemsSource="{Binding FileEntries}" SelectedItem="{Binding SelectedFileEntry, Mode=TwoWay}"
+                              MouseDoubleClick="FileEntryList_MouseDoubleClick"
+                              VirtualizingPanel.IsVirtualizing="True" ScrollViewer.CanContentScroll="True"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                              AutomationProperties.Name="Files and folders in shared storage">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Name" DisplayMemberBinding="{Binding DisplayName}"
+                                                Width="{DynamicResource FileNameColumn}" />
+                                <GridViewColumn Header="Type" DisplayMemberBinding="{Binding TypeText}"
+                                                Width="{DynamicResource FileTypeColumn}" />
+                                <GridViewColumn Header="Size" DisplayMemberBinding="{Binding SizeText}"
+                                                Width="{DynamicResource FileSizeColumn}" />
+                                <GridViewColumn Header="Modified" DisplayMemberBinding="{Binding ModifiedText}"
+                                                Width="{DynamicResource FileModifiedColumn}" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                    <Border Grid.Row="4" Margin="{DynamicResource ControlGap}" Padding="{DynamicResource StatusPanelPadding}"
+                            CornerRadius="{DynamicResource StatusCorner}" Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                            Visibility="{Binding HasTransferPreview, Converter={StaticResource BooleanToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Transfer preview" FontSize="{DynamicResource SectionSize}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding TransferPreviewSummary}" Margin="{DynamicResource OverviewCaption}"
+                                           TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                                <ProgressBar Minimum="0" Maximum="100" Value="{Binding TransferProgressPercent, Mode=OneWay}"
+                                             Height="{DynamicResource ProgressHeight}"
+                                             IsIndeterminate="{Binding IsBusy}" />
+                                <TextBlock Text="{Binding TransferProgressText}" Margin="{DynamicResource DiagnosticsCaption}"
+                                           Foreground="{DynamicResource MutedBrush}" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="{Binding TransferActionText}" Command="{Binding ConfirmTransferCommand}"
+                                    VerticalAlignment="Center" Margin="{DynamicResource ActionButton}"
+                                    AutomationProperties.Name="Start the single-file transfer shown in the preview" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+            <TabItem Header="MTP storage">
+                <Grid Margin="{DynamicResource ContentPanel}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="MTP storage" FontSize="{DynamicResource SectionSize}" FontWeight="SemiBold" />
+                        <TextBlock Text="Browse the selected USB phone read-only. File contents are opened only when you confirm a local download."
+                                   Margin="{DynamicResource OverviewCaption}" Foreground="{DynamicResource MutedBrush}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <WrapPanel Grid.Row="1" Margin="{DynamicResource SectionGap}" VerticalAlignment="Center">
+                        <Button Content="Refresh MTP devices" Command="{Binding WpdBrowser.RefreshDevicesCommand}"
+                                Style="{StaticResource SecondaryButton}" Margin="{DynamicResource ActionButton}"
+                                AutomationProperties.Name="Read the list of present Windows Portable Devices" />
+                        <ComboBox Width="{DynamicResource DeviceNameColumn}" Margin="{DynamicResource ActionButton}"
+                                  ItemsSource="{Binding WpdBrowser.Devices}"
+                                  SelectedItem="{Binding WpdBrowser.SelectedDevice, Mode=TwoWay}"
+                                  DisplayMemberPath="DisplayName"
+                                  IsEnabled="{Binding WpdBrowser.IsBusy, Converter={StaticResource InverseBoolean}}"
+                                  AutomationProperties.Name="Select the MTP phone explicitly" />
+                        <Button Content="Open storage" Command="{Binding WpdBrowser.OpenStorageCommand}"
+                                Margin="{DynamicResource ActionButton}"
+                                AutomationProperties.Name="Open read-only storage for the selected MTP phone" />
+                        <Button Content="Up one level" Command="{Binding WpdBrowser.ParentFolderCommand}"
+                                Style="{StaticResource SecondaryButton}" Margin="{DynamicResource ActionButton}"
+                                AutomationProperties.Name="Open the parent MTP folder" />
+                        <Button Content="Refresh folder" Command="{Binding WpdBrowser.RefreshFolderCommand}"
+                                Style="{StaticResource SecondaryButton}" Margin="{DynamicResource ActionButton}"
+                                AutomationProperties.Name="Refresh the current MTP folder listing" />
+                        <Button Content="Download selected" Click="DownloadSelectedWpdFile_Click"
+                                Style="{StaticResource SecondaryButton}" Margin="{DynamicResource ActionButton}"
+                                IsEnabled="{Binding WpdBrowser.CanPrepareDownload}"
+                                AutomationProperties.Name="Choose a local destination and preview one MTP file download" />
+                        <Button Content="Cancel operation" Command="{Binding WpdBrowser.CancelCommand}"
+                                Style="{StaticResource SecondaryButton}" Margin="{DynamicResource ActionButton}"
+                                Visibility="{Binding WpdBrowser.IsBusy, Converter={StaticResource BooleanToVisibility}}"
+                                AutomationProperties.Name="Cancel the current MTP operation" />
+                    </WrapPanel>
+                    <Border Grid.Row="2" Margin="{DynamicResource ControlGap}" Padding="{DynamicResource StatusPanelPadding}"
+                            CornerRadius="{DynamicResource StatusCorner}" Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                            Visibility="{Binding WpdBrowser.HasSelectedDevice, Converter={StaticResource BooleanToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="{DynamicResource LabelColumn}" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="Windows MTP device metadata" FontWeight="SemiBold"
+                                       AutomationProperties.Name="Metadata supplied by Windows Portable Devices" />
+                            <TextBlock Grid.Row="1" Text="Device name" Margin="{DynamicResource OverviewCaption}" Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding WpdBrowser.SelectedMetadataName}"
+                                       Margin="{DynamicResource OverviewCaption}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="2" Text="Manufacturer" Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding WpdBrowser.SelectedMetadataManufacturer}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="3" Text="Description" Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding WpdBrowser.SelectedMetadataDescription}"
+                                       TextWrapping="Wrap" AutomationProperties.Name="Windows device description" />
+                            <TextBlock Grid.Row="4" Text="MTP model" Margin="{DynamicResource OverviewCaption}" Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding WpdBrowser.MtpModel}" Margin="{DynamicResource OverviewCaption}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="5" Text="MTP device name" Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding WpdBrowser.MtpDeviceName}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="6" Text="MTP firmware version" Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding WpdBrowser.MtpFirmwareVersion}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="7" Text="MTP battery level" Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding WpdBrowser.MtpPowerLevel}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="8" Text="Power source" Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding WpdBrowser.MtpPowerSource}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="9" Text="MTP protocol" Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding WpdBrowser.MtpProtocol}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="10" Text="Device time" Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding WpdBrowser.MtpDeviceDateTime}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="11" Text="Storage summary" Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock Grid.Row="11" Grid.Column="1" Text="{Binding WpdBrowser.MtpStorageSummary}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="12" Grid.ColumnSpan="2" Text="Android security and protection properties require the separately selected ADB device. MTP does not expose them." TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" />
+                            <TextBlock Grid.Row="13" Grid.ColumnSpan="2" Margin="{DynamicResource OverviewCaption}"
+                                       Visibility="{Binding WpdBrowser.HasMtpSamFwFirmwareUri, Converter={StaticResource BooleanToVisibility}}">
+                                <Hyperlink NavigateUri="{Binding WpdBrowser.MtpSamFwFirmwareUri}" RequestNavigate="OpenSamFwFirmware_Click">Find this model's firmware on SamFW</Hyperlink>
+                            </TextBlock>
+                        </Grid>
+                    </Border>
+                    <Border Grid.Row="3" Margin="{DynamicResource ControlGap}" Padding="{DynamicResource StatusPanelPadding}"
+                            CornerRadius="{DynamicResource StatusCorner}" Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
+                        <TextBlock Text="{Binding WpdBrowser.CurrentPath}" FontWeight="SemiBold"
+                                   AutomationProperties.Name="Current MTP directory" />
+                    </Border>
+                    <TextBlock Grid.Row="4" Text="{Binding WpdBrowser.ListingSummary}"
+                               Margin="{DynamicResource DiagnosticsCaption}" Foreground="{DynamicResource MutedBrush}"
+                               AutomationProperties.LiveSetting="Polite" />
+                    <ListView Grid.Row="5" ItemsSource="{Binding WpdBrowser.Entries}"
+                              SelectedItem="{Binding WpdBrowser.SelectedEntry, Mode=TwoWay}"
+                              MouseDoubleClick="WpdEntryList_MouseDoubleClick"
+                              VirtualizingPanel.IsVirtualizing="True" ScrollViewer.CanContentScroll="True"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                              AutomationProperties.Name="Folders and files in the selected MTP storage">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Name}"
+                                                Width="{DynamicResource FileNameColumn}" />
+                                <GridViewColumn Header="Type" DisplayMemberBinding="{Binding TypeText}"
+                                                Width="{DynamicResource FileTypeColumn}" />
+                                <GridViewColumn Header="Size" DisplayMemberBinding="{Binding SizeText}"
+                                                Width="{DynamicResource FileSizeColumn}" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                    <TextBlock Grid.Row="6" Text="{Binding WpdBrowser.Status}"
+                               Margin="{DynamicResource DiagnosticsCaption}" Foreground="{DynamicResource MutedBrush}"
+                               TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                    <Border Grid.Row="7" Margin="{DynamicResource ControlGap}" Padding="{DynamicResource StatusPanelPadding}"
+                            CornerRadius="{DynamicResource StatusCorner}" Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                            Visibility="{Binding WpdBrowser.HasDownloadPreview, Converter={StaticResource BooleanToVisibility}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Download preview" FontSize="{DynamicResource SectionSize}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding WpdBrowser.DownloadPreviewSummary}"
+                                           Margin="{DynamicResource OverviewCaption}" TextWrapping="Wrap"
+                                           AutomationProperties.LiveSetting="Polite" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Confirm download"
+                                    Command="{Binding WpdBrowser.ConfirmDownloadCommand}"
+                                    VerticalAlignment="Center" Margin="{DynamicResource ActionButtonLast}"
+                                    AutomationProperties.Name="Confirm the previewed read-only MTP download" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Wireless ADB">
+                <Grid Margin="{DynamicResource ContentPanel}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="Connect over Wi-Fi" FontSize="{DynamicResource SectionSize}" FontWeight="SemiBold" />
+                        <TextBlock Text="On the phone, open Developer options, then Wireless debugging, then Pair device with pairing code. Leave the code dialog open."
+                                   Margin="{DynamicResource OverviewCaption}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Border Grid.Row="1" Margin="{DynamicResource SectionGap}" Padding="{DynamicResource ContentPanel}"
+                            HorizontalAlignment="Left" MaxWidth="{DynamicResource WirelessFormWidth}"
+                            BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                            CornerRadius="{DynamicResource PanelCorner}" Background="{DynamicResource SurfaceBrush}">
+                        <StackPanel>
+                            <TextBlock Text="Pairing code" FontWeight="SemiBold" />
+                            <PasswordBox x:Name="WirelessPairingCode" Margin="{DynamicResource DiagnosticsCaption}"
+                                         MinHeight="{DynamicResource ControlHeight}" MaxLength="6"
+                                         AutomationProperties.Name="Six-digit Wireless debugging pairing code" />
+                            <TextBlock Text="The app finds the phone and both ports automatically. Your code is used for this connection only."
+                                       Margin="{DynamicResource DiagnosticsCaption}" Foreground="{DynamicResource MutedBrush}"
+                                       TextWrapping="Wrap" />
+                            <Button Content="Pair and connect" Click="ConnectWireless_Click"
+                                    HorizontalAlignment="Left" MinWidth="{DynamicResource WirelessActionWidth}"
+                                    MinHeight="{DynamicResource WirelessActionHeight}"
+                                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolean}}"
+                                    AutomationProperties.Name="Pair with the phone using its current code and connect over Wi-Fi" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Fastboot information">
+                <ScrollViewer Margin="{DynamicResource ContentPanel}"
+                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              AutomationProperties.Name="Fastboot information page">
+                    <StackPanel>
+                        <TextBlock Text="Fastboot device information" FontSize="{DynamicResource SectionSize}" FontWeight="SemiBold" />
+                        <TextBlock Text="Select a phone already in Fastboot mode, then read the values supported by its profile."
+                                   Margin="{DynamicResource OverviewCaption}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" />
+
+                        <Border Margin="{DynamicResource SectionGap}" Padding="{DynamicResource StatusPanelPadding}"
+                                CornerRadius="{DynamicResource StatusCorner}" Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="Fastboot profile" FontWeight="SemiBold" />
+                                <ComboBox Margin="{DynamicResource DeviceCombo}"
+                                          ItemsSource="{Binding FastbootProfiles}"
+                                          SelectedItem="{Binding SelectedFastbootProfile, Mode=TwoWay}"
+                                          DisplayMemberPath="DisplayName"
+                                          IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolean}}"
+                                          AutomationProperties.Name="Choose Android or Huawei Fastboot read-only profile" />
+                                <TextBlock Text="Hardware reads are confirmed on Huawei PPA-LX2. Support for other models remains experimental."
+                                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="{DynamicResource SectionGap}" Padding="{DynamicResource StatusPanelPadding}"
+                                CornerRadius="{DynamicResource StatusCorner}" Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="Selected Fastboot device" FontWeight="SemiBold" />
+                                <ComboBox Margin="{DynamicResource DeviceCombo}" ItemsSource="{Binding FastbootDevices}"
+                                          SelectedItem="{Binding SelectedFastbootDevice, Mode=TwoWay}"
+                                          IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolean}}"
+                                          DisplayMemberPath="DisplayName"
+                                          AutomationProperties.Name="Select one Fastboot device for read-only information" />
+                                <TextBlock Text="Refresh the device list, then select the phone here."
+                                           Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="{DynamicResource SectionGap}" Padding="{DynamicResource StatusPanelPadding}"
+                                CornerRadius="{DynamicResource StatusCorner}" Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
+                            <WrapPanel>
+                                <Button Content="Refresh Fastboot devices" Command="{Binding RefreshFastbootDevicesCommand}"
+                                        Style="{StaticResource SecondaryButton}" Margin="{DynamicResource ActionButton}"
+                                        AutomationProperties.Name="Find devices already in Fastboot mode" />
+                                <Button Content="Read selected device" Command="{Binding ReadFastbootInfoCommand}"
+                                        Margin="{DynamicResource ActionButton}"
+                                        AutomationProperties.Name="Read allowlisted variables for the selected Fastboot profile and device" />
+                                <Button Content="Cancel operation" Command="{Binding CancelCommand}"
+                                        Style="{StaticResource SecondaryButton}" Margin="{DynamicResource ActionButton}"
+                                        Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibility}}"
+                                        AutomationProperties.Name="Cancel Fastboot discovery or read" />
+                            </WrapPanel>
+                        </Border>
+
+                        <Border Margin="{DynamicResource SectionGap}" Padding="{DynamicResource ContentPanel}"
+                                MinHeight="{DynamicResource FastbootResultsMinHeight}"
+                                CornerRadius="{DynamicResource PanelCorner}" Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="Fastboot results" FontSize="{DynamicResource SectionSize}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding FastbootMode}" FontWeight="SemiBold"
+                                           Margin="{DynamicResource OverviewCaption}"
+                                           AutomationProperties.LiveSetting="Polite" />
+                                <Grid Margin="{DynamicResource OverviewCaption}">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="1.1*" /><ColumnDefinition Width="1.5*" /><ColumnDefinition Width="0.9*" /></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Variable" FontWeight="SemiBold" />
+                                    <TextBlock Grid.Column="1" Text="Value" FontWeight="SemiBold" />
+                                    <TextBlock Grid.Column="2" Text="Status" FontWeight="SemiBold" />
+                                </Grid>
+                                <ScrollViewer MaxHeight="{DynamicResource FastbootResultsMaxHeight}"
+                                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                          AutomationProperties.Name="Allowlisted Fastboot device facts">
+                                <Grid>
+                                    <TextBlock Text="No Fastboot results yet. Refresh the device list, select the phone, then read its information."
+                                               TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"
+                                               Visibility="{Binding HasFastbootFacts, Converter={StaticResource InverseBooleanToVisibility}}" />
+                                    <ItemsControl ItemsSource="{Binding FastbootFacts}"
+                                                  Visibility="{Binding HasFastbootFacts, Converter={StaticResource BooleanToVisibility}}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Padding="{DynamicResource StatusPanelPadding}"
+                                                        Margin="{DynamicResource ActionButton}"
+                                                        Background="{DynamicResource SurfaceBrush}"
+                                                        BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                                                        CornerRadius="{DynamicResource StatusCorner}">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="1.1*" /><ColumnDefinition Width="1.5*" /><ColumnDefinition Width="0.9*" /></Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold"
+                                                                   TextWrapping="Wrap" Margin="{DynamicResource OverviewCaption}" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap"
+                                                                   Margin="{DynamicResource OverviewCaption}" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding Status}" TextWrapping="Wrap"
+                                                                   Foreground="{DynamicResource MutedBrush}"
+                                                                   Margin="{DynamicResource OverviewCaption}" />
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Grid>
+                                </ScrollViewer>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            </TabControl>
+
+            <Border Grid.Column="2" Margin="{DynamicResource RailPanelMargin}" Padding="{DynamicResource RailPanelPadding}"
+                    Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                    CornerRadius="{DynamicResource PanelCorner}">
+                <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Top" Text="QUICK ACTIONS" FontWeight="Bold"
+                               Margin="{DynamicResource NavigationHeading}" />
+                    <StackPanel>
+                        <Button Content="Refresh devices" Command="{Binding RefreshCommand}"
+                                Style="{StaticResource SecondaryButton}" Margin="{DynamicResource RailAction}"
+                                AutomationProperties.Name="Refresh connected Android devices" />
+                        <Button Content="Read device info" Command="{Binding ReadInfoCommand}"
+                                Style="{StaticResource SecondaryButton}" Margin="{DynamicResource RailAction}"
+                                AutomationProperties.Name="Read basic information from the selected phone" />
+                        <Button Content="Capture logs" Command="{Binding CaptureCommand}"
+                                Style="{StaticResource SecondaryButton}" Margin="{DynamicResource RailAction}"
+                                AutomationProperties.Name="Capture logcat for 30 seconds and analyze crashes" />
+                        <Button Content="Pair over Wi-Fi" Tag="5" Click="SelectWorkArea_Click"
+                                Margin="{DynamicResource RailAction}"
+                                AutomationProperties.Name="Open Wireless ADB pairing" />
+                        <Button Content="Fastboot info" Tag="6" Click="SelectWorkArea_Click"
+                                Style="{StaticResource SecondaryButton}" Margin="{DynamicResource RailAction}"
+                                AutomationProperties.Name="Open Fastboot device information" />
+                        <Button Content="Cancel operation" Command="{Binding CancelCommand}"
+                                Style="{StaticResource SecondaryButton}" Margin="{DynamicResource RailAction}"
+                                Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibility}}"
+                                AutomationProperties.Name="Cancel the active device operation" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="3" Margin="{DynamicResource StatusPanel}" Padding="{DynamicResource StatusPanelPadding}" CornerRadius="{DynamicResource StatusCorner}"
+                Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Left" Text="Latest action" FontWeight="SemiBold"
+                           Margin="{DynamicResource FilterLabel}" VerticalAlignment="Center" />
+                <ProgressBar Width="{DynamicResource ProgressWidth}" Height="{DynamicResource ProgressHeight}" IsIndeterminate="{Binding IsBusy}" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibility}}"
+                             VerticalAlignment="Center" Margin="{DynamicResource Progress}" />
+                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"
+                           AutomationProperties.LiveSetting="Polite" />
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>DeviceToolkit.Desktop</AssemblyName>
+    <RootNamespace>DeviceToolkit.Desktop</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DeviceToolkit.Core\DeviceToolkit.Core.csproj" />
+    <ProjectReference Include="..\DeviceToolkit.Wpd\DeviceToolkit.Wpd.csproj" />
+    <ProjectReference Include="..\DeviceToolkit.Wpd.Worker\DeviceToolkit.Wpd.Worker.csproj" ReferenceOutputAssembly="false" />
+    <Content Include="..\..\tokens\desktop.json" Link="tokens\desktop.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="CopyWpdWorkerToDesktopOutput" AfterTargets="Build">
+    <ItemGroup>
+      <WpdWorkerFile Include="..\DeviceToolkit.Wpd.Worker\bin\$(Configuration)\net10.0-windows\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(WpdWorkerFile)" DestinationFiles="@(WpdWorkerFile->'$(OutDir)WpdWorker\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

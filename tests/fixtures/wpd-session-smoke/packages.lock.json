@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "MediaDevices": {
+        "type": "Transitive",
+        "resolved": "2.0.0",
+        "contentHash": "V9xdkpJ6vXulDRlmfFzliTzYty1naSsaCervJb5PFv4JHTiThpKJJ7C4xM0Mmo35O811YquDTCyv09YiBmMARw=="
+      },
+      "devicetoolkit.wpd": {
+        "type": "Project",
+        "dependencies": {
+          "MediaDevices": "[2.0.0, )"
+        }
+      }
+    }
+  }
+}

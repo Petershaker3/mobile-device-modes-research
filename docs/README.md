@@ -24,6 +24,8 @@
 15. **[21 — النقل الأول: طبقة Logcat والتشخيص](21-TRANSPLANT-LOGCAT.md)** — 8,530 سطراً منقولة حرفياً بلا تعديل، وكيف نُقلت بلا لمس الكود.
 16. **[ATTRIBUTION](../ATTRIBUTION.md)** — سجل كل ملف منقول: مصدره، SHA، وهل عُدّل.
 17. **[22 — هانداوف](22-HANDOFF.md)** — ابدأ من هنا لو لم تكن في الجلسة: الحالة في صفحة واحدة، الأرقام المُثبتة، الديون التقنية، والفجوات مقابل خطة V1.
+18. [25: إعادة تقييم أدوات Fastboot من GitHub](25-FASTBOOT-SOURCE-REVALIDATION.md): مراجعة المصدر والترخيص والاختبارات وقرار إعادة الاستخدام لمسار Fastboot.
+19. [26: قراءة Samsung عبر MTP وADB](26-SAMSUNG-MTP-READ-INFO.md): مراجعة مشاريع GitHub، حقول حماية الإقلاع، ورابط firmware إلى SamFW.
 
 ## 2. وثائق المجالات الوظيفية
 
@@ -31,6 +33,8 @@
 5. [03 — إدارة تطبيقات Android والشبكة عبر ADB](03-app-management-and-network.md) — إدارة التطبيقات، USB/Wireless، البحث والفلاتر، تواريخ التثبيت والتحديث، Installer Source، DNS، وأولوية محرك التثبيت.
 6. [04 — تشخيص وإصلاح تعريفات Android على Windows](04-windows-driver-diagnostics.md) — SetupAPI/PnP، Hardware IDs، مصادر التعريفات الرسمية، الإصلاح، التراجع، واختبارات القبول.
 7. [06 — معلومات نظام Android والجهاز](06-android-system-information.md) — كتالوج حقول الجهاز والبناء والـABI والذاكرة والتخزين والطاقة، مع تدقيق مشاريع GitHub ومصادر القراءة وحدود API 24+.
+8. [24 — قراءة معلومات الجهاز حسب الوضع](24-DEVICE-MODE-READ-INFO.md) — نتائج البحث الحالي، قدرات ADB وRecovery وFastboot/Fastbootd وMTP، وحدود مسارات الشركات وخطة التنفيذ المرحلية.
+9. [26 — Samsung MTP وADB](26-SAMSUNG-MTP-READ-INFO.md) — metadata من MTP وحقول الأمان من ADB ورابط SamFW.
 8. [07 — جرد السوفتوير والفريموير](07-firmware-software-inventory.md) — معلومات OTA metadata وpayload.bin وpartition manifests وAVB/vbmeta، مع فصل الفحص المحلي عن أي تحديث للجهاز.
 9. [08 — معلومات التخزين والأقسام](08-storage-partition-information.md) — filesystem usage، physical/logical/dynamic partitions، super metadata، A/B وVirtual A/B، وأدوات AOSP للقراءة فقط.
 10. [09 — إدارة ملفات Android والنقل](09-device-file-management.md) — ADB وMTP/WPD وvirtual drive، dual-pane، نقل الملفات، Unicode، الإلغاء والتحقق، ومراجعة مشاريع GitHub.
